@@ -1,0 +1,24 @@
+| index         | name           |
+|---------------|----------------|
+| `0x0`         | utrap.entry    |
+| `0x1`         | utrap.pc       |
+| `0x2`         | utrap.scratch  |
+| `0x3`         | utrap.cause    |
+| `0x4`         | utrap.value    |
+| `0x10`        | strap.entry    |
+| `0x11`        | strap.pc       |
+| `0x12`        | strap.scratch  |
+| `0x13`        | strap.cause    |
+| `0x14`        | strap.value    |
+| `0x20`        | mtrap.entry    |
+| `0x21`        | mtrap.pc       |
+| `0x22`        | mtrap.scratch  |
+| `0x23`        | mtrap.cause    |
+| `0x24`        | mtrap.value    |
+| `0x100`       | status         |
+| `0x101`       | mhartid        |
+| `0x102`       | mtimer.freq    |
+| `0x103`       | mtimer.current |
+| `0x104`       | mtimer.trigger |
+| `0x105`       | mtimer.flags   |
+| `0xF00-0xF3F` | TLB[64]        |
