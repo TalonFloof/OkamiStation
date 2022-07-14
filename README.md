@@ -7,7 +7,7 @@
 
 Wolfbox is a fantasy computer that takes inspiration from UNIX workstations made in the late 80s.
 
-The goal of WolfBox is to design a workstation that, in theory, could be made in real life using FPGAs and Atmel microcontrolers.
+The goal of WolfBox is to design a workstation that, in theory, could be made in real life.
 
 This is currently a Work In Progress and some features are incomplete.
 
