@@ -489,7 +489,7 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
             }
             break;
         case 0x5f: // lui
-            fprintf(stderr, "wat\n");
+            fprintf(stderr, "\x1b[31mwat\x1b[0m\n");
             abort();
             break;
         default:
@@ -499,6 +499,7 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
 }
 
 int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
+    int i = 0;
     for(int i = 0; i < cycles; i++) {
         if(hart->StallTicks) {
 			hart->StallTicks--;
@@ -531,17 +532,23 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
             }
         if((hart->status & 7) != 0) { // Trap!
             if((hart->status & STATUS_UTRAP_GATE) != 0) { // UTrap
-                // Switch Mode
                 hart->status &= ~STATUS_MODE;
                 hart->status |= ((hart->status & STATUS_UTRAP_MODE)>>12)<<5;
+                hart->UTrap.pc = hart->Registers[0];
+                hart->Registers[0] = hart->UTrap.entry & ~3;
+                hart->UTrap.entry |= 2;
             } else if((hart->status & STATUS_STRAP_GATE) != 0) { // STrap
-                // Switch Mode
                 hart->status &= ~STATUS_MODE;
                 hart->status |= ((hart->status & STATUS_STRAP_MODE)>>12)<<5;
+                hart->STrap.pc = hart->Registers[0];
+                hart->Registers[0] = hart->STrap.entry & ~3;
+                hart->STrap.entry |= 2;
             } else if((hart->status & STATUS_MTRAP_GATE) != 0) { // MTrap
-                // Switch Mode
                 hart->status &= ~STATUS_MODE;
                 hart->status |= ((hart->status & STATUS_MTRAP_MODE)>>12)<<5;
+                hart->MTrap.pc = hart->Registers[0];
+                hart->Registers[0] = hart->MTrap.entry & ~3;
+                hart->MTrap.entry |= 2;
             }
         }
         uint32_t opcode;
@@ -569,4 +576,13 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
             }
     }
     return cycles;
+}
+
+IcewolfHart_t* IceWolf_CreateHart(uint64_t id) {
+    IcewolfHart_t* hart = malloc(sizeof(IcewolfHart_t));
+    memset((uint8_t*)hart, 0, sizeof(IcewolfHart_t));
+    hart->hartid = id;
+    hart->status = (2<<5);
+    hart->Registers[0] = 0x80000000;
+    return hart;
 }

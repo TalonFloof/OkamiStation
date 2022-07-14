@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define HART_FREQ 75000000 // 75 MHz
+#define HART_FREQ 100000000 // 100 MHz
 
-#define MEMORY (8*1024*1024) // 8 MiB
+#define MEMORY (16*1024*1024) // 16 MiB
 
 #define CACHESIZESHIFT 15
 #define CACHELINESHIFT 4
@@ -75,5 +75,7 @@ typedef struct IcewolfHart {
     TrapRegs_t MTrap;
 } IcewolfHart_t;
 
+int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles);
 static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t* buf, uint64_t len, bool write, bool fetch);
 void IceWolf_Trap(IcewolfHart_t* hart, int type);
+IcewolfHart_t* IceWolf_CreateHart(uint64_t id);

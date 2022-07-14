@@ -22,9 +22,9 @@ Make sure you have these packages:
 
 To build and run the emulator simply use the commands:
 ```sh
-$ make
+$ make build
 
-$ ./wolfbox
+$ make run
 ```
 
 ## License
