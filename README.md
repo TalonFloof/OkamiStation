@@ -1,7 +1,7 @@
 # WolfBox
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FTalon396%2FWolfBox&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
-[![License](https://img.shields.io/github/license/Talon396/WolfBox?logo=apache&style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
+[![License](https://img.shields.io/github/license/Talon396/WolfBox?logo=apache)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Lines of Code](https://tokei.rs/b1/github/Talon396/WolfBox)](https://github.com/Talon396/WolfBox)
 
 
