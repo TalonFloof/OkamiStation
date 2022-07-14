@@ -17,9 +17,11 @@ limitations under the License.
 
 #include "icewolf.h"
 #include "icebus.h"
+#include "framebuffer.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <SDL2/SDL.h>
 
@@ -37,19 +39,21 @@ int time_start, time_end;
 bool done;
 
 int main(int argc, char* argv[]) {
+    time_t t;
+    srand((unsigned) time(&t));
     MAIN_HART = IceWolf_CreateHart(0);
     FBRECT = (SDL_Rect){
 		.w = 1024,
 		.h = 768
 	};
+    if(!IceBusInit()) {
+        fprintf(stderr, "\x1b[31mIceBus initalization failed\x1b[0m\n");
+        return 1;
+    }
     SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "0", SDL_HINT_OVERRIDE);
     SDL_SetHintWithPriority(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1", SDL_HINT_OVERRIDE);
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "\x1b[31mSDL Initalization Failed due to, %s\x1b[0m\n", SDL_GetError());
-        return 1;
-    }
-    if(!IceBusInit()) {
-        fprintf(stderr, "\x1b[31mIceBus initalization failed\x1b[0m\n");
         return 1;
     }
     SDL_EnableScreenSaver();
@@ -103,6 +107,7 @@ void SDLMainLoop() {
 			remaining -= IceWolf_RunCycles(MAIN_HART,remaining);
 		}
     }
+    FBDraw();
 	SDL_RenderClear(RENDER);
 	SDL_RenderCopy(RENDER, FBTEX, &FBRECT, &FBRECT);
 	SDL_RenderPresent(RENDER);

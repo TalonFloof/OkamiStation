@@ -27,9 +27,8 @@ limitations under the License.
 uint8_t Firmware[FIRMWARE_SIZE];
 
 int ROMRead(uint64_t addr, uint64_t len, void *buf) {
-    if (addr+len > FIRMWARE_SIZE) {
+    if (addr+len > FIRMWARE_SIZE)
 		return 1;
-    }
     memcpy((uint8_t*)buf, (uint8_t*)&Firmware[addr], len);
     return 0;
 }

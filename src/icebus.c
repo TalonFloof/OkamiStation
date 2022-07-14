@@ -18,6 +18,7 @@ limitations under the License.
 #include "icebus.h"
 #include "ram.h"
 #include "rom.h"
+#include "framebuffer.h"
 
 IceBusBank_t IceBusBanks[16];
 
@@ -30,6 +31,8 @@ bool IceBusInit() {
     if(!RAMInit())
         return false;
     if(!ROMInit())
+        return false;
+    if(!FBInit())
         return false;
     return true;
 }
