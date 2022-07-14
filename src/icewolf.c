@@ -1,3 +1,20 @@
+/*
+WolfBox Fantasy Workstation
+Copyright 2022-2022 Talon396
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 #include "icewolf.h"
 #include "icebus.h"
 #include <stdio.h>
@@ -31,12 +48,12 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
     } else {
         uint64_t* tags = fetch ? (uint64_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,ICacheTag)) : (uint64_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,DCacheTag));
         uint8_t* cache = fetch ? (uint8_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,ICache)) : (uint8_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,DCache));
-        uint32_t lineaddr = addr & ~(CACHELINESIZE-1);
-		uint32_t lineoff = addr & (CACHELINESIZE-1);
-		uint32_t lineno = addr>>4;
-		uint32_t set = lineno&(CACHESETCOUNT-1);
-		uint32_t insertat = -1;
-        uint32_t line = -1;
+        uint64_t lineaddr = addr & ~(CACHELINESIZE-1);
+		uint64_t lineoff = addr & (CACHELINESIZE-1);
+		uint64_t lineno = addr>>4;
+		uint64_t set = lineno&(CACHESETCOUNT-1);
+		uint64_t insertat = -1;
+        uint64_t line = -1;
         uint8_t *cacheline;
         for(int i = 0; i < CACHEWAYCOUNT; i++) {
 			if(tags[set*CACHEWAYCOUNT+i] == lineaddr) {
@@ -53,6 +70,7 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
 				line = set*CACHEWAYCOUNT+((fetch ? hart->ICache_Fill : hart->DCache_Fill)&(CACHEWAYCOUNT-1));
 			else
 				line = set*CACHEWAYCOUNT+insertat;
+            cacheline = &cache[line*CACHELINESIZE];
             if(!fetch && ((tags[line] & 3) == 3)) { // Flush Data Cache Line
                 hart->StallTicks += BUS_STALL;
                 if(IceBusWrite(lineaddr, CACHELINESIZE, cacheline) != 0) {
@@ -60,6 +78,7 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
                     return false;
                 }
             }
+            tags[line] = lineaddr | 1;
             if(IceBusRead(lineaddr, CACHELINESIZE, cacheline) != 0) {
                 IceWolf_Trap(hart,(int)fetch);
                 return false;
@@ -73,12 +92,12 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
             if((tags[line] & 2) == 0)
                 hart->DCache_DirtyCount++;
             tags[line] = tags[line] | 2;
-            memcpy(cacheline, buf, CACHELINESIZE);
+            memcpy(&cacheline[lineoff], buf, len);
             hart->DCache_DirtyCount += 1;
             if (hart->TicksUntilFlush == 0)
 				hart->TicksUntilFlush = BUS_STALL;
         } else {
-            memcpy(buf, cacheline, CACHELINESIZE);
+            memcpy(buf, &cacheline[lineoff], len);
         }
     }
     return true;
@@ -552,9 +571,9 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
             }
         }
         uint32_t opcode;
-        if((hart->status & 7) == 0)
+        if((hart->status & 7) == 0) {
+            hart->Branched = false;
             if(IceWolf_MemAccess(hart,hart->Registers[0],(uint8_t*)&opcode,4,false,true)) {
-                hart->Branched = false;
                 if(opcode & 0x80) {
                     if((opcode & 0x7F) == 0x5f) {
                         if(hart->LUILength >= 6) {
@@ -574,6 +593,7 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
                     hart->Registers[0] += hart->Branched?0:4;
                 }
             }
+        }
     }
     return cycles;
 }

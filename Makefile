@@ -1,7 +1,7 @@
 SOURCES += $(wildcard src/*.c)
 
 build:
-	clang -pie -lSDL2 -o wolfbox -g -O3 $(SOURCES)
+	clang -pie -o wolfbox -g -Ofast $(SOURCES) -lSDL2
 
 run:
 	./wolfbox
