@@ -36,10 +36,13 @@ SDL_Rect FBRECT;
 void SDLMainLoop();
 
 int time_start, time_end;
+int title_update = 0;
+uint64_t cycle_count = 0;
 bool done;
 
 int main(int argc, char* argv[]) {
     time_t t;
+    char title[96];
     srand((unsigned) time(&t));
     MAIN_HART = IceWolf_CreateHart(0);
     FBRECT = (SDL_Rect){
@@ -57,7 +60,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     SDL_EnableScreenSaver();
-    WINDOW = SDL_CreateWindow("WolfBox",SDL_WINDOWPOS_UNDEFINED_DISPLAY(0),SDL_WINDOWPOS_UNDEFINED_DISPLAY(0),FBRECT.w,FBRECT.h,SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
+    sprintf((char*)&title, "WolfBox built on %s - %.2f MIPS", __TIMESTAMP__, 0.0);
+    WINDOW = SDL_CreateWindow((char*)&title,SDL_WINDOWPOS_UNDEFINED_DISPLAY(0),SDL_WINDOWPOS_UNDEFINED_DISPLAY(0),FBRECT.w,FBRECT.h,SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
     if(!WINDOW) {
 		fprintf(stderr, "\x1b[31mSDL Window creation failed\x1b[0m\n");
 		return 1;
@@ -79,6 +83,7 @@ int main(int argc, char* argv[]) {
 	SDL_RenderPresent(RENDER);
     time_start = SDL_GetTicks();
     time_end = SDL_GetTicks();
+    title_update = SDL_GetTicks()+1000;
     done = false;
     while (!done) {
 		SDLMainLoop();
@@ -88,6 +93,12 @@ int main(int argc, char* argv[]) {
 		if (delay > 0) {
 			SDL_Delay(delay);
 		}
+        if(SDL_GetTicks() >= title_update) {
+            sprintf((char*)&title, "WolfBox built on %s - %.2f MIPS", __TIMESTAMP__, (double)cycle_count/1000000.0);
+            SDL_SetWindowTitle(WINDOW, (char*)&title);
+            cycle_count = 0;
+            title_update = SDL_GetTicks()+1000;
+        }
 	}
     return 0;
 }
@@ -104,7 +115,9 @@ void SDLMainLoop() {
         if (i == displaced_time-1)
             remaining += extracycles;
         while (remaining > 0) {
-			remaining -= IceWolf_RunCycles(MAIN_HART,remaining);
+            int amount = IceWolf_RunCycles(MAIN_HART,remaining);
+			remaining -= amount;
+            cycle_count += amount;
 		}
     }
     FBDraw();
@@ -118,6 +131,12 @@ void SDLMainLoop() {
 				done = true;
 				break;
 			}
+            case SDL_KEYDOWN: {
+                if(event.key.keysym.scancode == SDL_SCANCODE_F11) {
+                    SDL_SetWindowFullscreen(WINDOW,(SDL_GetWindowFlags(WINDOW) & SDL_WINDOW_FULLSCREEN) != SDL_WINDOW_FULLSCREEN);
+                }
+                break;
+            }
         }
     }
 }

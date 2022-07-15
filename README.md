@@ -15,15 +15,14 @@ This is currently a Work In Progress and some features are incomplete.
 Make sure you have these packages:
 - `clang`
 - `llvm`
-- `luajit`
+- `rustc`
+- `cargo`
 - `make`
 
 ---
 
-To build and run the emulator simply use the commands:
+To build and run the emulator simply use:
 ```sh
-$ make build
-
 $ make run
 ```
 

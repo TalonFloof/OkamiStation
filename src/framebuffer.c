@@ -36,6 +36,21 @@ uint64_t DirtyX2 = 0;
 uint64_t DirtyY1 = 0;
 uint64_t DirtyY2 = 0;
 
+int FBWrite(uint64_t addr, uint64_t len, void *buf) {
+    if (addr < 0x1000) { // Registers
+        if(addr >= 0xC00) { // Palette
+            Pal[addr-0xC00] = *(uint32_t*)buf;
+        } else {
+            return 0;
+        }
+    } else {
+        addr -= 0x1000;
+        if (addr+len > FBRECT.w+FBRECT.h)
+			return 1;
+        
+    }
+}
+
 bool FBDraw() {
     if (!Dirty)
 		return false;

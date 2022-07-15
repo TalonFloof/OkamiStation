@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 #include "icebus.h"
-#include "rom.h"
+#include "motherboard.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,15 +26,21 @@ limitations under the License.
 
 uint8_t Firmware[FIRMWARE_SIZE];
 
-int ROMRead(uint64_t addr, uint64_t len, void *buf) {
-    if (addr+len > FIRMWARE_SIZE)
-		return 1;
-    memcpy((uint8_t*)buf, (uint8_t*)&Firmware[addr], len);
-    return 0;
+int MBoardRead(uint64_t addr, uint64_t len, void *buf) {
+    if(addr < FIRMWARE_SIZE) {
+        memcpy((uint8_t*)buf, (uint8_t*)&Firmware[addr], len);
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
-int ROMWrite(uint64_t addr, uint64_t len, void *buf) {
-    return 0;
+int MBoardWrite(uint64_t addr, uint64_t len, void *buf) {
+    if(addr < FIRMWARE_SIZE) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 bool ROMLoad(char *name) {
@@ -48,9 +54,9 @@ bool ROMLoad(char *name) {
     return true;
 }
 
-bool ROMInit() {
+bool MBoardInit() {
     IceBusBanks[1].Used = true;
-    IceBusBanks[1].Write = ROMWrite;
-	IceBusBanks[1].Read = ROMRead;
+    IceBusBanks[1].Write = MBoardWrite;
+	IceBusBanks[1].Read = MBoardRead;
     return ROMLoad("firmware.bin");
 }

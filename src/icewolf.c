@@ -56,12 +56,12 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
         uint64_t line = -1;
         uint8_t *cacheline;
         for(int i = 0; i < CACHEWAYCOUNT; i++) {
-			if(tags[set*CACHEWAYCOUNT+i] == lineaddr) {
+			if((tags[set*CACHEWAYCOUNT+i] & ~0xF) == lineaddr && (tags[set*CACHEWAYCOUNT+i] & 1)) {
 				line = set*CACHEWAYCOUNT+i;
 				cacheline = &cache[line*CACHELINESIZE];
 				break;
 			}
-			if(!tags[set*CACHEWAYCOUNT+i])
+			if(!(tags[set*CACHEWAYCOUNT+i] & 1))
 				insertat = i;
 		}
         if(line == -1) {
@@ -519,11 +519,13 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
 
 int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
     int i = 0;
+    int real_count = 0;
     for(int i = 0; i < cycles; i++) {
         if(hart->StallTicks) {
 			hart->StallTicks--;
 			continue;
 		}
+        real_count += 1;
         if(hart->TicksUntilFlush)
             if(!--hart->TicksUntilFlush) {
                 bool found = false;
@@ -595,7 +597,7 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
             }
         }
     }
-    return cycles;
+    return real_count;
 }
 
 IcewolfHart_t* IceWolf_CreateHart(uint64_t id) {
