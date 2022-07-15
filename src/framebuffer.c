@@ -36,18 +36,67 @@ uint64_t DirtyX2 = 0;
 uint64_t DirtyY1 = 0;
 uint64_t DirtyY2 = 0;
 
+void MarkDirty(uint64_t x1, uint64_t y1, uint64_t x2, uint64_t y2) {
+    if(!Dirty) {
+		DirtyX1 = x1;
+		DirtyY1 = y1;
+		DirtyX2 = x2;
+		DirtyY2 = y2;
+		Dirty = true;
+		return;
+	}
+    if(x1 < DirtyX1)
+		DirtyX1 = x1;
+    if(y1 < DirtyY1)
+        DirtyY1 = y1;
+    if (x2 > DirtyX2) {
+		if (x2 < FBRECT.w) {
+			DirtyX2 = x2;
+		} else {
+			DirtyX2 = FBRECT.w-1;
+		}
+	}
+    if (y2 > DirtyY2) {
+		if (y2 < FBRECT.h) {
+			DirtyY2 = y2;
+		} else {
+			DirtyY2 = FBRECT.h-1;
+		}
+	}
+}
+
 int FBWrite(uint64_t addr, uint64_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
             Pal[addr-0xC00] = *(uint32_t*)buf;
-        } else {
-            return 0;
         }
+        return 0;
     } else {
         addr -= 0x1000;
         if (addr+len > FBRECT.w+FBRECT.h)
 			return 1;
-        
+		uint64_t x = (addr/2)%FBRECT.w;
+		uint64_t y = (addr/2)/FBRECT.w;
+        uint64_t x1 = ((addr+len+1)/2-1)%FBRECT.w;
+		uint64_t y1 = ((addr+len+1)/2-1)/FBRECT.w;
+        memcpy(&Framebuffer[addr], (uint8_t*)buf, len);
+        MarkDirty(x,y,x1,y1);
+        return 0;
+    }
+}
+
+int FBRead(uint64_t addr, uint64_t len, void *buf) {
+    if (addr < 0x1000) { // Registers
+        if(addr >= 0xC00) { // Palette
+            *(uint32_t*)buf = Pal[addr-0xC00];
+        }
+        return 0;
+    } else {
+        addr -= 0x1000;
+        if (addr+len > FBRECT.w+FBRECT.h)
+			return 1;
+        memcpy(buf, &Framebuffer[addr], len);
+        return 0;
     }
 }
 
@@ -77,6 +126,8 @@ bool FBDraw() {
 
 bool FBInit() {
     IceBusBanks[15].Used = true;
+    IceBusBanks[15].Read = FBRead;
+    IceBusBanks[15].Write = FBWrite;
     Framebuffer = malloc(FBRECT.w*FBRECT.h);
     Pixelbuffer = malloc(FBRECT.w*FBRECT.h*4);
     memset(Pixelbuffer,0,FBRECT.w*FBRECT.h*4);

@@ -25,7 +25,16 @@ limitations under the License.
 #include <string.h>
 
 void IceWolf_Trap(IcewolfHart_t* hart, int type) {
-
+    if((hart->status & STATUS_MODE) == 0) { // User
+        hart->UTrap.cause = type;
+        hart->status |= STATUS_UTRAP_GATE;
+    } else if((hart->status & STATUS_MODE) == 1) { // Supervisor
+        hart->STrap.cause = type;
+        hart->status |= STATUS_STRAP_GATE;
+    } else if((hart->status & STATUS_MODE) == 2) { // Machine
+        hart->MTrap.cause = type;
+        hart->status |= STATUS_MTRAP_GATE;
+    }
 }
 
 static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t* buf, uint64_t len, bool write, bool fetch) {
