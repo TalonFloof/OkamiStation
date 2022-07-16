@@ -1,0 +1,71 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\x0B" | "\x0C" | "\xA0" | SPACE_SEPARATOR }
+COMMENT = _{ ";" ~ (!"\n" ~ ANY)* }
+
+program = _{ SOI ~ (label | move_instruction | binary_include | origin | constant | data) ~ EOI }
+
+origin = {
+    origin_with_padding    |
+    origin_without_padding
+}
+origin_with_padding = { ".origin.padding" ~ operand }
+origin_without_padding = { ".origin" ~ operand }
+
+binary_include = { ".binary_include" ~ immediate_string }
+
+operand = {
+    register |
+    immediate_bin |
+    immediate_hex |
+    immediate_dec |
+    immediate_char |
+    label_name
+}
+
+register = ${ "%" ~ register_name }
+register_name = @{ ASCII_ALPHANUMERIC+ }
+
+immediate_bin  = ${ "0b" ~ bin_num }
+bin_num = @{ (ASCII_BIN_DIGIT | "_")+ }
+immediate_hex  = ${ "0x" ~ hex_num }
+hex_num = @{ (ASCII_HEX_DIGIT | "_")+ }
+immediate_dec  = ${ dec_num }
+dec_num = @{ (ASCII_DIGIT | "_")+ }
+immediate_char = ${ "'" ~ char_body ~ "'" }
+char_body = @{ '\x00'..'\x7F' }
+immediate_string = ${ "\"" ~ string_body ~ "\"" }
+string_body = @{ string_body_chars* }
+string_body_chars = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ string_body_chars
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+data = {
+    data_byte |
+    data_half |
+    data_word |
+    data_long |
+    data_str  |
+    data_fill
+}
+data_byte = { ".byte" ~ operand }
+data_half = { ".half" ~ operand }
+data_word = { ".word" ~ operand }
+data_long = { ".long" ~ operand }
+data_str  = { ".string" ~ immediate_string }
+data_fill = { ".filling" ~ operand ~ "," ~ operand }
+
+constant = { ".constant" ~ constant_name ~ operand }
+constant_name = ${label_name ~ ":"}
+
+label = { label_type? ~ label_name ~ ":" }
+label_type = {
+    label_external |
+    label_global
+}
+label_name = @{ label_name_chars+ }
+label_name_chars = @{ ASCII_ALPHANUMERIC | "_" }
+label_external = { ".extern" }
+label_global   = { ".global" }
+
+move_instruction = { operand ~ "->" ~ operand }
