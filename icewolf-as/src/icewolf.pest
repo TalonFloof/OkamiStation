@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\x0B" | "\x0C" | "\xA0" | SPACE_SEPARATOR }
 COMMENT = _{ ";" ~ (!"\n" ~ ANY)* }
 
-program = _{ SOI ~ (label | move_instruction | binary_include | origin | constant | data) ~ EOI }
+program = { SOI ~ (label | binary_include | origin | constant | data | instruction)* ~ EOI }
 
 origin = {
     origin_with_padding    |
@@ -18,11 +18,12 @@ operand = {
     immediate_hex |
     immediate_dec |
     immediate_char |
-    label_name
+    label_ref |
+    label_abs_ref
 }
 
 register = ${ "%" ~ register_name }
-register_name = @{ ASCII_ALPHANUMERIC+ }
+register_name = @{ (ASCII_ALPHANUMERIC | ".")+ }
 
 immediate_bin  = ${ "0b" ~ bin_num }
 bin_num = @{ (ASCII_BIN_DIGIT | "_")+ }
@@ -63,9 +64,77 @@ label_type = {
     label_external |
     label_global
 }
+label_ref = ${ "@" ~ label_name }
+label_abs_ref = ${ "$" ~ label_name }
 label_name = @{ label_name_chars+ }
-label_name_chars = @{ ASCII_ALPHANUMERIC | "_" }
+label_name_chars = @{ ASCII_ALPHANUMERIC | "_" | "." }
 label_external = { ".extern" }
 label_global   = { ".global" }
 
-move_instruction = { operand ~ "->" ~ operand }
+instruction = {
+    instruction_3arg ~ operand ~ "," ~ operand ~ "," ~ operand |
+    instruction_2arg ~ operand ~ "," ~ operand |
+    instruction_1arg ~ operand |
+    instruction_0arg
+}
+
+instruction_0arg = @{
+    "tret" | // mov %zero, %vecret
+    "nop"
+}
+
+instruction_1arg = @{
+    "fence" | // mov [arg], %mem.fence
+    "lui" | // mov [arg], %lui
+    "ecall" | // mov [arg], %ecall
+    "ba" | // mov [arg], %pc
+    "b" | // mov [arg], %bran.rel
+    "as" | // mov [reg], %alu.acc
+    "add" | // mov [arg], %alu.add
+    "sub" | // mov [arg], %alu.sub
+    "xor" | // mov [arg], %alu.xor
+    "or" | // mov [arg], %alu.or
+    "and" | // mov [arg], %alu.and
+    "sll" | // mov [arg], %alu.sll
+    "srl" | // mov [arg], %alu.srl
+    "sra" | // mov [arg], %alu.sra
+    "slt" | // mov [arg], %alu.slt
+    "sltu" | // mov [arg], %alu.sltu
+    "mul" | // mov [arg], %alu.mul
+    "mulh" | // mov [arg], %alu.mulh
+    "mulsu" | // mov [arg], %alu.mulsu
+    "mulu" | // mov [arg], %alu.mulu
+    "div" | // mov [arg], %alu.div
+    "divu" | // mov [arg], %alu.divu
+    "rem" | // mov [arg], %alu.rem
+    "remu" | // mov [arg], %alu.remu
+    "lb" | // mov %alu.lb, [reg]
+    "lh" | // mov %alu.lh, [reg]
+    "lw" | // mov %alu.lw, [reg]
+    "ld" | // mov %alu.ld, [reg]
+    "sb" | // mov [val], %alu.sb
+    "sh" | // mov [val], %alu.sh
+    "sw" | // mov [val], %alu.sw
+    "sd"   // mov [val], %alu.sd
+}
+
+instruction_2arg = @{
+    "mov" |
+    "wrxreg"  | /* mov [arg1], %xreg.ind
+                 * mov [arg2], %xreg.val */
+    "rdxreg"  | /* mov [arg1], %xreg.ind
+                 * mov %xreg.val, [arg2] */
+    "swpxreg" | /* mov [arg1], %xreg.ind
+                   mov [reg2], %xreg.swp */
+    "bal" |
+    "bala"
+}
+
+instruction_3arg = @{
+    "beq"  |
+    "bne"  |
+    "blt"  |
+    "bge"  |
+    "bltu" |
+    "bgeu"
+}

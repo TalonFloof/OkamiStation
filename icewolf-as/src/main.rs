@@ -23,6 +23,7 @@ use std::env;
 use std::process::exit;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
+use pest::Parser;
 
 lazy_static! {
     static ref SOURCE_PATH: Mutex<std::path::PathBuf> = Mutex::new(std::path::PathBuf::new());
@@ -32,6 +33,39 @@ lazy_static! {
 #[grammar = "icewolf.pest"]
 struct IceWolfParser;
 
+
+#[derive(PartialEq, Debug, Clone)]
+enum ASTEntry {
+    Instruction0Arg {
+        name: String,
+    },
+    Instruction1Arg {
+        name: String,
+        arg1: Box<ASTEntry>,
+    },
+    Instruction2Arg {
+        name: String,
+        arg1: Box<ASTEntry>,
+        arg2: Box<ASTEntry>,
+    },
+    Instruction3Arg {
+        name: String,
+        arg1: Box<ASTEntry>,
+        arg2: Box<ASTEntry>,
+        arg3: Box<ASTEntry>,
+    },
+    ImmediateByte(u8),
+    ImmediateHalf(u16),
+    ImmediateWord(u32),
+    ImmediateLong(u64),
+    Register(u8),
+    LabelDefine {
+        name: String,
+        is_extern: bool,
+        is_global: bool,
+    },
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
@@ -39,12 +73,12 @@ fn main() {
         exit(1);
     }
     let mut infile = std::fs::read_to_string(&args[1]).expect("Unable to read file!");
-    println!("Running preprocessor...");
+    println!("Running preprocessor");
     let mut source_path = std::fs::canonicalize(&args[1]).unwrap();
     source_path.pop();
     *SOURCE_PATH.lock().unwrap() = source_path;
     for _ in 0..128 {
-        let loop_file = infile.clone(); // this is a hack to allow modifying input_file from inside the for loop
+        let loop_file = infile.clone();
         for (line_number, text) in loop_file.lines().enumerate() {
             match text.trim() {
                 s if s.starts_with(".include \"") => {
@@ -55,6 +89,8 @@ fn main() {
             };
         }
     }
+    println!("Running AST Parsing");
+    let ast = parse(&infile);
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
@@ -70,7 +106,7 @@ fn include(line_number: usize, text: &str, data: String) -> String {
             start_of_original_file.push('\n');
         }
     }
-    let mut included_file = std::fs::read_to_string(source_path).expect("failed to include file");
+    let mut included_file = std::fs::read_to_string(source_path).expect("File Include Failed!");
     included_file.push('\n');
     let mut end_of_original_file = String::new();
     for (i, text) in data.lines().enumerate() {
@@ -84,4 +120,34 @@ fn include(line_number: usize, text: &str, data: String) -> String {
     final_file.push_str(&included_file);
     final_file.push_str(&end_of_original_file);
     final_file
+}
+
+fn parse(source: &str) -> Result<Vec<ASTEntry>, ()> {
+    let mut ast: Vec<ASTEntry> = vec![];
+    let pairs = IceWolfParser::parse(Rule::program, source).expect("\"pest\" Panicked during parsing");
+    for pair in pairs.peek().unwrap().into_inner() {
+        match pair.as_rule() {
+            Rule::EOI => break,
+            _ => {
+                let ent = pair_to_ast(pair);
+                println!("Parsed: {:?}", ent);
+                ast.push(ent);
+            }
+        }
+    }
+    Ok(ast)
+}
+
+fn pair_to_ast(pair: pest::iterators::Pair<Rule>) -> ASTEntry {
+    match pair.as_rule() {
+        Rule::program => pair_to_ast(pair.into_inner().next().unwrap()),
+        Rule::label => ASTEntry::LabelDefine { name:pair.into_inner().next().unwrap().as_str().to_string(), is_extern: false, is_global: false },
+        Rule::instruction => {
+            return ASTEntry::ImmediateByte(0);
+        }
+        Rule::operand => {
+            return ASTEntry::ImmediateByte(0);
+        }
+        _ => ASTEntry::ImmediateByte(0)
+    }
 }
