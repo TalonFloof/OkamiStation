@@ -79,8 +79,8 @@ instruction = {
 }
 
 instruction_0arg = @{
-    "tret" | // mov %zero, %vecret
-    "nop"
+    "tret" | // mov %zero, %trapret
+    "nop"    // mov %zero, %zero
 }
 
 instruction_1arg = @{
