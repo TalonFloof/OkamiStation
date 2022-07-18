@@ -489,7 +489,7 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
         case 0x58: // bran.rln
             hart->Branched = true;
             IceWolf_WriteReg(hart,value & 0xFF,hart->Registers[0]+4);
-            hart->Registers[0] = IceWolf_ReadReg(hart,(value & 0xFF00) >> 16);
+            hart->Registers[0] = IceWolf_ReadReg(hart,(value & 0xFF00) >> 8);
             break;
         case 0x5a: // trapret
             if((hart->status & (STATUS_MODE >> 5)) == 0) { // User

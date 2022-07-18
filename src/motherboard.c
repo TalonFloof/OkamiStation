@@ -37,6 +37,7 @@ int MBoardRead(uint64_t addr, uint64_t len, void *buf) {
 
 int MBoardWrite(uint64_t addr, uint64_t len, void *buf) {
     if(addr < FIRMWARE_SIZE) {
+        memcpy((uint8_t*)&Firmware[addr], (uint8_t*)buf, len);
         return 0;
     } else {
         return 1;

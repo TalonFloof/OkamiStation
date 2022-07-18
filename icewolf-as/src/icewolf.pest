@@ -120,12 +120,6 @@ instruction_1arg = @{
 
 instruction_2arg = @{
     "mov" |
-    "wrxreg"  | /* mov [arg1], %xreg.ind
-                 * mov [arg2], %xreg.val */
-    "rdxreg"  | /* mov [arg1], %xreg.ind
-                 * mov %xreg.val, [arg2] */
-    "swpxreg" | /* mov [arg1], %xreg.ind
-                   mov [reg2], %xreg.swp */
     "bal" |
     "bala"
 }

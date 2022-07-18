@@ -130,9 +130,6 @@ enum Instructions1Arg {
 #[allow(dead_code)]
 enum Instructions2Arg {
     Mov,
-    Wrxreg,
-    Rdxreg,
-    Swpxreg,
     Bal,
     Bala
 }
@@ -146,6 +143,16 @@ enum Instructions3Arg {
     Bge,
     Bltu,
     Bgeu
+}
+
+#[derive(PartialEq, Debug, Clone)]
+#[allow(dead_code)]
+enum AssembleEntry {
+    Label(String,u64),
+    Opcode(u32),
+    OpcodeLabelRel(u32,String,u64),
+    OpcodeLabelAbs(u32,String,u64),
+    Data(Vec<u8>),
 }
 
 fn main() {
@@ -172,7 +179,385 @@ fn main() {
         }
     }
     println!("Running AST Parsing");
-    let ast = parse(&infile);
+    let ast = parse(&infile).unwrap();
+    println!("{:?}", ast);
+
+    println!("Pre-Assembling");
+    let mut entries: Vec<AssembleEntry> = Vec::new();
+    let mut cur_addr: u64 = 0;
+    let mut cur_offset: u64 = 0;
+    for entry in ast.iter() {
+        match entry {
+            ASTEntry::LabelDefine {name, ..} => {
+                entries.push(AssembleEntry::Label(name.clone(),cur_addr));
+            }
+            ASTEntry::Origin { base, .. } => {
+                cur_addr = *base;
+                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::DataNum(num) => {
+                match num.as_ref() {
+                    ASTEntry::ImmediateByte(dat) => {
+                        let v = dat.to_le_bytes().to_vec();
+                        cur_addr += v.len() as u64;
+                        cur_offset += v.len() as u64;
+                        entries.push(AssembleEntry::Data(v));
+                    }
+                    ASTEntry::ImmediateHalf(dat) => {
+                        let v = dat.to_le_bytes().to_vec();
+                        cur_addr += v.len() as u64;
+                        cur_offset += v.len() as u64;
+                        entries.push(AssembleEntry::Data(v));
+                    }
+                    ASTEntry::ImmediateWord(dat) => {
+                        let v = dat.to_le_bytes().to_vec();
+                        cur_addr += v.len() as u64;
+                        cur_offset += v.len() as u64;
+                        entries.push(AssembleEntry::Data(v));
+                    }
+                    ASTEntry::ImmediateLong(dat) => {
+                        let v = dat.to_le_bytes().to_vec();
+                        cur_addr += v.len() as u64;
+                        cur_offset += v.len() as u64;
+                        entries.push(AssembleEntry::Data(v));
+                    }
+                    _ => todo!(),
+                }
+                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::DataString(s) => {
+                cur_addr += s.len() as u64;
+                cur_offset += s.len() as u64;
+                entries.push(AssembleEntry::Data(s.as_bytes().to_vec()));
+                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::DataFilling {value, size} => {
+                cur_addr += *size;
+                cur_offset += *size;
+                entries.push(AssembleEntry::Data(vec![*value; *size as usize]));
+                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::Instruction0Arg {instruction} => {
+                match instruction {
+                    Instructions0Arg::Tret => {
+                        entries.push(AssembleEntry::Opcode(0x00003f5a));
+                    }
+                    Instructions0Arg::Nop => {
+                        entries.push(AssembleEntry::Opcode(0x00003f3f));
+                    }
+                }
+                cur_addr += 4;
+                cur_offset += 4;
+            }
+            ASTEntry::Instruction1Arg {instruction, arg1} => {
+                let mut op: u32 = 0;
+                let mut typ = 0;
+                let mut nam: Option<String> = None;
+                match arg1.as_ref() {
+                    ASTEntry::ImmediateByte(n) => {
+                        op |= (*n as u32 & 0xFFFF) << 16;
+                        op |= 0x80;
+                    }
+                    ASTEntry::ImmediateHalf(n) => {
+                        op |= (*n as u32 & 0xFFFF) << 16;
+                        op |= 0x80;
+                    }
+                    ASTEntry::ImmediateWord(n) => {
+                        cur_addr += 8;
+                        cur_offset += 8;
+                        entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df));
+                        op |= (*n as u32 & 0xFFFF) << 16;
+                        op |= 0x80;
+                    }
+                    ASTEntry::ImmediateLong(n) => {
+                        cur_addr += 12;
+                        cur_offset += 12;
+                        entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df));
+                        entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df));
+                        entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df));
+                        op |= (*n as u32 & 0xFFFF) << 16;
+                        op |= 0x80;
+                    }
+                    ASTEntry::Register(n) => {
+                        op |= (*n as u32 & 0xFF) << 8;
+                    }
+                    ASTEntry::LabelRef {name, is_absolute} => {
+                        if *is_absolute {
+                            cur_addr += 12;
+                            cur_offset += 12;
+                            typ = 2;
+                        } else {
+                            cur_addr += 4;
+                            cur_offset += 4;
+                            typ = 1;
+                        }
+                        nam = Some(name.clone());
+                        op |= 0x80;
+                    }
+                    _ => todo!()
+                }
+                match instruction {
+                    Instructions1Arg::Fence => {
+                        op |= 0x4f;
+                    }
+                    Instructions1Arg::Lui => {
+                        op |= 0x5f;
+                    }
+                    Instructions1Arg::ECall => {
+                        op |= 0x5b;
+                    }
+                    Instructions1Arg::Ba => {}
+                    Instructions1Arg::B => {
+                        op |= 0x57;
+                    }
+                    Instructions1Arg::As => {
+                        op |= 0x20;
+                    }
+                    Instructions1Arg::Add => {
+                        op |= 0x21;
+                    }
+                    Instructions1Arg::Sub => {
+                        op |= 0x22;
+                    }
+                    Instructions1Arg::Xor => {
+                        op |= 0x23;
+                    }
+                    Instructions1Arg::Or => {
+                        op |= 0x24;
+                    }
+                    Instructions1Arg::And => {
+                        op |= 0x25;
+                    }
+                    Instructions1Arg::Sll => {
+                        op |= 0x26;
+                    }
+                    Instructions1Arg::Srl => {
+                        op |= 0x27;
+                    }
+                    Instructions1Arg::Sra => {
+                        op |= 0x28;
+                    }
+                    Instructions1Arg::Slt => {
+                        op |= 0x29;
+                    }
+                    Instructions1Arg::Sltu => {
+                        op |= 0x2a;
+                    }
+                    Instructions1Arg::Mul => {
+                        op |= 0x2b;
+                    }
+                    Instructions1Arg::Mulh => {
+                        op |= 0x2c;
+                    }
+                    Instructions1Arg::Mulsu => {
+                        op |= 0x2d;
+                    }
+                    Instructions1Arg::Mulu => {
+                        op |= 0x2e;
+                    }
+                    Instructions1Arg::Div => {
+                        op |= 0x2f;
+                    }
+                    Instructions1Arg::Divu => {
+                        op |= 0x30;
+                    }
+                    Instructions1Arg::Rem => {
+                        op |= 0x31;
+                    }
+                    Instructions1Arg::Remu => {
+                        op |= 0x32;
+                    }
+                    Instructions1Arg::Lb => {
+                        let flag = op & 0x80;
+                        let high = (op & 0x7F00) >> 8;
+                        let val = op & 0xFFFF0000;
+                        op = val | 0x4000 | flag | high;
+                    }
+                    Instructions1Arg::Lh => {
+                        let flag = op & 0x80;
+                        let high = (op & 0x7F00) >> 8;
+                        let val = op & 0xFFFF0000;
+                        op = val | 0x4100 | flag | high;
+                    }
+                    Instructions1Arg::Lw => {
+                        let flag = op & 0x80;
+                        let high = (op & 0x7F00) >> 8;
+                        let val = op & 0xFFFF0000;
+                        op = val | 0x4200 | flag | high;
+                    }
+                    Instructions1Arg::Ld => {
+                        let flag = op & 0x80;
+                        let high = (op & 0x7F00) >> 8;
+                        let val = op & 0xFFFF0000;
+                        op = val | 0x4300 | flag | high;
+                    }
+                    Instructions1Arg::Sb => {
+                        op |= 0x44;
+                    }
+                    Instructions1Arg::Sh => {
+                        op |= 0x45;
+                    }
+                    Instructions1Arg::Sw => {
+                        op |= 0x46;
+                    }
+                    Instructions1Arg::Sd => {
+                        op |= 0x47;
+                    }
+                }
+                if typ == 0 {
+                    entries.push(AssembleEntry::Opcode(op));
+                } else if typ == 1 {
+                    entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4));
+                } else if typ == 2 {
+                    entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12));
+                }
+                cur_addr += 4;
+                cur_offset += 4;
+            }
+            ASTEntry::Instruction2Arg {instruction, arg1, arg2} => {
+                match instruction {
+                    Instructions2Arg::Bal => {
+                        match arg1.as_ref() {
+                            ASTEntry::Register(r) => {
+                                match arg2.as_ref() {
+                                    ASTEntry::Register(r2) => {
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 16) | 0x5f));
+                                        entries.push(AssembleEntry::Opcode(((*r as u32) << 16) | 0xd6));
+                                        cur_addr += 8;
+                                        cur_offset += 8;
+                                    }
+                                    ASTEntry::LabelRef {name, ..} => {
+                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r as u32) << 16) | 0xd6,name.clone(),cur_addr));
+                                        cur_addr += 12;
+                                        cur_offset += 12;
+                                    }
+                                    _ => todo!()
+                                }
+                            }
+                            _ => todo!()
+                        }
+                    }
+                    Instructions2Arg::Bala => {
+                        match arg1.as_ref() {
+                            ASTEntry::Register(r) => {
+                                match arg2.as_ref() {
+                                    ASTEntry::Register(r2) => {
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0xd6));
+                                        cur_addr += 4;
+                                        cur_offset += 4;
+                                    }
+                                    _ => todo!()
+                                }
+                            }
+                            _ => todo!()
+                        }
+                    }
+                    Instructions2Arg::Mov => {
+                        let mut op: u32 = 0;
+                        let mut typ = 0;
+                        let mut nam: Option<String> = None;
+                        match arg1.as_ref() {
+                            ASTEntry::ImmediateByte(n) => {
+                                op |= (*n as u32 & 0xFFFF) << 16;
+                                op |= 0x80;
+                            }
+                            ASTEntry::ImmediateHalf(n) => {
+                                op |= (*n as u32 & 0xFFFF) << 16;
+                                op |= 0x80;
+                            }
+                            ASTEntry::ImmediateWord(n) => {
+                                cur_addr += 8;
+                                cur_offset += 8;
+                                entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df));
+                                op |= (*n as u32 & 0xFFFF) << 16;
+                                op |= 0x80;
+                            }
+                            ASTEntry::ImmediateLong(n) => {
+                                cur_addr += 12;
+                                cur_offset += 12;
+                                entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df));
+                                entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df));
+                                entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df));
+                                op |= (*n as u32 & 0xFFFF) << 16;
+                                op |= 0x80;
+                            }
+                            ASTEntry::Register(n) => {
+                                op |= (*n as u32 & 0xFF) << 8;
+                            }
+                            ASTEntry::LabelRef {name, is_absolute} => {
+                                if *is_absolute {
+                                    cur_addr += 12;
+                                    cur_offset += 12;
+                                    typ = 2;
+                                } else {
+                                    cur_addr += 4;
+                                    cur_offset += 4;
+                                    typ = 1;
+                                }
+                                nam = Some(name.clone());
+                                op |= 0x80;
+                            }
+                            _ => todo!()
+                        }
+                        match arg2.as_ref() {
+                            ASTEntry::Register(n) => {
+                                op |= *n as u32;
+                            }
+                            _ => todo!()
+                        }
+                        if typ == 0 {
+                            entries.push(AssembleEntry::Opcode(op));
+                        } else if typ == 1 {
+                            entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4));
+                        } else if typ == 2 {
+                            entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12));
+                        }
+                        cur_offset += 4;
+                        cur_addr += 4;
+                    }
+                }
+            }
+            ASTEntry::Instruction3Arg {instruction, arg1, arg2, arg3} => {
+                let op = match instruction {
+                    Instructions3Arg::Beq => 0x50,
+                    Instructions3Arg::Bne => 0x51,
+                    Instructions3Arg::Blt => 0x52,
+                    Instructions3Arg::Bge => 0x53,
+                    Instructions3Arg::Bltu => 0x54,
+                    Instructions3Arg::Bgeu => 0x55,
+                };
+                match arg1.as_ref() {
+                    ASTEntry::Register(r) => {
+                        match arg2.as_ref() {
+                            ASTEntry::Register(r2) => {
+                                match arg3.as_ref() {
+                                    ASTEntry::Register(r3) => {
+                                        entries.push(AssembleEntry::Opcode(((*r3 as u32) << 16) | 0x5f));
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op));
+                                        cur_addr += 8;
+                                        cur_offset += 8;
+                                    }
+                                    ASTEntry::LabelRef {name, ..} => {
+                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op,name.clone(),cur_addr));
+                                        cur_addr += 12;
+                                        cur_offset += 12;
+                                    }
+                                    _ => todo!()
+                                }
+                            }
+                            _ => todo!()
+                        }
+                    }
+                    _ => todo!()
+                }
+            }
+            _ => {}
+        }
+    }
+    println!("{:?}", entries);
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
@@ -211,9 +596,7 @@ fn parse(source: &str) -> Result<Vec<ASTEntry>, ()> {
         match pair.as_rule() {
             Rule::EOI => break,
             _ => {
-                let ent = pair_to_ast(pair);
-                println!("Parsed: {:?}", ent);
-                ast.push(ent);
+                ast.push(pair_to_ast(pair));
             }
         }
     }
@@ -290,9 +673,6 @@ fn pair_to_ast(pair: pest::iterators::Pair<Rule>) -> ASTEntry {
                     return ASTEntry::Instruction2Arg {
                         instruction: match val1 {
                             "mov" => Instructions2Arg::Mov,
-                            "wrxreg" => Instructions2Arg::Wrxreg,
-                            "rdxreg" => Instructions2Arg::Rdxreg,
-                            "swpxreg" => Instructions2Arg::Swpxreg,
                             "bal" => Instructions2Arg::Bal,
                             "bala" => Instructions2Arg::Bala,
                             _ => todo!(),

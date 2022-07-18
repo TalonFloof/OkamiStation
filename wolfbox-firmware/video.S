@@ -9,8 +9,8 @@ framebuffer_clear:
     sub 8
     sd %t1
     ;;;;;;;;;;;;;;;;;;;
-    mov %t0, 0x780001000 ; Pointer to the framebuffer on WolfBox
-    mov %t1, 786432
+    mov 0x780001000, %t0 ; Pointer to the framebuffer on WolfBox
+    mov 786432, %t1
 framebuffer_clear.loop:
     as %t0
     sb %a0
