@@ -148,11 +148,11 @@ enum Instructions3Arg {
 #[derive(PartialEq, Debug, Clone)]
 #[allow(dead_code)]
 enum AssembleEntry {
-    Label(String,u64),
-    Opcode(u32),
-    OpcodeLabelRel(u32,String,u64),
-    OpcodeLabelAbs(u32,String,u64),
-    Data(Vec<u8>),
+    Label(String,u64,u64),
+    Opcode(u32,u64),
+    OpcodeLabelRel(u32,String,u64,u64),
+    OpcodeLabelAbs(u32,String,u64,u64),
+    Data(Vec<u8>,u64),
 }
 
 fn main() {
@@ -161,6 +161,7 @@ fn main() {
         println!("Usage: icewolf-as <infile> <outfile>");
         exit(1);
     }
+    let start_time = std::time::Instant::now();
     let mut infile = std::fs::read_to_string(&args[1]).expect("Unable to read file!");
     println!("Running preprocessor");
     let mut source_path = std::fs::canonicalize(&args[1]).unwrap();
@@ -189,7 +190,7 @@ fn main() {
     for entry in ast.iter() {
         match entry {
             ASTEntry::LabelDefine {name, ..} => {
-                entries.push(AssembleEntry::Label(name.clone(),cur_addr));
+                entries.push(AssembleEntry::Label(name.clone(),cur_addr,cur_offset));
             }
             ASTEntry::Origin { base, .. } => {
                 cur_addr = *base;
@@ -199,27 +200,31 @@ fn main() {
                 match num.as_ref() {
                     ASTEntry::ImmediateByte(dat) => {
                         let v = dat.to_le_bytes().to_vec();
-                        cur_addr += v.len() as u64;
-                        cur_offset += v.len() as u64;
-                        entries.push(AssembleEntry::Data(v));
+                        let len = v.len() as u64;
+                        cur_addr += len;
+                        cur_offset += len;
+                        entries.push(AssembleEntry::Data(v,cur_offset-len));
                     }
                     ASTEntry::ImmediateHalf(dat) => {
                         let v = dat.to_le_bytes().to_vec();
-                        cur_addr += v.len() as u64;
-                        cur_offset += v.len() as u64;
-                        entries.push(AssembleEntry::Data(v));
+                        let len = v.len() as u64;
+                        cur_addr += len;
+                        cur_offset += len;
+                        entries.push(AssembleEntry::Data(v,cur_offset-len));
                     }
                     ASTEntry::ImmediateWord(dat) => {
                         let v = dat.to_le_bytes().to_vec();
-                        cur_addr += v.len() as u64;
-                        cur_offset += v.len() as u64;
-                        entries.push(AssembleEntry::Data(v));
+                        let len = v.len() as u64;
+                        cur_addr += len;
+                        cur_offset += len;
+                        entries.push(AssembleEntry::Data(v,cur_offset-len));
                     }
                     ASTEntry::ImmediateLong(dat) => {
                         let v = dat.to_le_bytes().to_vec();
-                        cur_addr += v.len() as u64;
-                        cur_offset += v.len() as u64;
-                        entries.push(AssembleEntry::Data(v));
+                        let len = v.len() as u64;
+                        cur_addr += len;
+                        cur_offset += len;
+                        entries.push(AssembleEntry::Data(v,cur_offset-len));
                     }
                     _ => todo!(),
                 }
@@ -229,24 +234,24 @@ fn main() {
             ASTEntry::DataString(s) => {
                 cur_addr += s.len() as u64;
                 cur_offset += s.len() as u64;
-                entries.push(AssembleEntry::Data(s.as_bytes().to_vec()));
+                entries.push(AssembleEntry::Data(s.as_bytes().to_vec(),cur_offset-s.len() as u64));
                 cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
                 cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::DataFilling {value, size} => {
                 cur_addr += *size;
                 cur_offset += *size;
-                entries.push(AssembleEntry::Data(vec![*value; *size as usize]));
+                entries.push(AssembleEntry::Data(vec![*value; *size as usize],cur_offset-size));
                 cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
                 cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::Instruction0Arg {instruction} => {
                 match instruction {
                     Instructions0Arg::Tret => {
-                        entries.push(AssembleEntry::Opcode(0x00003f5a));
+                        entries.push(AssembleEntry::Opcode(0x00003f5a,cur_offset));
                     }
                     Instructions0Arg::Nop => {
-                        entries.push(AssembleEntry::Opcode(0x00003f3f));
+                        entries.push(AssembleEntry::Opcode(0x00003f3f,cur_offset));
                     }
                 }
                 cur_addr += 4;
@@ -266,23 +271,28 @@ fn main() {
                         op |= 0x80;
                     }
                     ASTEntry::ImmediateWord(n) => {
-                        cur_addr += 8;
-                        cur_offset += 8;
-                        entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df));
+                        cur_addr += 4;
+                        cur_offset += 4;
+                        entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df,cur_offset-4));
                         op |= (*n as u32 & 0xFFFF) << 16;
                         op |= 0x80;
                     }
                     ASTEntry::ImmediateLong(n) => {
                         cur_addr += 12;
                         cur_offset += 12;
-                        entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df));
-                        entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df));
-                        entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df));
+                        entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df,cur_offset-12));
+                        entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df,cur_offset-8));
+                        entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df,cur_offset-4));
                         op |= (*n as u32 & 0xFFFF) << 16;
                         op |= 0x80;
                     }
                     ASTEntry::Register(n) => {
-                        op |= (*n as u32 & 0xFF) << 8;
+                        if let Instructions1Arg::As = instruction {
+                            op |= (*n as u32 & 0xFFFF) << 16;
+                            op |= 0x80;
+                        } else {
+                            op |= (*n as u32 & 0xFF) << 8;
+                        }
                     }
                     ASTEntry::LabelRef {name, is_absolute} => {
                         if *is_absolute {
@@ -408,11 +418,11 @@ fn main() {
                     }
                 }
                 if typ == 0 {
-                    entries.push(AssembleEntry::Opcode(op));
+                    entries.push(AssembleEntry::Opcode(op,cur_offset));
                 } else if typ == 1 {
-                    entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4));
+                    entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4,cur_offset-4));
                 } else if typ == 2 {
-                    entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12));
+                    entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12,cur_offset-12));
                 }
                 cur_addr += 4;
                 cur_offset += 4;
@@ -424,13 +434,13 @@ fn main() {
                             ASTEntry::Register(r) => {
                                 match arg2.as_ref() {
                                     ASTEntry::Register(r2) => {
-                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 16) | 0x5f));
-                                        entries.push(AssembleEntry::Opcode(((*r as u32) << 16) | 0xd6));
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 16) | 0x5f,cur_offset));
+                                        entries.push(AssembleEntry::Opcode(((*r as u32) << 16) | 0xd6,cur_offset));
                                         cur_addr += 8;
                                         cur_offset += 8;
                                     }
                                     ASTEntry::LabelRef {name, ..} => {
-                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r as u32) << 16) | 0xd6,name.clone(),cur_addr));
+                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r as u32) << 16) | 0xd6,name.clone(),cur_addr,cur_offset));
                                         cur_addr += 12;
                                         cur_offset += 12;
                                     }
@@ -445,7 +455,7 @@ fn main() {
                             ASTEntry::Register(r) => {
                                 match arg2.as_ref() {
                                     ASTEntry::Register(r2) => {
-                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0xd6));
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0xd6,cur_offset));
                                         cur_addr += 4;
                                         cur_offset += 4;
                                     }
@@ -469,18 +479,18 @@ fn main() {
                                 op |= 0x80;
                             }
                             ASTEntry::ImmediateWord(n) => {
-                                cur_addr += 8;
-                                cur_offset += 8;
-                                entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df));
+                                cur_addr += 4;
+                                cur_offset += 4;
+                                entries.push(AssembleEntry::Opcode((n&0xFFFF0000)|0x00df,cur_offset-4));
                                 op |= (*n as u32 & 0xFFFF) << 16;
                                 op |= 0x80;
                             }
                             ASTEntry::ImmediateLong(n) => {
                                 cur_addr += 12;
                                 cur_offset += 12;
-                                entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df));
-                                entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df));
-                                entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df));
+                                entries.push(AssembleEntry::Opcode(((n&0xFFFF000000000000) >> 32) as u32|0x00df,cur_offset-12));
+                                entries.push(AssembleEntry::Opcode(((n&0xFFFF00000000) >> 16) as u32|0x00df,cur_offset-8));
+                                entries.push(AssembleEntry::Opcode( (n&0xFFFF0000) as u32|0x00df,cur_offset-4));
                                 op |= (*n as u32 & 0xFFFF) << 16;
                                 op |= 0x80;
                             }
@@ -509,11 +519,11 @@ fn main() {
                             _ => todo!()
                         }
                         if typ == 0 {
-                            entries.push(AssembleEntry::Opcode(op));
+                            entries.push(AssembleEntry::Opcode(op,cur_offset));
                         } else if typ == 1 {
-                            entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4));
+                            entries.push(AssembleEntry::OpcodeLabelRel(op,nam.unwrap(),cur_addr-4,cur_offset-4));
                         } else if typ == 2 {
-                            entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12));
+                            entries.push(AssembleEntry::OpcodeLabelAbs(op,nam.unwrap(),cur_addr-12,cur_offset-12));
                         }
                         cur_offset += 4;
                         cur_addr += 4;
@@ -535,13 +545,13 @@ fn main() {
                             ASTEntry::Register(r2) => {
                                 match arg3.as_ref() {
                                     ASTEntry::Register(r3) => {
-                                        entries.push(AssembleEntry::Opcode(((*r3 as u32) << 16) | 0x5f));
-                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op));
+                                        entries.push(AssembleEntry::Opcode(((*r3 as u32) << 16) | 0x5f,cur_offset));
+                                        entries.push(AssembleEntry::Opcode(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op,cur_offset));
                                         cur_addr += 8;
                                         cur_offset += 8;
                                     }
                                     ASTEntry::LabelRef {name, ..} => {
-                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op,name.clone(),cur_addr));
+                                        entries.push(AssembleEntry::OpcodeLabelRel(((*r2 as u32) << 24) | ((*r as u32) << 16) | 0x80 | op,name.clone(),cur_addr,cur_offset));
                                         cur_addr += 12;
                                         cur_offset += 12;
                                     }
@@ -557,7 +567,65 @@ fn main() {
             _ => {}
         }
     }
+    drop(ast);
     println!("{:?}", entries);
+    println!("Assembling");
+    let mut binary = vec![0u8; cur_offset as usize];
+    for entry in entries.iter() {
+        match entry {
+            AssembleEntry::Opcode(op, off) => {
+                binary[*off as usize..*off as usize+4].copy_from_slice(op.to_le_bytes().as_slice());
+            }
+            AssembleEntry::Data(dat, off) => {
+                binary[*off as usize..*off as usize+dat.len()].copy_from_slice(dat.as_slice());
+            }
+            AssembleEntry::OpcodeLabelAbs(op, name, _, off) => {
+                let mut final_op: Vec<u8> = vec![0u8; 16];
+                let label = entries.iter().find(|&x| { return match x {
+                    AssembleEntry::Label(n, ..) => n.cmp(name).is_eq(),
+                    _ => false,
+                }}).expect(format!("Attempt to index non-existant label {:?}", name).as_str());
+                if let AssembleEntry::Label(_,a,_) = label {
+                    final_op[12..=15].copy_from_slice((op | ((*a as u32 & 0xFFFF) << 16)).to_le_bytes().as_slice());
+                    final_op[8..=11].copy_from_slice((0xdf | (*a as u32 & 0xFFFF_0000)).to_le_bytes().as_slice());
+                    final_op[4..=7].copy_from_slice((0xdf | (((*a & 0xFFFF_0000_0000) >> 16) as u32)).to_le_bytes().as_slice());
+                    final_op[0..=3].copy_from_slice((0xdf | (((*a & 0xFFFF_0000_0000_0000) >> 32) as u32)).to_le_bytes().as_slice());
+                    binary[*off as usize..*off as usize+16].copy_from_slice(final_op.as_slice());
+                }
+            }
+            AssembleEntry::OpcodeLabelRel(op, name, addr, off) => {
+                let label = entries.iter().find(|&x| { return match x {
+                    AssembleEntry::Label(n, ..) => n.cmp(name).is_eq(),
+                    _ => false,
+                }}).expect(format!("Attempt to index non-existant label {:?}", name).as_str());
+                if let AssembleEntry::Label(_,a,_) = label {
+                    match *op & 0x7f {
+                        0x50|0x51|0x52|0x53|0x54|0x55|0x56 => {
+                            let offset = ((*a as i64) - ((*addr+8) as i64)) as i32;
+                            let mut final_op: Vec<u8> = vec![0u8; 12];
+                            final_op[0..=3].copy_from_slice((0xdf | (offset as u32 & 0xFFFF0000)).to_le_bytes().as_slice());
+                            final_op[4..=7].copy_from_slice((0xdf | ((offset as u32 & 0xFFFF) << 16)).to_le_bytes().as_slice());
+                            final_op[8..=11].copy_from_slice(op.to_le_bytes().as_slice());
+                            binary[*off as usize..*off as usize+12].copy_from_slice(final_op.as_slice());
+                        }
+                        _ => {
+                            let offset = ((*a as i64) - ((*addr+4) as i64)) as i32;
+                            let mut final_op: Vec<u8> = vec![0u8; 8];
+                            final_op[0..=3].copy_from_slice((0xdf | (offset as u32 & 0xFFFF0000)).to_le_bytes().as_slice());
+                            final_op[4..=7].copy_from_slice((op | ((offset as u32 & 0xFFFF) << 16)).to_le_bytes().as_slice());
+                            binary[*off as usize..*off as usize+8].copy_from_slice(final_op.as_slice());
+                        }
+                    }
+                }
+            }
+            AssembleEntry::Label(..) => {}
+        }
+    }
+    drop(entries);
+    std::fs::write(&args[2],binary.as_slice()).expect("File write failed!");
+    let end_time = std::time::Instant::now();
+    println!("Sucessfully compiled binary with size of {} bytes ({} secs elapsed)", binary.len(), end_time.checked_duration_since(start_time).unwrap().as_secs_f32());
+
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {

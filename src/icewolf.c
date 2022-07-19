@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "icewolf.h"
 #include "icebus.h"
+#include "motherboard.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -35,6 +36,7 @@ void IceWolf_Trap(IcewolfHart_t* hart, int type) {
         hart->MTrap.cause = type;
         hart->status |= STATUS_MTRAP_GATE;
     }
+    fprintf(stderr, "Trap @ 0x%016lx\n", hart->Registers[0]);
 }
 
 static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t* buf, uint64_t len, bool write, bool fetch) {
@@ -42,7 +44,7 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
         IceWolf_Trap(hart,(int)fetch);
         return false;
     }
-    if(addr >= 0x100000000) { // No Cache
+    if(addr >= 0x80000000+FIRMWARE_SIZE) { // No Cache
         hart->StallTicks += BUS_STALL;
         int result;
         if(write)
@@ -443,36 +445,37 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
             }
             break;
         case 0x50: // bran.eq
-            if(IceWolf_ReadReg(hart,value & 0xFF) == IceWolf_ReadReg(hart,(value & 0xFF00) >> 16)) {
+            if(IceWolf_ReadReg(hart,value & 0xFF) == IceWolf_ReadReg(hart,(value & 0xFF00) >> 8)) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
             }
             break;
         case 0x51: // bran.ne
-            if(IceWolf_ReadReg(hart,value & 0xFF) != IceWolf_ReadReg(hart,(value & 0xFF00) >> 16))
+            if((IceWolf_ReadReg(hart,value & 0xFF)) != (IceWolf_ReadReg(hart,(value & 0xFF00) >> 8))) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
+            }
             break;
         case 0x52: // bran.lt
-            if((int64_t)IceWolf_ReadReg(hart,value & 0xFF) < (int64_t)IceWolf_ReadReg(hart,(value & 0xFF00) >> 16)) {
+            if((int64_t)IceWolf_ReadReg(hart,value & 0xFF) < (int64_t)IceWolf_ReadReg(hart,(value & 0xFF00) >> 8)) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
             }
             break;
         case 0x53: // bran.ge
-            if((int64_t)IceWolf_ReadReg(hart,value & 0xFF) >= (int64_t)IceWolf_ReadReg(hart,(value & 0xFF00) >> 16)) {
+            if((int64_t)IceWolf_ReadReg(hart,value & 0xFF) >= (int64_t)IceWolf_ReadReg(hart,(value & 0xFF00) >> 8)) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
             }
             break;
         case 0x54: // bran.ltu
-            if(IceWolf_ReadReg(hart,value & 0xFF) < IceWolf_ReadReg(hart,(value & 0xFF00) >> 16)) {
+            if(IceWolf_ReadReg(hart,value & 0xFF) < IceWolf_ReadReg(hart,(value & 0xFF00) >> 8)) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
             }
             break;
         case 0x55: // bran.geu
-            if(IceWolf_ReadReg(hart,value & 0xFF) >= IceWolf_ReadReg(hart,(value & 0xFF00) >> 16)) {
+            if(IceWolf_ReadReg(hart,value & 0xFF) >= IceWolf_ReadReg(hart,(value & 0xFF00) >> 8)) {
                 hart->Branched = true;
                 hart->Registers[0] += (((int64_t)(hart->LUI << (64-(hart->LUILength*8)) )) >> (64-(hart->LUILength*8)) );
             }
@@ -599,17 +602,17 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
                             IceWolf_Trap(hart,TRAP_UNDEFINED);
                             break;
                         }
-                        hart->LUI = (hart->LUI << 16) | (opcode & 0xFFFF0000);
+                        hart->LUI = (hart->LUI << 16) | ((opcode & 0xFFFF0000) >> 16);
                         hart->LUILength += 2;
                     } else {
-                        IceWolf_WriteReg(hart,opcode & 0x7F,((opcode & 0xFFFF0000)>>16) | (hart->LUI));
+                        IceWolf_WriteReg(hart,opcode & 0x7F,((opcode & 0xFFFF0000)>>16) | (hart->LUI << 16));
                         hart->LUI = 0UL;
                         hart->LUILength = 0;
                     }
-                    hart->Registers[0] += hart->Branched?0:4;
+                    hart->Registers[0] = hart->Branched?hart->Registers[0]:hart->Registers[0]+4;
                 } else {
                     IceWolf_WriteReg(hart,opcode & 0x7F,IceWolf_ReadReg(hart,(opcode & 0x7F00) >> 8));
-                    hart->Registers[0] += hart->Branched?0:4;
+                    hart->Registers[0] = hart->Branched?hart->Registers[0]:hart->Registers[0]+4;
                 }
             }
         }

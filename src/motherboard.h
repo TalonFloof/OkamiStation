@@ -19,4 +19,6 @@ limitations under the License.
 #include <stdint.h>
 #include <stdbool.h>
 
+#define FIRMWARE_SIZE (128 * 1024)
+
 bool MBoardInit();

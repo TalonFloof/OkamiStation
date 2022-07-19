@@ -22,8 +22,6 @@ limitations under the License.
 #include <stdlib.h>
 #include <string.h>
 
-#define FIRMWARE_SIZE (128 * 1024)
-
 uint8_t Firmware[FIRMWARE_SIZE];
 
 int MBoardRead(uint64_t addr, uint64_t len, void *buf) {

@@ -50,17 +50,17 @@ void MarkDirty(uint64_t x1, uint64_t y1, uint64_t x2, uint64_t y2) {
     if(y1 < DirtyY1)
         DirtyY1 = y1;
     if (x2 > DirtyX2) {
-		if (x2 < FBRECT.w) {
+		if (x2 < (FBRECT.w)) {
 			DirtyX2 = x2;
 		} else {
-			DirtyX2 = FBRECT.w-1;
+			DirtyX2 = (FBRECT.w)-1;
 		}
 	}
     if (y2 > DirtyY2) {
-		if (y2 < FBRECT.h) {
+		if (y2 < (FBRECT.h)) {
 			DirtyY2 = y2;
 		} else {
-			DirtyY2 = FBRECT.h-1;
+			DirtyY2 = (FBRECT.h)-1;
 		}
 	}
 }
@@ -73,12 +73,12 @@ int FBWrite(uint64_t addr, uint64_t len, void *buf) {
         return 0;
     } else {
         addr -= 0x1000;
-        if (addr+len > FBRECT.w+FBRECT.h)
+        if (addr+len > FBRECT.w*FBRECT.h)
 			return 1;
-		uint64_t x = (addr/2)%FBRECT.w;
-		uint64_t y = (addr/2)/FBRECT.w;
-        uint64_t x1 = ((addr+len+1)/2-1)%FBRECT.w;
-		uint64_t y1 = ((addr+len+1)/2-1)/FBRECT.w;
+		uint64_t x = addr%FBRECT.w;
+		uint64_t y = addr/FBRECT.w;
+        uint64_t x1 = (addr+len-1)%FBRECT.w;
+		uint64_t y1 = (addr+len-1)/FBRECT.w;
         memcpy(&Framebuffer[addr], (uint8_t*)buf, len);
         MarkDirty(x,y,x1,y1);
         return 0;
@@ -93,7 +93,7 @@ int FBRead(uint64_t addr, uint64_t len, void *buf) {
         return 0;
     } else {
         addr -= 0x1000;
-        if (addr+len > FBRECT.w+FBRECT.h)
+        if (addr+len > FBRECT.w*FBRECT.h)
 			return 1;
         memcpy(buf, &Framebuffer[addr], len);
         return 0;
