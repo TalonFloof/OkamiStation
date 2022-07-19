@@ -181,7 +181,6 @@ fn main() {
     }
     println!("Running AST Parsing");
     let ast = parse(&infile).unwrap();
-    println!("{:?}", ast);
 
     println!("Pre-Assembling");
     let mut entries: Vec<AssembleEntry> = Vec::new();
@@ -568,7 +567,6 @@ fn main() {
         }
     }
     drop(ast);
-    println!("{:?}", entries);
     println!("Assembling");
     let mut binary = vec![0u8; cur_offset as usize];
     for entry in entries.iter() {
