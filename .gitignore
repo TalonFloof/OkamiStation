@@ -3,3 +3,4 @@ target
 Cargo.lock
 wolfbox
 icewolf-as-
+firmware.bin
