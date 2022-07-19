@@ -25,23 +25,24 @@ limitations under the License.
 #include <stddef.h>
 #include <string.h>
 
-void IceWolf_Trap(IcewolfHart_t* hart, int type) {
+void IceWolf_Trap(IcewolfHart_t* hart, int typ) {
     if((hart->status & STATUS_MODE) == 0) { // User
-        hart->UTrap.cause = type;
+        hart->UTrap.cause = typ;
         hart->status |= STATUS_UTRAP_GATE;
     } else if((hart->status & STATUS_MODE) == 1) { // Supervisor
-        hart->STrap.cause = type;
+        hart->STrap.cause = typ;
         hart->status |= STATUS_STRAP_GATE;
     } else if((hart->status & STATUS_MODE) == 2) { // Machine
-        hart->MTrap.cause = type;
+        hart->MTrap.cause = typ;
         hart->status |= STATUS_MTRAP_GATE;
     }
-    fprintf(stderr, "Trap @ 0x%016lx\n", hart->Registers[0]);
+    fprintf(stderr, "Trap @ 0x%016lx, Cause: %i\n", hart->Registers[0], typ);
+    fprintf(stderr, "%%sp: %016lx\n", hart->Registers[2]);
 }
 
 static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t* buf, uint64_t len, bool write, bool fetch) {
     if(addr & (len-1)) {
-        IceWolf_Trap(hart,(int)fetch);
+        IceWolf_Trap(hart,((int)fetch)+3);
         return false;
     }
     if(addr >= 0x80000000+FIRMWARE_SIZE) { // No Cache
@@ -52,7 +53,7 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
 		else
 			result = IceBusRead(addr, len, buf);
         if(result != 0) {
-            IceWolf_Trap(hart,(int)fetch);
+            IceWolf_Trap(hart,((int)fetch)+3);
             return false;
         }
         return true;
@@ -85,13 +86,13 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
             if(!fetch && ((tags[line] & 3) == 3)) { // Flush Data Cache Line
                 hart->StallTicks += BUS_STALL;
                 if(IceBusWrite(lineaddr, CACHELINESIZE, cacheline) != 0) {
-                    IceWolf_Trap(hart,(int)fetch);
+                    IceWolf_Trap(hart,((int)fetch)+3);
                     return false;
                 }
             }
             tags[line] = lineaddr | 1;
             if(IceBusRead(lineaddr, CACHELINESIZE, cacheline) != 0) {
-                IceWolf_Trap(hart,(int)fetch);
+                IceWolf_Trap(hart,((int)fetch)+3);
                 return false;
             }
 			if(fetch)
@@ -344,54 +345,57 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
         case 0x23: // alu.xor
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) ^ value);
             break;
-        case 0x24: // alu.and
+        case 0x24: // alu.or
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) & value);
             break;
-        case 0x25: // alu.sll
+        case 0x25: // alu.and
+            IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) & value);
+            break;
+        case 0x26: // alu.sll
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) << value);
             break;
-        case 0x26: // alu.srl
+        case 0x27: // alu.srl
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) >> value);
             break;
-        case 0x27: // alu.sra
+        case 0x28: // alu.sra
             IceWolf_WriteReg(hart, hart->Registers[0x20], (int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) >> value);
             break;
-        case 0x28: // alu.slt
+        case 0x29: // alu.slt
             IceWolf_WriteReg(hart, hart->Registers[0x20], (int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) < (int64_t)value);
             break;
-        case 0x29: // alu.sltu
+        case 0x2a: // alu.sltu
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) < value);
             break;
-        case 0x2a: // alu.mul
+        case 0x2b: // alu.mul
             IceWolf_WriteReg(hart, hart->Registers[0x20], (IceWolf_ReadReg(hart,hart->Registers[0x20]) * value) & 0xFFFFFFFF);
             break;
-        case 0x2b: // alu.mulh
+        case 0x2c: // alu.mulh
             IceWolf_WriteReg(hart, hart->Registers[0x20], ((int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) * (int64_t)value) >> 32);
             break;
-        case 0x2c: // alu.mulsu
+        case 0x2d: // alu.mulsu
             IceWolf_WriteReg(hart, hart->Registers[0x20], ((int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) * (uint64_t)value) >> 32);
             break;
-        case 0x2d: // alu.mulu
+        case 0x2e: // alu.mulu
             IceWolf_WriteReg(hart, hart->Registers[0x20], (IceWolf_ReadReg(hart,hart->Registers[0x20]) * value) >> 32);
             break;
-        case 0x2e: // alu.div
+        case 0x2f: // alu.div
             if(value == 0) {
                 IceWolf_Trap(hart,TRAP_DIVBYZERO);
                 return;
             }
             IceWolf_WriteReg(hart, hart->Registers[0x20], (int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) / (int64_t)value);
             break;
-        case 0x2f: // alu.divu
+        case 0x30: // alu.divu
             if(value == 0) {
                 IceWolf_Trap(hart,TRAP_DIVBYZERO);
                 return;
             }
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) / value);
             break;
-        case 0x30: // alu.rem
+        case 0x31: // alu.rem
             IceWolf_WriteReg(hart, hart->Registers[0x20], (int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) % (int64_t)value);
             break;
-        case 0x31: // alu.remu
+        case 0x32: // alu.remu
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) % value);
             break;
         case 0x3f:

@@ -19,7 +19,7 @@ limitations under the License.
 #include <stdint.h>
 #include <stdbool.h>
 
-#define HART_FREQ 100000000 // 100 MHz
+#define HART_FREQ 30000000 // 30 MHz
 
 #define MEMORY (16*1024*1024) // 16 MiB
 

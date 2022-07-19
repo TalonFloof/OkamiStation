@@ -20,5 +20,16 @@ limitations under the License.
 #include <stdbool.h>
 
 #define FIRMWARE_SIZE (128 * 1024)
+#define FIREPORTS 256
+
+typedef int (*FireWrite)(uint64_t port, uint64_t length, uint64_t value);
+
+typedef int (*FireRead)(uint64_t port, uint64_t length, uint64_t *value);
+
+struct FirePort {
+	int Present;
+	FireWrite WritePort;
+	FireRead ReadPort;
+};
 
 bool MBoardInit();

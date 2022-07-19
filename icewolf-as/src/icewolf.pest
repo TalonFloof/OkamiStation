@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\x0B" | "\x0C" | "\xA0" | SPACE_SEPARATOR }
 COMMENT = _{ ";" ~ (!"\n" ~ ANY)* }
 
-program = { SOI ~ (label | binary_include | origin | constant | data | instruction)* ~ EOI }
+program = { SOI ~ (label | binary_include | origin | align | constant | data | instruction)* ~ EOI }
 
 origin = {
     origin_with_padding    |
@@ -9,6 +9,7 @@ origin = {
 }
 origin_with_padding = { ".origin.padding" ~ operand }
 origin_without_padding = { ".origin" ~ operand }
+align = { ".align" ~ operand }
 
 binary_include = { ".binary_include" ~ immediate_string }
 

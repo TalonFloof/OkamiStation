@@ -73,6 +73,7 @@ enum ASTEntry {
         has_padding: bool,
         base: u64,
     },
+    Align(u64),
     DataNum(Box<ASTEntry>),
     DataString(String),
     DataFilling {
@@ -194,6 +195,10 @@ fn main() {
             ASTEntry::Origin { base, .. } => {
                 cur_addr = *base;
                 cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::Align(base) => {
+                cur_addr = (((cur_addr as f64) / (*base as f64)).ceil() * (*base as f64)) as u64;
+                cur_offset = (((cur_offset as f64) / (*base as f64)).ceil() * (*base as f64)) as u64;
             }
             ASTEntry::DataNum(num) => {
                 match num.as_ref() {
@@ -676,6 +681,24 @@ fn splice_underscores(s: &str) -> String {
 fn pair_to_ast(pair: pest::iterators::Pair<Rule>) -> ASTEntry {
     match pair.as_rule() {
         Rule::program => pair_to_ast(pair.into_inner().next().unwrap()),
+        Rule::align => {
+            let inner = pair_to_ast(pair.into_inner().next().unwrap());
+            match inner {
+                ASTEntry::ImmediateByte(n) => {
+                    return ASTEntry::Align(n as u64);
+                }
+                ASTEntry::ImmediateHalf(n) => {
+                    return ASTEntry::Align(n as u64);
+                }
+                ASTEntry::ImmediateWord(n) => {
+                    return ASTEntry::Align(n as u64);
+                }
+                ASTEntry::ImmediateLong(n) => {
+                    return ASTEntry::Align(n);
+                }
+                _ => todo!()
+            }
+        }
         Rule::label => ASTEntry::LabelDefine { name:pair.into_inner().next().unwrap().as_str().to_string(), is_extern: false, is_global: false },
         Rule::instruction => {
             let mut inner_pair = pair.into_inner();
