@@ -17,6 +17,8 @@ halt:
 
 .include "video.S"
 .include "console.S"
+.include "POST.S"
+.include "string.S"
 
 .align 8
 stack_bottom:

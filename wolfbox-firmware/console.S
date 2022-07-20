@@ -96,13 +96,19 @@ console_draw_window:
 console_putc:
     ;;;;;;;;;;;;;;;;;;;
     as %sp
-    ;;;;; push ra, a0, a1, t0, t1, t2, t3
+    ;;;;; push ra, a0, a1, a2, a3, a4, t0, t1, t2, t3
     sub 8
     sd %ra
     sub 8
     sd %a0
     sub 8
     sd %a1
+    sub 8
+    sd %a2
+    sub 8
+    sd %a3
+    sub 8
+    sd %a4
     sub 8
     sd %t0
     sub 8
@@ -132,12 +138,14 @@ console_putc:
     mov 46, %a4
     bal %ra, @framebuffer_rect
 
-    mov 0xa, %t2
-    beq %t3, %t2, @console_putc.noprint
+    mov ' ', %t2
+    bltu %t3, %t2, @console_putc.noprint
     mov %t3, %a2
     mov 255, %a3
     bal %ra, @framebuffer_draw_char
 console_putc.noprint:
+    mov 0x8, %t2
+    beq %t3, %t2, @console_putc.backspace
     as %t0
     add 1
     mov 0xa, %t2
@@ -150,7 +158,21 @@ console_putc.newline:
     add 1
     mov 30, %t2
     bltu %t1, %t2, @console_putc.after_wrap
-    mov 0, %t2 ; Temporary until I implement scrolling
+
+    bal %ra, @console_scroll
+    mov 192, %a0
+    mov 608, %a1
+    mov 640, %a2
+    mov 16, %a3
+    mov 46, %a4
+    bal %ra, @framebuffer_rect
+
+    b @console_putc.after_wrap
+console_putc.backspace:
+    as %t0
+    sub 1
+    bge %t0, %zero, @console_putc.after_wrap
+    mov 0, %t0
 console_putc.after_wrap:
     mov %t0, %a0
     mov %t1, %a1
@@ -172,7 +194,7 @@ console_putc.after_wrap:
     sb %t1
     ;;;;;;;;;;;;;;;;;;;
     as %sp
-    ;;;;; pop t3, t2, t1, t0, a1, a0, ra
+    ;;;;; pop t3, t2, t1, t0, a4, a3, a2, a1, a0, ra
     ld %t3
     add 8
     ld %t2
@@ -180,6 +202,12 @@ console_putc.after_wrap:
     ld %t1
     add 8
     ld %t0
+    add 8
+    ld %a4
+    add 8
+    ld %a3
+    add 8
+    ld %a2
     add 8
     ld %a1
     add 8
@@ -218,6 +246,62 @@ console_puts.end:
     as %sp
     ;;;;; pop t0, a1, a0, ra
     ld %t0
+    add 8
+    ld %a1
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+console_scroll:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, a1, a2, t0, t1, t2
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %a1
+    sub 8
+    sd %a2
+    sub 8
+    sd %t0
+    sub 8
+    sd %t1
+    sub 8
+    sd %t2
+    ;;;;;;;;;;;;;;;;;;;
+    mov 0x780001000, %t0
+    as %t0
+    add 0x240C0
+    mov 0, %t1
+console_scroll.loop:
+    mov %t0, %a0
+    mov %t0, %a1
+    as %a1
+    add 16384
+    mov 640, %a2
+    bal %ra, @memcpy
+    as %t0
+    add 1024
+    as %t1
+    add 1
+    mov 464, %t2
+    bltu %t1, %t2, @console_scroll.loop
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t2, t1, t0, a2, a1, a0, ra
+    ld %t2
+    add 8
+    ld %t1
+    add 8
+    ld %t0
+    add 8
+    ld %a2
     add 8
     ld %a1
     add 8
