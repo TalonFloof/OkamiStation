@@ -74,6 +74,7 @@ enum ASTEntry {
         base: u64,
     },
     Align(u64),
+    BinaryInclude(String),
     DataNum(Box<ASTEntry>),
     DataString(String),
     DataFilling {
@@ -232,6 +233,15 @@ fn main() {
                     }
                     _ => todo!(),
                 }
+                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+            }
+            ASTEntry::BinaryInclude(s) => {
+                let dat = std::fs::read(s).expect(format!("Couldn't open binary file \"{}\"", s.as_str()).as_str());
+                let len = dat.len();
+                cur_addr += len as u64;
+                cur_offset += len as u64;
+                entries.push(AssembleEntry::Data(dat,cur_offset-len as u64));
                 cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
                 cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
@@ -699,6 +709,16 @@ fn pair_to_ast(pair: pest::iterators::Pair<Rule>) -> ASTEntry {
                 _ => todo!()
             }
         }
+        Rule::binary_include => {
+            let inner = pair.into_inner().next().unwrap();
+            match inner.as_rule() {
+                Rule::immediate_string => {
+                    let s = inner.into_inner().next().unwrap().as_str();
+                    return ASTEntry::BinaryInclude(String::from(s))
+                }
+                _ => todo!()
+            }
+        }
         Rule::label => ASTEntry::LabelDefine { name:pair.into_inner().next().unwrap().as_str().to_string(), is_extern: false, is_global: false },
         Rule::instruction => {
             let mut inner_pair = pair.into_inner();
@@ -834,6 +854,9 @@ fn pair_to_ast(pair: pest::iterators::Pair<Rule>) -> ASTEntry {
                     } else {
                         return ASTEntry::ImmediateLong(num);
                     }
+                }
+                Rule::immediate_char => {
+                    return ASTEntry::ImmediateByte(val.into_inner().next().unwrap().as_str().as_bytes()[0]);
                 }
                 Rule::label_ref => {
                     return ASTEntry::LabelRef {

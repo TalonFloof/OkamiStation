@@ -128,8 +128,8 @@ instruction_2arg = @{
 instruction_3arg = @{
     "beq"  |
     "bne"  |
-    "blt"  |
-    "bge"  |
     "bltu" |
-    "bgeu"
+    "bgeu" |
+    "blt"  |
+    "bge"
 }

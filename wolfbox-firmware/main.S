@@ -8,6 +8,11 @@ _start:
     bal %ra, @framebuffer_clear
     ;;;;; console_draw_window();
     bal %ra, @console_draw_window
+    ;mov 0, %a0
+    ;mov 0, %a1
+    ;mov 'h', %a2
+    ;mov 0, %a3
+    ;bal %ra, @framebuffer_draw_char
     b @halt
 halt:
     b @halt

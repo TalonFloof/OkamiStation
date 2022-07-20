@@ -21,7 +21,7 @@ limitations under the License.
 
 #define HART_FREQ 30000000 // 30 MHz
 
-#define MEMORY (16*1024*1024) // 16 MiB
+#define MEMORY (8*1024*1024) // 8 MiB
 
 #define CACHESIZESHIFT 15
 #define CACHELINESHIFT 4
@@ -48,13 +48,13 @@ limitations under the License.
 #define STATUS_STRAP_GATE (1<<1)
 #define STATUS_UTRAP_GATE (1<<2)
 #define STATUS_USETLB (1<<3)
-#define STATUS_RESET (1<<4)
+#define STATUS_RESERVED (1<<4)
 #define STATUS_MODE (3<<5)
 #define STATUS_SUPDEBUG (1<<7)
 #define STATUS_SUPHARTID (1<<8)
 #define STATUS_SUPTIMER (1<<9)
 #define STATUS_SUPTLB (1<<10)
-#define STATUS_SUPRESET (1<<11)
+#define STATUS_RESERVED2 (1<<11)
 #define STATUS_UTRAP_MODE (3<<12)
 #define STATUS_STRAP_MODE (3<<14)
 #define STATUS_MTRAP_MODE (3<<16)

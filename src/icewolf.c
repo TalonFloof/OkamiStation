@@ -37,7 +37,9 @@ void IceWolf_Trap(IcewolfHart_t* hart, int typ) {
         hart->status |= STATUS_MTRAP_GATE;
     }
     fprintf(stderr, "Trap @ 0x%016lx, Cause: %i\n", hart->Registers[0], typ);
-    fprintf(stderr, "%%sp: %016lx\n", hart->Registers[2]);
+    for(int i=0; i < 0x20; i++) {
+        fprintf(stderr, "%02i: %016lx\n", i, hart->Registers[i]);
+    }
 }
 
 static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t* buf, uint64_t len, bool write, bool fetch) {
@@ -245,7 +247,7 @@ static inline void IceWolf_WriteExReg(IcewolfHart_t* hart, int index, uint64_t v
             break;
         case 0x100: // status
             if((hart->status & (STATUS_MODE >> 5)) == 1) { // Supervisor
-                const uint64_t mask = STATUS_MTRAP_GATE | STATUS_STRAP_GATE | STATUS_UTRAP_GATE | STATUS_MODE | STATUS_SUPDEBUG | STATUS_SUPHARTID | STATUS_SUPTIMER | STATUS_SUPTLB | STATUS_SUPRESET | STATUS_MTRAP_MODE;
+                const uint64_t mask = STATUS_MTRAP_GATE | STATUS_STRAP_GATE | STATUS_UTRAP_GATE | STATUS_MODE | STATUS_SUPDEBUG | STATUS_SUPHARTID | STATUS_SUPTIMER | STATUS_SUPTLB | STATUS_MTRAP_MODE;
                 hart->status = (value & ~mask) | (hart->status & mask);
             } else if((hart->status & (STATUS_MODE >> 5)) == 2) { // Machine
                 const uint64_t mask = STATUS_MTRAP_GATE | STATUS_STRAP_GATE | STATUS_UTRAP_GATE | STATUS_MODE;
@@ -346,7 +348,7 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) ^ value);
             break;
         case 0x24: // alu.or
-            IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) & value);
+            IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) | value);
             break;
         case 0x25: // alu.and
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) & value);

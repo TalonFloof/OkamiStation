@@ -67,12 +67,12 @@ console_draw_window:
     mov 255, %a4
     bal %ra, @framebuffer_rect
 
-    ;;;;; framebuffer_rect(192,144,640,480,92);
+    ;;;;; framebuffer_rect(192,144,640,480,46);
     mov 192, %a0
     mov 144, %a1
     mov 640, %a2
     mov 480, %a3
-    mov 92, %a4
+    mov 46, %a4
     bal %ra, @framebuffer_rect
     ;;;;;;;;;;;;;;;;;;;
     as %sp
