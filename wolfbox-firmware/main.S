@@ -8,11 +8,9 @@ _start:
     bal %ra, @framebuffer_clear
     ;;;;; console_draw_window();
     bal %ra, @console_draw_window
-    ;mov 0, %a0
-    ;mov 0, %a1
-    ;mov 'h', %a2
-    ;mov 0, %a3
-    ;bal %ra, @framebuffer_draw_char
+    ;;;; console_puts(&banner);
+    mov $banner, %a0
+    bal %ra, @console_puts
     b @halt
 halt:
     b @halt
@@ -24,3 +22,5 @@ halt:
 stack_bottom:
 .filling 0,1024
 stack_top:
+
+banner: .string "LibreFirmware, Arch: IceWolf7800, Machine: WolfBox" .byte 0xA .string "(C) 2022 Talon396" .byte 0xA .byte 0x0

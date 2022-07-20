@@ -233,8 +233,8 @@ fn main() {
                     }
                     _ => todo!(),
                 }
-                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
-                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::BinaryInclude(s) => {
                 let dat = std::fs::read(s).expect(format!("Couldn't open binary file \"{}\"", s.as_str()).as_str());
@@ -242,22 +242,22 @@ fn main() {
                 cur_addr += len as u64;
                 cur_offset += len as u64;
                 entries.push(AssembleEntry::Data(dat,cur_offset-len as u64));
-                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
-                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::DataString(s) => {
                 cur_addr += s.len() as u64;
                 cur_offset += s.len() as u64;
                 entries.push(AssembleEntry::Data(s.as_bytes().to_vec(),cur_offset-s.len() as u64));
-                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
-                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::DataFilling {value, size} => {
                 cur_addr += *size;
                 cur_offset += *size;
                 entries.push(AssembleEntry::Data(vec![*value; *size as usize],cur_offset-size));
-                cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
-                cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_addr = (((cur_addr as f64) / 4.0).ceil() * 4.0) as u64;
+                //cur_offset = (((cur_offset as f64) / 4.0).ceil() * 4.0) as u64;
             }
             ASTEntry::Instruction0Arg {instruction} => {
                 match instruction {

@@ -91,3 +91,143 @@ console_draw_window:
     add 8
     ;;;;;;;;;;;;;;;;;;;
     ba %ra
+
+; void console_putc(c -> a0);
+console_putc:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, a1, t0, t1, t2, t3
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %a1
+    sub 8
+    sd %t0
+    sub 8
+    sd %t1
+    sub 8
+    sd %t2
+    sub 8
+    sd %t3
+    ;;;;;;;;;;;;;;;;;;;
+    as %t2
+    mov $cursor_x, %t2
+    lb %t0
+    mov $cursor_y, %t2
+    lb %t1
+    
+    mov %a0, %t3
+    mov %t0, %a0
+    mov %t1, %a1
+    as %a0
+    mul 8
+    add 192
+    as %a1
+    mul 16
+    add 144
+    mov 8, %a2
+    mov 16, %a3
+    mov 46, %a4
+    bal %ra, @framebuffer_rect
+
+    mov 0xa, %t2
+    beq %t3, %t2, @console_putc.noprint
+    mov %t3, %a2
+    mov 255, %a3
+    bal %ra, @framebuffer_draw_char
+console_putc.noprint:
+    as %t0
+    add 1
+    mov 0xa, %t2
+    beq %t3, %t2, @console_putc.newline
+    mov 80, %t2
+    bltu %t0, %t2, @console_putc.after_wrap
+console_putc.newline:
+    mov 0, %t0
+    as %t1
+    add 1
+    mov 30, %t2
+    bltu %t1, %t2, @console_putc.after_wrap
+    mov 0, %t2 ; Temporary until I implement scrolling
+console_putc.after_wrap:
+    mov %t0, %a0
+    mov %t1, %a1
+    as %a0
+    mul 8
+    add 192
+    as %a1
+    mul 16
+    add 144
+    mov 8, %a2
+    mov 16, %a3
+    mov 255, %a4
+    bal %ra, @framebuffer_rect
+
+    as %t2
+    mov $cursor_x, %t2
+    sb %t0
+    mov $cursor_y, %t2
+    sb %t1
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t3, t2, t1, t0, a1, a0, ra
+    ld %t3
+    add 8
+    ld %t2
+    add 8
+    ld %t1
+    add 8
+    ld %t0
+    add 8
+    ld %a1
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+; void console_puts(&s -> a0);
+console_puts:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, a1, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %a1
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    mov %a0, %a1
+console_puts.loop:
+    as %a1
+    lb %t0
+    add 1
+    beq %t0, %zero, @console_puts.end
+    mov %t0, %a0
+    bal %ra, @console_putc
+    b @console_puts.loop
+console_puts.end:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a1, a0, ra
+    ld %t0
+    add 8
+    ld %a1
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+cursor_x: .byte 0
+cursor_y: .byte 0
+.align 4

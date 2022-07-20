@@ -192,3 +192,4 @@ framebuffer_draw_char.no_draw:
 
 framebuffer_charset:
 .binary_include "charset.bin"
+.align 4
