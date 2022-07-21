@@ -31,7 +31,7 @@ int RAMRead(uint64_t addr, uint64_t len, void *buf) {
     int offset = addr & ((64*1024*1024)-1);
     if (offset+len > RAMBankCapacity[bank])
 		return 1;
-    memcpy(buf, RAMBanks[bank]+offset, len);
+    memcpy((uint8_t*)buf, RAMBanks[bank]+offset, len);
     return 0;
 }
 
@@ -40,7 +40,7 @@ int RAMWrite(uint64_t addr, uint64_t len, void *buf) {
     int offset = addr & ((64*1024*1024)-1);
     if (offset+len > RAMBankCapacity[bank])
 		return 1;
-    memcpy(RAMBanks[bank]+offset, buf, len);
+    memcpy(RAMBanks[bank]+offset, (uint8_t*)buf, len);
     return 0;
 }
 

@@ -464,8 +464,78 @@ console_puthex_long:
     ;;;;;;;;;;;;;;;;;;;
     ba %ra
 
+; void console_putint(num -> a0);
+console_putint:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0, t1, t2, t3
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    sub 8
+    sd %t1
+    sub 8
+    sd %t2
+    sub 8
+    sd %t3
+    ;;;;;;;;;;;;;;;;;;;
+    ; ax = a0, bx = t0, cx = t1, dx = t2, di = t3
+    mov 0, %t1
+    mov 10, %t0
+    mov $console.t, %t3
+console_putint.push:
+    mov %a0, %t2
+    as %a0
+    divu %t0
+    as %t2
+    remu %t0
 
+    as %t1
+    add 1
+
+    as %sp
+    sub 2
+    sh %t2
+    bne %a0, %zero, @console_putint.push
+console_putint.pop:
+    as %sp
+    lh %t2
+    add 2
+    as %t2
+    add '0'
+    as %t3
+    sb %t2
+    add 1
+    as %t1
+    sub 1
+    bne %t1, %zero, @console_putint.pop
+    as %t3
+    sb 0
+    mov $console.t, %a0
+    bal %ra, @console_puts
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t3, t2, t1, t0, a0, ra
+    ld %t3
+    add 8
+    ld %t2
+    add 8
+    ld %t1
+    add 8
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
 
 cursor_x: .byte 0
 cursor_y: .byte 0
+;18,446,744,073,709,551,615
+console.t: .filling 0, 22
 .align 4

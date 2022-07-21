@@ -8,7 +8,7 @@ bank_test:
     sub 8
     sd %t1
     sub 8
-    sd %t1
+    sd %t2
     ;;;;;;;;;;;;;;;;;;;
     mov $bank_test_trap, %t2
     as %t2
@@ -45,3 +45,45 @@ bank_test.end:
 bank_test_trap:
     mov 1, %t2
     tret
+
+; uint64_t memory_test();
+memory_test:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, t0, t1, t2
+    sub 8
+    sd %ra
+    sub 8
+    sd %t0
+    sub 8
+    sd %t1
+    sub 8
+    sd %t2
+    ;;;;;;;;;;;;;;;;;;;
+    mov 0, %t0
+    mov 8, %t1
+    mov 0, %t2
+memory_test.loop:
+    mov %t0, %a0
+    bal %ra, @bank_test
+    as %t2
+    add %a0
+    as %t0
+    add 0x4000000
+    as %t1
+    sub 1
+    bne %t1, %zero, @memory_test.loop
+    mov %t2, %a0
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t2, t1, t0, ra
+    ld %t2
+    add 8
+    ld %t1
+    add 8
+    ld %t0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra

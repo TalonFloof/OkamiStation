@@ -12,13 +12,14 @@ _start:
     mov $banner, %a0
     bal %ra, @console_puts
     
-    mov 0, %a0
-    bal %ra, @bank_test
-    mov %a0, %t0
-    mov $hex_prefix, %a0
+    mov $memory_test_msg, %a0
     bal %ra, @console_puts
-    mov %t0, %a0
-    bal %ra, @console_puthex_long
+    bal %ra, @memory_test
+    as %a0
+    divu 1024
+    bal %ra, @console_putint
+    mov $memory_suffix, %a0
+    bal %ra, @console_puts
 
     b @halt
 halt:
@@ -35,4 +36,5 @@ stack_bottom:
 stack_top:
 
 banner: .string "LibreFirmware, Arch: IceWolf7800, Machine: WolfBox" .byte 0xA .string "(C) 2022 Talon396" .byte 0xA .byte 0x0
-hex_prefix: .string "0x" .byte 0x0
+memory_test_msg: .string "Testing Random-Access Memory... " .byte 0x0
+memory_suffix: .string " KiB OK" .byte 0xA .byte 0x0

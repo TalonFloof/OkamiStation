@@ -406,9 +406,17 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) / value);
             break;
         case 0x31: // alu.rem
+            if(value == 0) {
+                IceWolf_Trap(hart,TRAP_DIVBYZERO);
+                return;
+            }
             IceWolf_WriteReg(hart, hart->Registers[0x20], (int64_t)IceWolf_ReadReg(hart,hart->Registers[0x20]) % (int64_t)value);
             break;
         case 0x32: // alu.remu
+            if(value == 0) {
+                IceWolf_Trap(hart,TRAP_DIVBYZERO);
+                return;
+            }
             IceWolf_WriteReg(hart, hart->Registers[0x20], IceWolf_ReadReg(hart,hart->Registers[0x20]) % value);
             break;
         case 0x3f:
@@ -430,10 +438,10 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
                 case 0x00: // sfence.dl (Invalidate Dirty Lines in Data Cache Locally)
                 case 0x01: // sfence.dg (Invalidate Dirty Lines in Data Cache Globally)
                     for(int i=0; i < CACHELINECOUNT; i++) {
-                        if(hart->DCacheTag[i] & 3) {
+                        if((hart->DCacheTag[i] & 3) == 3) {
                             uint64_t addr = hart->DCacheTag[i] & ~(CACHELINESIZE-1);
-                            IceBusWrite(addr,16,(uint8_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,DCache)+addr));
-                            hart->DCacheTag[i] = 0;
+                            IceBusWrite(addr,16,(uint8_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,DCache)+(i*CACHELINESIZE)));
+                            hart->DCacheTag[i] &= ~2;
                         }
                     }
                     hart->DCache_WriteIndex = 0;
@@ -442,7 +450,7 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
                 case 0x02: // sfence.dal (Invalidate Entire Data Cache Locally)
                 case 0x03: // sfence.dag (Invalidate Entire Data Cache Globally)
                     for(int i=0; i < CACHELINECOUNT; i++) {
-                        if(hart->DCacheTag[i] & 3) {
+                        if((hart->DCacheTag[i] & 3) == 3) {
                             uint64_t addr = hart->DCacheTag[i] & ~(CACHELINESIZE-1);
                             IceBusWrite(addr,16,(uint8_t*)((uintptr_t)hart+offsetof(IcewolfHart_t,DCache)+addr));
                         }
@@ -549,6 +557,9 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
         }
         case 0x5f: // lui
             fprintf(stderr, "\x1b[31mwat\x1b[0m\n");
+            for(int i=0; i < 0x20; i++) {
+                fprintf(stderr, "%02i: %016lx\n", i, hart->Registers[i]);
+            }
             abort();
             break;
         default:

@@ -101,14 +101,14 @@ instruction_1arg = @{
     "sra" | // mov [arg], %alu.sra
     "slt" | // mov [arg], %alu.slt
     "sltu" | // mov [arg], %alu.sltu
-    "mul" | // mov [arg], %alu.mul
     "mulh" | // mov [arg], %alu.mulh
     "mulsu" | // mov [arg], %alu.mulsu
     "mulu" | // mov [arg], %alu.mulu
-    "div" | // mov [arg], %alu.div
+    "mul" | // mov [arg], %alu.mul
     "divu" | // mov [arg], %alu.divu
-    "rem" | // mov [arg], %alu.rem
+    "div" | // mov [arg], %alu.div
     "remu" | // mov [arg], %alu.remu
+    "rem" | // mov [arg], %alu.rem
     "lb" | // mov %alu.lb, [reg]
     "lh" | // mov %alu.lh, [reg]
     "lw" | // mov %alu.lw, [reg]
