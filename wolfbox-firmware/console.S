@@ -312,6 +312,160 @@ console_scroll.loop:
     ;;;;;;;;;;;;;;;;;;;
     ba %ra
 
+; void console_puthex_nibble(num -> a0);
+console_puthex_nibble:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    as %a0
+    and 0xf
+    mov 10, %t0
+    bltu %a0, %t0, @console_puthex_nibble.digit
+    add 39
+console_puthex_nibble.digit:
+    add '0'
+    bal %ra, @console_putc
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a0, ra
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+; void console_puthex_byte(num -> a0);
+console_puthex_byte:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    mov %a0, %t0
+    as %a0
+    srl 4
+    bal %ra, @console_puthex_nibble
+    mov %t0, %a0
+    bal %ra, @console_puthex_nibble
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a0, ra
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+; void console_puthex_byte(num -> a0);
+console_puthex_half:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    mov %a0, %t0
+    as %a0
+    srl 8
+    bal %ra, @console_puthex_byte
+    mov %t0, %a0
+    bal %ra, @console_puthex_byte
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a0, ra
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+; void console_puthex_word(num -> a0);
+console_puthex_word:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    mov %a0, %t0
+    as %a0
+    srl 16
+    bal %ra, @console_puthex_half
+    mov %t0, %a0
+    bal %ra, @console_puthex_half
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a0, ra
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+; void console_puthex_long(num -> a0);
+console_puthex_long:
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; push ra, a0, t0
+    sub 8
+    sd %ra
+    sub 8
+    sd %a0
+    sub 8
+    sd %t0
+    ;;;;;;;;;;;;;;;;;;;
+    mov %a0, %t0
+    as %a0
+    srl 32
+    bal %ra, @console_puthex_word
+    mov %t0, %a0
+    bal %ra, @console_puthex_word
+    ;;;;;;;;;;;;;;;;;;;
+    as %sp
+    ;;;;; pop t0, a0, ra
+    ld %t0
+    add 8
+    ld %a0
+    add 8
+    ld %ra
+    add 8
+    ;;;;;;;;;;;;;;;;;;;
+    ba %ra
+
+
+
 cursor_x: .byte 0
 cursor_y: .byte 0
 .align 4

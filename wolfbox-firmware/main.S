@@ -1,7 +1,7 @@
 .origin 0x8000_0000
 _start:
     mov 0x100, %xreg.ind
-    mov 0xF80, %xreg.val
+    mov 0x24F80, %xreg.val
     mov $stack_top, %sp
     ;;;;; framebuffer_clear(12);
     mov 12, %a0
@@ -11,6 +11,15 @@ _start:
     ;;;; console_puts(&banner);
     mov $banner, %a0
     bal %ra, @console_puts
+    
+    mov 0, %a0
+    bal %ra, @bank_test
+    mov %a0, %t0
+    mov $hex_prefix, %a0
+    bal %ra, @console_puts
+    mov %t0, %a0
+    bal %ra, @console_puthex_long
+
     b @halt
 halt:
     b @halt
@@ -26,3 +35,4 @@ stack_bottom:
 stack_top:
 
 banner: .string "LibreFirmware, Arch: IceWolf7800, Machine: WolfBox" .byte 0xA .string "(C) 2022 Talon396" .byte 0xA .byte 0x0
+hex_prefix: .string "0x" .byte 0x0

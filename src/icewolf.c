@@ -29,16 +29,18 @@ void IceWolf_Trap(IcewolfHart_t* hart, int typ) {
     if((hart->status & STATUS_MODE) == 0) { // User
         hart->UTrap.cause = typ;
         hart->status |= STATUS_UTRAP_GATE;
-    } else if((hart->status & STATUS_MODE) == 1) { // Supervisor
+    } else if((hart->status & STATUS_MODE) == (1<<5)) { // Supervisor
         hart->STrap.cause = typ;
         hart->status |= STATUS_STRAP_GATE;
-    } else if((hart->status & STATUS_MODE) == 2) { // Machine
+    } else if((hart->status & STATUS_MODE) == (2<<5)) { // Machine
         hart->MTrap.cause = typ;
         hart->status |= STATUS_MTRAP_GATE;
     }
-    fprintf(stderr, "Trap @ 0x%016lx, Cause: %i\n", hart->Registers[0], typ);
-    for(int i=0; i < 0x20; i++) {
-        fprintf(stderr, "%02i: %016lx\n", i, hart->Registers[i]);
+    if(typ == TRAP_DATA || typ == TRAP_FETCH || typ == TRAP_DIVBYZERO || typ == TRAP_UNDEFINED) {
+        fprintf(stderr, "Trap @ 0x%016lx, Cause: %i, Mode: %li\n", hart->Registers[0], typ, (hart->status & STATUS_MODE) >> 5);
+        for(int i=0; i < 0x20; i++) {
+            fprintf(stderr, "%02i: %016lx\n", i, hart->Registers[i]);
+        }
     }
 }
 
@@ -206,13 +208,16 @@ static inline void IceWolf_WriteExReg(IcewolfHart_t* hart, int index, uint64_t v
         case 0x001: // utrap.pc
             hart->UTrap.pc = value;
             break;
-        case 0x002: // utrap.scratch
+        case 0x002: // utrap.acc
+            hart->UTrap.acc = value;
+            break;
+        case 0x003: // utrap.scratch
             hart->UTrap.scratch = value;
             break;
-        case 0x003: // utrap.cause
+        case 0x004: // utrap.cause
             hart->UTrap.cause = value;
             break;
-        case 0x004: // utrap.value
+        case 0x005: // utrap.value
             hart->UTrap.value = value;
             break;
         case 0x010: // strap.entry
@@ -221,13 +226,16 @@ static inline void IceWolf_WriteExReg(IcewolfHart_t* hart, int index, uint64_t v
         case 0x011: // strap.pc
             hart->STrap.pc = value;
             break;
-        case 0x012: // strap.scratch
+        case 0x012: // strap.acc
+            hart->STrap.acc = value;
+            break;
+        case 0x013: // strap.scratch
             hart->STrap.scratch = value;
             break;
-        case 0x013: // strap.cause
+        case 0x014: // strap.cause
             hart->STrap.cause = value;
             break;
-        case 0x014: // strap.value
+        case 0x015: // strap.value
             hart->STrap.value = value;
             break;
         case 0x020: // mtrap.entry
@@ -236,20 +244,23 @@ static inline void IceWolf_WriteExReg(IcewolfHart_t* hart, int index, uint64_t v
         case 0x021: // mtrap.pc
             hart->MTrap.pc = value;
             break;
-        case 0x022: // mtrap.scratch
+        case 0x022: // mtrap.acc
+            hart->MTrap.acc = value;
+            break;
+        case 0x023: // mtrap.scratch
             hart->MTrap.scratch = value;
             break;
-        case 0x023: // mtrap.cause
+        case 0x024: // mtrap.cause
             hart->MTrap.cause = value;
             break;
-        case 0x024: // mtrap.value
+        case 0x025: // mtrap.value
             hart->MTrap.value = value;
             break;
         case 0x100: // status
-            if((hart->status & (STATUS_MODE >> 5)) == 1) { // Supervisor
+            if((hart->status & STATUS_MODE) == 1<<5) { // Supervisor
                 const uint64_t mask = STATUS_MTRAP_GATE | STATUS_STRAP_GATE | STATUS_UTRAP_GATE | STATUS_MODE | STATUS_SUPDEBUG | STATUS_SUPHARTID | STATUS_SUPTIMER | STATUS_SUPTLB | STATUS_MTRAP_MODE;
                 hart->status = (value & ~mask) | (hart->status & mask);
-            } else if((hart->status & (STATUS_MODE >> 5)) == 2) { // Machine
+            } else if((hart->status & STATUS_MODE) == 2<<5) { // Machine
                 const uint64_t mask = STATUS_MTRAP_GATE | STATUS_STRAP_GATE | STATUS_UTRAP_GATE | STATUS_MODE;
                 hart->status = (value & ~mask) | (hart->status & mask);
             }
@@ -501,23 +512,26 @@ static inline void IceWolf_WriteReg(IcewolfHart_t* hart, int index, uint64_t val
             hart->Registers[0] = IceWolf_ReadReg(hart,(value & 0xFF00) >> 8);
             break;
         case 0x5a: // trapret
-            if((hart->status & (STATUS_MODE >> 5)) == 0) { // User
+            if((hart->status & STATUS_MODE) == 0) { // User
                 if((hart->UTrap.entry & 3) == 3) {
                     hart->UTrap.entry &= ~2UL;
                     hart->UTrap.cause = 0;
                     hart->Registers[0x00] = hart->UTrap.pc;
+                    hart->Registers[0x20] = hart->UTrap.acc;
                 }
-            } else if((hart->status & (STATUS_MODE >> 5)) == 1) { // Supervisor
+            } else if((hart->status & STATUS_MODE) == 1<<5) { // Supervisor
                 if((hart->STrap.entry & 3) == 3) {
                     hart->STrap.entry &= ~2UL;
                     hart->STrap.cause = 0;
                     hart->Registers[0x00] = hart->STrap.pc;
+                    hart->Registers[0x20] = hart->STrap.acc;
                 }
-            } else if((hart->status & (STATUS_MODE >> 5)) == 2) { // Machine
+            } else if((hart->status & STATUS_MODE) == 2<<5) { // Machine
                 if((hart->MTrap.entry & 3) == 3) {
                     hart->MTrap.entry &= ~2UL;
                     hart->MTrap.cause = 0;
                     hart->Registers[0x00] = hart->MTrap.pc;
+                    hart->Registers[0x20] = hart->MTrap.acc;
                 }
             }
             break;
@@ -582,20 +596,26 @@ int IceWolf_RunCycles(IcewolfHart_t* hart, int cycles) {
                 hart->status &= ~STATUS_MODE;
                 hart->status |= ((hart->status & STATUS_UTRAP_MODE)>>12)<<5;
                 hart->UTrap.pc = hart->Registers[0];
+                hart->UTrap.acc = hart->Registers[0x20];
                 hart->Registers[0] = hart->UTrap.entry & ~3;
                 hart->UTrap.entry |= 2;
+                hart->status &= ~STATUS_UTRAP_GATE;
             } else if((hart->status & STATUS_STRAP_GATE) != 0) { // STrap
                 hart->status &= ~STATUS_MODE;
-                hart->status |= ((hart->status & STATUS_STRAP_MODE)>>12)<<5;
+                hart->status |= ((hart->status & STATUS_STRAP_MODE)>>14)<<5;
                 hart->STrap.pc = hart->Registers[0];
+                hart->STrap.acc = hart->Registers[0x20];
                 hart->Registers[0] = hart->STrap.entry & ~3;
                 hart->STrap.entry |= 2;
+                hart->status &= ~STATUS_STRAP_GATE;
             } else if((hart->status & STATUS_MTRAP_GATE) != 0) { // MTrap
                 hart->status &= ~STATUS_MODE;
-                hart->status |= ((hart->status & STATUS_MTRAP_MODE)>>12)<<5;
+                hart->status |= ((hart->status & STATUS_MTRAP_MODE)>>16)<<5;
                 hart->MTrap.pc = hart->Registers[0];
+                hart->MTrap.acc = hart->Registers[0x20];
                 hart->Registers[0] = hart->MTrap.entry & ~3;
                 hart->MTrap.entry |= 2;
+                hart->status &= ~STATUS_MTRAP_GATE;
             }
         }
         uint32_t opcode;

@@ -62,6 +62,7 @@ limitations under the License.
 typedef struct TrapRegs {
     uint64_t entry; // Bit 0: Enabled, Bit 1: In Service
     uint64_t pc;
+    uint64_t acc;
     uint64_t scratch;
     uint64_t cause;
     uint64_t value;
