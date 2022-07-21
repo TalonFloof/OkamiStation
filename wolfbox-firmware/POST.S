@@ -19,12 +19,12 @@ bank_test:
     mov 0, %t2
 bank_test.loop:
     as %a0
-    sd %zero
-    fence 0
+    ld %zero
+    fence 2
     bne %t2, %zero, @bank_test.end
-    add 8
+    add 16
     as %t0
-    add 8
+    add 16
     b @bank_test.loop
 bank_test.end:
     mov %t0, %a0

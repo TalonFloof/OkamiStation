@@ -94,11 +94,11 @@ static inline bool IceWolf_MemAccess(IcewolfHart_t* hart, uint64_t addr, uint8_t
                     return false;
                 }
             }
-            tags[line] = lineaddr | 1;
             if(IceBusRead(lineaddr, CACHELINESIZE, cacheline) != 0) {
                 IceWolf_Trap(hart,((int)fetch)+3);
                 return false;
             }
+            tags[line] = lineaddr | 1;
 			if(fetch)
 				hart->ICache_Fill++;
 			else
