@@ -1,1 +1,4 @@
 /build/
+*.o
+EmberWolfFirmware
+EmberWolfFirmware.elf

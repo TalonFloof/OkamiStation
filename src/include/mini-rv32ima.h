@@ -274,11 +274,12 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
                 CSR(timermatchh) = rs2;
               else if (addy == 0x11004000)  // CLNT
                 CSR(timermatchl) = rs2;
-              else if (addy == 0x11100000)  // SYSCON (reboot, poweroff, etc.)
+              /*else if (addy == 0x11100000)  // SYSCON (reboot, poweroff, etc.)
               {
                 SETCSR(pc, pc + 4);
                 return rs2;  // NOTE: PC will be PC of Syscon.
-              } else
+              }*/
+              else
                 MINIRV32_HANDLE_MEM_STORE_CONTROL(addy, rs2);
             } else {
               trap = (7 + 1);  // Store access fault.
