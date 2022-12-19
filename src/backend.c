@@ -68,10 +68,6 @@ void Backend_Run(Backend *backend) {
 
   Vector2 fbOrigin = {0.0f, 0.0f};
 
-  Model cube = LoadModelFromMesh(GenMeshCube(5, 5, 5));
-  Texture2D cubeTexture =
-      LoadTexture(TextFormat("%s/resources/assets/test.png", execPath));
-
   backend->shader =
       LoadShader(TextFormat("%s/resources/shaders/base.vs", execPath),
                  TextFormat("%s/resources/shaders/base.fs", execPath));
@@ -80,30 +76,10 @@ void Backend_Run(Backend *backend) {
   backend->shader.locs[SHADER_LOC_MATRIX_MODEL] =
       GetShaderLocation(backend->shader, "matModel");
 
-  int i = 0;
+  SetCameraMode(backend->camera, CAMERA_PERSPECTIVE);
 
-  Backend_SetFog(backend, (float[3]){30, 40, 0}, (Color){32, 32, 48, 255});
-
-  Backend_SetLight(backend, 0, 1, (Color){255, 0, 0, 255}, (float[3]){5, 5, 5},
-                   1024);
-  Backend_SetLight(backend, 1, 1, (Color){0, 255, 0, 255}, (float[3]){-5, 5, 5},
-                   1024);
-  Backend_SetLight(backend, 2, 1, (Color){0, 0, 255, 255}, (float[3]){5, 5, -5},
-                   1024);
-  Backend_SetLight(backend, 3, 1, (Color){255, 255, 255, 255},
-                   (float[3]){-5, 5, -5}, 1024);
-
-  int loc = GetShaderLocation(backend->shader, "u_lightAmbient");
-  SetShaderValue(backend->shader, loc, (float[4]){0, 0, 0, 1},
-                 SHADER_UNIFORM_VEC4);
-
-  for (i = 0; i < cube.materialCount; i++) {
-    cube.materials[i].shader = backend->shader;
-  }
-  i = 0;
-  cube.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = cubeTexture;
-
-  SetCameraMode(backend->camera, CAMERA_ORBITAL);
+  double prevSecond = GetTime();
+  int ips = 0;
 
   while (!WindowShouldClose()) {
     UpdateCamera(&(backend->camera));
@@ -115,18 +91,8 @@ void Backend_Run(Backend *backend) {
         SHADER_UNIFORM_VEC3);
 
     BeginTextureMode(framebuffer);
-    ClearBackground((Color){32, 32, 48, 255});
     BeginMode3D(backend->camera);
-    DrawModelEx(cube, Vector3Zero(), (Vector3){.x = 0, .y = 0, .z = 0}, 0,
-                Vector3One(), WHITE);
-    DrawModelEx(cube, (Vector3){.x = 15, .y = 0, .z = 0},
-                (Vector3){.x = 0, .y = 0, .z = 0}, 0, Vector3One(), WHITE);
-    DrawModelEx(cube, (Vector3){.x = -15, .y = 0, .z = 0},
-                (Vector3){.x = 0, .y = 0, .z = 0}, 0, Vector3One(), WHITE);
-    DrawModelEx(cube, (Vector3){.x = 0, .y = 0, .z = 15},
-                (Vector3){.x = 0, .y = 0, .z = 0}, 0, Vector3One(), WHITE);
-    DrawModelEx(cube, (Vector3){.x = 0, .y = 0, .z = -15},
-                (Vector3){.x = 0, .y = 0, .z = 0}, 0, Vector3One(), WHITE);
+    // GPU Rendering goes here.
     EndMode3D();
     EndTextureMode();
 
@@ -135,11 +101,10 @@ void Backend_Run(Backend *backend) {
     DrawTexturePro(framebuffer.texture, fbSourceRec, fbDestRec, fbOrigin, 0.0f,
                    WHITE);
     EndMode2D();
-    DrawFPS(0, 0);
     EndDrawing();
-  }
+    // BEGIN CPU CYCLE EXECUTION
+    }
 
-  UnloadModel(cube);
   UnloadShader(backend->shader);
   UnloadTexture(framebuffer.texture);
 
