@@ -1,6 +1,6 @@
 .section .header
 .word 0x0540006f
-.string "Copyright (C) 2022-2023 TalonFox, Firmware is licensed under the MIT License"
+.string "Copyright (C) 2022-2023 TalonFox, firmware is licensed under the MIT License"
 .section .text.boot
 .global _start
 .extern __DATA_BEGIN__
@@ -9,11 +9,15 @@
 
 _start:
 	lui sp, 0x40 // Top of 4 MiB RAM
-    // Copy Data Segment to Bottom of RAM and Clear Space for BSS Segment
-    mv a0, zero
+    // Copy Data Segment to Bottom of RAM
+    li a0, 0x10
     la a1, __DATA_BEGIN__
     la a2, __DATA_END__
     jal ra, _mem_copy
+    // Clear RAM for BSS Segment
+    la a0, __BSS_BEGIN__
+    la a1, __BSS_END__
+    jal ra, _mem_clear
     // Run the EWFirmwareStart C Function
 	addi sp,sp,-16
 	sw	ra,12(sp)

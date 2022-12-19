@@ -1,7 +1,6 @@
-static int hi = 1;
+#include <stdint.h>
 
 void EWFirmwareStart() {
-  for (;;) {  // WE CANNOT ESCAPE!
-    hi++;
+    for (;;) {  // WE CANNOT ESCAPE!
   }
 }

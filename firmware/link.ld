@@ -17,22 +17,22 @@ SECTIONS
 		__RODATA_END__ = .;
 	}
 
-	. = 0x00000000;
+	. = 0x00000010;
 
 	.data ALIGN(16) : AT(__RODATA_END__) {
-		__DATA_BEGIN__ = ABSOLUTE(.);
 		*(.data)
 		*(.data.*)
 		*(.sdata)
-		__DATA_END__ = ABSOLUTE(.);
 	}
+	__DATA_BEGIN__ = __RODATA_END__;
+	__DATA_END__ = __RODATA_END__ + SIZEOF(.data);
 
-	.bss ALIGN(16) (NOLOAD) : AT(__DATA_END__) {
-		__BSS_BEGIN__ = ABSOLUTE(.);
+	.bss ALIGN(16) (NOLOAD) : AT(ADDR(.data) + SIZEOF(.data)) {
+		__BSS_BEGIN__ = .;
 		*(.bss)
 		*(.bss.*)
 		*(.sbss)
-		__BSS_END__ = ABSOLUTE(.);
+		__BSS_END__ = .;
 	}
 
 	PROVIDE( TIMERL = 0x1100bff8 );
