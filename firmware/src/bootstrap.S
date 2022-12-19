@@ -1,10 +1,5 @@
-.section .header
-.word 0x0540006f
-.string "Copyright (C) 2022-2023 TalonFox, firmware is licensed under the MIT License"
 .section .text.boot
 .global _start
-.extern __DATA_BEGIN__
-.extern __DATA_END__
 .align 4
 
 _start:
@@ -30,7 +25,7 @@ _mem_copy:
 //  a2 end
 // out: void
 // clobbers: t0
-    beq a0, a1, 1f
+    beq a1, a2, 1f
 0:
     lw t0, 0(a1)
     addi a1, a1, 4
@@ -51,3 +46,5 @@ _mem_clear:
     bltu a0, a1, 0b
 1:
     jr ra
+.section .header
+.string "Copyright (C) 2022-2023 TalonFox, firmware is licensed under the MIT License"

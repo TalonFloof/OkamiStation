@@ -55,7 +55,9 @@
 #define MINIRV32_STORE4(ofs, val) *(uint32_t*)(image + ofs) = val
 #define MINIRV32_STORE2(ofs, val) *(uint16_t*)(image + ofs) = val
 #define MINIRV32_STORE1(ofs, val) *(uint8_t*)(image + ofs) = val
-#define MINIRV32_LOAD4(ofs) *(uint32_t*)(image + ofs)
+#define MINIRV32_LOAD4(ofs)                            \
+  ((ofs >= 0x10000000) ? HandleControlLoad(&trap, ofs) \
+                       : *(uint32_t*)(image + ofs))
 #define MINIRV32_LOAD2(ofs) *(uint16_t*)(image + ofs)
 #define MINIRV32_LOAD1(ofs) *(uint8_t*)(image + ofs)
 #endif
@@ -143,9 +145,10 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
     uint32_t pc = CSR(pc);
     uint32_t ofs_pc = pc - MINIRV32_RAM_IMAGE_OFFSET;
 
-    if (ofs_pc >= MINI_RV32_RAM_SIZE)
+    /*if (ofs_pc >= MINI_RV32_RAM_SIZE)
       trap = 1 + 1;  // Handle access violation on instruction read.
-    else if (ofs_pc & 3)
+    else*/
+    if (ofs_pc & 3)
       trap = 1 + 0;  // Handle PC-misaligned access
     else {
       ir = MINIRV32_LOAD4(ofs_pc);
@@ -220,7 +223,7 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
           rsval -= MINIRV32_RAM_IMAGE_OFFSET;
           if (rsval >= MINI_RV32_RAM_SIZE - 3) {
             rsval -= MINIRV32_RAM_IMAGE_OFFSET;
-            if (rsval >= 0x10000000 && rsval < 0x12000000)  // UART, CLNT
+            if (rsval >= 0x10000000 /*&& rsval < 0x12000000*/)  // UART, CLNT
             {
               if (rsval ==
                   0x1100bffc)  // https://chromitem-soc.readthedocs.io/en/latest/clint.html
@@ -228,7 +231,7 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
               else if (rsval == 0x1100bff8)
                 rval = CSR(timerl);
               else
-                MINIRV32_HANDLE_MEM_LOAD_CONTROL(rsval, rval);
+                MINIRV32_HANDLE_MEM_LOAD_CONTROL(&trap, rsval, rval);
             } else {
               trap = (5 + 1);
               rval = rsval;
@@ -268,7 +271,7 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
 
           if (addy >= MINI_RV32_RAM_SIZE - 3) {
             addy -= MINIRV32_RAM_IMAGE_OFFSET;
-            if (addy >= 0x10000000 && addy < 0x12000000) {
+            if (addy >= 0x10000000 /*&& addy < 0x12000000*/) {
               // Should be stuff like SYSCON, 8250, CLNT
               if (addy == 0x11004004)  // CLNT
                 CSR(timermatchh) = rs2;
@@ -280,7 +283,7 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
                 return rs2;  // NOTE: PC will be PC of Syscon.
               }*/
               else
-                MINIRV32_HANDLE_MEM_STORE_CONTROL(addy, rs2);
+                MINIRV32_HANDLE_MEM_STORE_CONTROL(&trap, addy, rs2);
             } else {
               trap = (7 + 1);  // Store access fault.
               rval = addy + MINIRV32_RAM_IMAGE_OFFSET;

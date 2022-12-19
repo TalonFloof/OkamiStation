@@ -1,13 +1,19 @@
+#include <stdint.h>
+uint32_t HandleControlStore(uint32_t *trap, uint32_t addy, uint32_t val);
+uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy);
+
 #include <float.h>
 #include <math.h>
-#include <pthread.h>
 #include <stdatomic.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <unistd.h>
 #define MINI_RV32_RAM_SIZE (4 * 1024 * 1024)
+#define MINIRV32_HANDLE_MEM_STORE_CONTROL(t, addy, val) \
+  if (HandleControlStore(t, addy, val)) return val;
+#define MINIRV32_HANDLE_MEM_LOAD_CONTROL(t, addy, rval) \
+  rval = HandleControlLoad(t, addy);
 #define MINIRV32_RAM_IMAGE_OFFSET 0x00000000
 #define MINIRV32WARN(x...) fprintf(stderr, x);
 #define MINIRV32_IMPLEMENTATION
@@ -65,6 +71,8 @@ void Backend_SetLight(Backend *backend, int lightID, int enabled, Color color,
 
 static float ips = 0;
 static atomic_bool backendReady = 0;
+static uint8_t *ROMData = NULL;
+static unsigned int ROMSize = 0;
 
 uint64_t GetUsTimestamp() {
   struct timeval tv;
@@ -79,6 +87,7 @@ void *RISCVProcThread(Backend *backend) {
   for (int i = 0; i < 32; i++) {
     backend->state.regs[i] = 0;
   }
+  fprintf(stderr, "%08x-%08x\n", backend->state.pc, ROMSize);
   backend->state.pc = 0xf0000000;
   backend->state.extraflags |= 3;
   while (1) {
@@ -112,7 +121,12 @@ void *RISCVProcThread(Backend *backend) {
 
 void Backend_Run(Backend *backend) {
   /* LOAD FIRMWARE */
-  // LoadFileData();
+  ROMData = LoadFileData(TextFormat("%s/resources/EmberWolfFirmware", execPath),
+                         &ROMSize);
+  if (ROMData == NULL) {
+    fprintf(stderr, "Couldn't find firmware file!\n");
+    return;
+  }
   pthread_t processorThreadID;
   pthread_create(&processorThreadID, NULL, (void *(*)(void *))RISCVProcThread,
                  backend);
@@ -178,4 +192,18 @@ void Backend_Run(Backend *backend) {
   UnloadTexture(framebuffer.texture);
 
   CloseWindow();
+}
+
+uint32_t HandleControlStore(uint32_t *trap, uint32_t addy, uint32_t val) {
+  *trap = (7 + 1);
+  return 0;
+}
+
+uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy) {
+  if (addy >= 0xf0000000 && addy <= (0xf0000000 + ROMSize)) {
+    return *((uint32_t *)(ROMData + (addy - 0xf0000000)));
+  } else {
+    *trap = (5 + 1);
+    return 0;
+  }
 }

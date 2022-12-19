@@ -6,6 +6,7 @@ SECTIONS
 
 	.text : ALIGN(16) {
 		__TEXT_BEGIN__ = .;
+		*(.text.boot);
 		*(.header);
         *(.text .text.*);
 		__TEXT_END__ = .;
