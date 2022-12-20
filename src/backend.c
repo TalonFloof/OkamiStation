@@ -4,7 +4,7 @@ uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy);
 
 #include <fifo.h>
 #include <float.h>
-#include <math.h>
+#include <map.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +20,7 @@ uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy);
 #define MINIRV32WARN(x...) fprintf(stderr, x);
 #define MINIRV32_IMPLEMENTATION
 #include <backend.h>
+#include <raymath.h>
 #include <rlgl.h>
 
 extern char execPath[2048];
@@ -35,10 +36,6 @@ uint8_t RAM[4 * 1024 * 1024];
 
 Backend NewBackend() {
   Camera3D camera = {0};
-  camera.position = (Vector3){10.0f, 10.0f, 10.0f};
-  camera.target = (Vector3){0.0f, 0.0f, 0.0f};
-  camera.up = (Vector3){0.0f, 0.5f, 0.0f};
-  camera.fovy = 45.0f;
   camera.projection = CAMERA_PERSPECTIVE;
   return (Backend){.camera = camera};
 }
@@ -123,6 +120,8 @@ void *RISCVProcThread(Backend *backend) {
 
 static FIFOQueue GPUCmdFIFO;
 
+static uint32_t GPUFlags;
+
 Color EWColorToRLColor(uint32_t color) {
   return (Color){
       .r = (uint8_t)(((double)((color & (0b11111 << 10)) >> 10) / 31) * 255),
@@ -132,11 +131,31 @@ Color EWColorToRLColor(uint32_t color) {
   };
 }
 
+float EWVertex16ToFloat(uint16_t num) {
+  float fraction =
+      ((float)((((uint32_t)num) & 0b0111111111111000) >> 3)) * 0.125;
+  float integer = (float)(((uint32_t)num) & 0x7);
+  int isSigned = (((uint32_t)num) & 0x8000);
+  return (isSigned ? (-(integer + fraction)) : (integer + fraction));
+}
+
+float EWTexCoord16ToFloat(uint16_t num) {
+  float fraction = ((float)(((uint32_t)num) & 0x7FFF)) / 16384;
+  int isSigned = (((uint32_t)num) & 0x8000);
+  return (isSigned ? (-fraction) : fraction);
+}
+
+typedef map_t(Model *) ModelMap;
+
 void Backend_Run(Backend *backend) {
   /* INITIALIZE GPU COMMAND FIFO */
-  GPUCmdFIFO.mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+  GPUCmdFIFO.isClearing = 0;
   GPUCmdFIFO.size = 256;
   GPUCmdFIFO.data = malloc(256 * sizeof(uintptr_t));
+  /* INITIALIZE GPU GEOMETRY CACHE */
+  ModelMap GPUGeometryCache;
+  int GPUVertexCount = 0;
+  map_init(&GPUGeometryCache);
   /* LOAD FIRMWARE */
   ROMData = LoadFileData(TextFormat("%s/resources/EmberWolfFirmware", execPath),
                          &ROMSize);
@@ -147,9 +166,8 @@ void Backend_Run(Backend *backend) {
   pthread_t processorThreadID;
   pthread_create(&processorThreadID, NULL, (void *(*)(void *))RISCVProcThread,
                  backend);
-  SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_TRANSPARENT);
+  SetConfigFlags(FLAG_WINDOW_TRANSPARENT);
   InitWindow(WIDTH * 3, HEIGHT * 3, TextFormat("EmberWolf"));
-  SetTargetFPS(60);
 
   RenderTexture2D framebuffer = LoadRenderTexture(WIDTH, HEIGHT);
 
@@ -183,25 +201,35 @@ void Backend_Run(Backend *backend) {
       switch (cmdData[0]) {
         case 0x00:
           break;
-        case 0x05:
+        case GPU_SET_FOG_INFO:
+          break;
+        case GPU_SET_AMBIENT_LIGHT:
+          break;
+        case GPU_SET_LIGHT_INFO:
+          break;
+        case GPU_CLEAR:
           BeginTextureMode(framebuffer);
           ClearBackground(EWColorToRLColor(cmdData[1]));
           BeginMode3D(backend->camera);
           EndMode3D();
           EndTextureMode();
           break;
-        case 0x07:
-        case 0x08:
-        case 0x09:
-        case 0x0a: {
+
+        case GPU_UPLOAD_GEOMETRY: {
+          if (GPUVertexCount + cmdData[3] > 6144) {
+            GPUFlags |= 0x1;
+            break;
+          }
+          GPUVertexCount += cmdData[3];
           int enableLight = ((cmdData[0] == 0x08) || (cmdData[0] == 0x0a));
           int enableFog = ((cmdData[0] == 0x09) || (cmdData[0] == 0x0a));
           // Construct Mesh
           EWVertex *verptr =
-              ((cmdData[3] > 0xf0000000) ? ROMData[cmdData[3] - 0xf0000000]
-                                         : RAM[cmdData[3]]);
+              (EWVertex *)((cmdData[4] > 0xf0000000)
+                               ? (ROMData + (cmdData[4] - 0xf0000000))
+                               : (((uint8_t *)&RAM) + cmdData[3]));
           Mesh mesh = {0};
-          mesh.triangleCount = cmdData[2] / 3;
+          mesh.triangleCount = cmdData[3] / 3;
           mesh.vertexCount = mesh.triangleCount * 3;
           mesh.vertices =
               (float *)MemAlloc(mesh.vertexCount * 3 * sizeof(float));
@@ -209,14 +237,93 @@ void Backend_Run(Backend *backend) {
               (float *)MemAlloc(mesh.vertexCount * 2 * sizeof(float));
           mesh.normals =
               (float *)MemAlloc(mesh.vertexCount * 3 * sizeof(float));
-          for (int i = 0; i < cmdData[2]; i++) {
-            EWVertex *ver = verptr + i;
-            mesh.vertices[(i * 3) + 0] = (((float)ver->x) / 1000000);
-            mesh.vertices[(i * 3) + 1] = (((float)ver->y) / 1000000);
-            mesh.vertices[(i * 3) + 2] = (((float)ver->z) / 1000000);
+          mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4 *
+                                                  sizeof(unsigned char));
+          for (int i = 0; i < cmdData[3]; i += 3) {
+            EWVertex *ver1 = verptr + i;
+            EWVertex *ver2 = verptr + i + 1;
+            EWVertex *ver3 = verptr + i + 2;
+            mesh.vertices[(i * 3) + 0] =
+                EWVertex16ToFloat((uint16_t)(ver1->posXY & 0xFFFF));
+            mesh.vertices[(i * 3) + 1] =
+                EWVertex16ToFloat((uint16_t)((ver1->posXY & 0xFFFF0000) >> 16));
+            mesh.vertices[(i * 3) + 2] =
+                EWVertex16ToFloat((uint16_t)(ver1->posZ & 0xFFFF));
+            mesh.vertices[(i * 3) + 3] =
+                EWVertex16ToFloat((uint16_t)(ver2->posXY & 0xFFFF));
+            mesh.vertices[(i * 3) + 4] =
+                EWVertex16ToFloat((uint16_t)((ver2->posXY & 0xFFFF0000) >> 16));
+            mesh.vertices[(i * 3) + 5] =
+                EWVertex16ToFloat((uint16_t)(ver2->posZ & 0xFFFF));
+            mesh.vertices[(i * 3) + 6] =
+                EWVertex16ToFloat((uint16_t)(ver3->posXY & 0xFFFF));
+            mesh.vertices[(i * 3) + 7] =
+                EWVertex16ToFloat((uint16_t)((ver3->posXY & 0xFFFF0000) >> 16));
+            mesh.vertices[(i * 3) + 8] =
+                EWVertex16ToFloat((uint16_t)(ver3->posZ & 0xFFFF));
+            mesh.texcoords[(i * 2) + 0] =
+                EWTexCoord16ToFloat((uint16_t)(ver1->texCoords & 0xFFFF));
+            mesh.texcoords[(i * 2) + 1] = EWTexCoord16ToFloat(
+                (uint16_t)((ver1->texCoords & 0xFFFF0000) >> 16));
+            mesh.texcoords[(i * 2) + 2] =
+                EWTexCoord16ToFloat((uint16_t)(ver2->texCoords & 0xFFFF));
+            mesh.texcoords[(i * 2) + 3] = EWTexCoord16ToFloat(
+                (uint16_t)((ver2->texCoords & 0xFFFF0000) >> 16));
+            mesh.texcoords[(i * 2) + 4] =
+                EWTexCoord16ToFloat((uint16_t)(ver3->texCoords & 0xFFFF));
+            mesh.texcoords[(i * 2) + 5] = EWTexCoord16ToFloat(
+                (uint16_t)((ver3->texCoords & 0xFFFF0000) >> 16));
+            Vector3 v1 = Vector3Subtract(
+                (Vector3){
+                    .x = mesh.vertices[(i * 3) + 3],
+                    .y = mesh.vertices[(i * 3) + 4],
+                    .z = mesh.vertices[(i * 3) + 5],
+                },
+                (Vector3){
+                    .x = mesh.vertices[(i * 3) + 0],
+                    .y = mesh.vertices[(i * 3) + 1],
+                    .z = mesh.vertices[(i * 3) + 2],
+                });
+            Vector3 v2 = Vector3Subtract(
+                (Vector3){
+                    .x = mesh.vertices[(i * 3) + 6],
+                    .y = mesh.vertices[(i * 3) + 7],
+                    .z = mesh.vertices[(i * 3) + 8],
+                },
+                (Vector3){
+                    .x = mesh.vertices[(i * 3) + 0],
+                    .y = mesh.vertices[(i * 3) + 1],
+                    .z = mesh.vertices[(i * 3) + 2],
+                });
+            Vector3 faceNormal = Vector3Normalize(Vector3CrossProduct(v1, v2));
+            mesh.normals[(i * 3) + 0] = faceNormal.x;
+            mesh.normals[(i * 3) + 1] = faceNormal.y;
+            mesh.normals[(i * 3) + 2] = faceNormal.z;
+            mesh.normals[(i * 3) + 3] = faceNormal.x;
+            mesh.normals[(i * 3) + 4] = faceNormal.y;
+            mesh.normals[(i * 3) + 5] = faceNormal.z;
+            mesh.normals[(i * 3) + 6] = faceNormal.x;
+            mesh.normals[(i * 3) + 7] = faceNormal.y;
+            mesh.normals[(i * 3) + 8] = faceNormal.z;
+            Color *colPtr = (Color *)(mesh.colors + ((i * 3)));
+            colPtr[0] = EWColorToRLColor(ver1->color);
+            colPtr[1] = EWColorToRLColor(ver1->color);
+            colPtr[2] = EWColorToRLColor(ver1->color);
+            // Upload Mesh
+            UploadMesh(&mesh, false);
+            // Construct Model
+            Model model = LoadModelFromMesh(mesh);
+            model.materials[0].shader = backend->shader;
+            map_set(&GPUGeometryCache, TextFormat("%08x", cmdData[1]), &model);
           }
           break;
         }
+        case GPU_FREE_GEOMETRY: {
+          map_get(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+          break;
+        }
+        case GPU_RENDER_GEOMETRY:
+          break;
         default:
           fprintf(stderr,
                   "\x1b[1;31mRECEIVED UNKNOWN GPU COMMAND: 0x%08x (0x%08x, "
@@ -237,8 +344,8 @@ void Backend_Run(Backend *backend) {
     EndMode2D();
     EndDrawing();
     if (floor(prevSecond) != floor(GetTime())) {
-      SetWindowTitle(TextFormat("EmberWolf - Built on %s (%.2f MIPS, %i FPS)",
-                                __TIMESTAMP__, ips / 1000000, GetFPS()));
+      SetWindowTitle(TextFormat("EmberWolf - Built on %s (%.2f MIPS)",
+                                __TIMESTAMP__, ips / 1000000));
       ips = 0;
       prevSecond = GetTime();
     }
@@ -246,6 +353,7 @@ void Backend_Run(Backend *backend) {
 
   UnloadShader(backend->shader);
   UnloadTexture(framebuffer.texture);
+  map_deinit(&GPUGeometryCache);
 
   CloseWindow();
 }
@@ -254,19 +362,22 @@ static uint32_t GPUMsg[5];
 
 uint32_t HandleControlStore(uint32_t *trap, uint32_t addy, uint32_t val) {
   if (addy == 0x11000000) {  // Debug UART
-    fprintf(stderr, "%c", val);
+    putc((char)val, stderr);
   } else if (addy >= 0x20000008 && addy <= 0x2000001b) {  // GPU Command FIFO
     GPUMsg[(addy - 0x20000008) / 4] = val;
     if (addy == 0x20000008) {
       if (val == 1) {
         // Clear the FIFO
-        pthread_mutex_lock(&(GPUCmdFIFO.mutex));
-        for (int i = GPUCmdFIFO.head; i < GPUCmdFIFO.tail; i++) {
-          free(GPUCmdFIFO.data[i]);
+        atomic_store(&GPUCmdFIFO.isClearing, 1);
+        for (int i = 0; i < GPUCmdFIFO.size; i++) {
+          if (GPUCmdFIFO.data[i] != NULL) {
+            free(GPUCmdFIFO.data[i]);
+            GPUCmdFIFO.data[i] = NULL;
+          }
         }
         GPUCmdFIFO.head = 0;
         GPUCmdFIFO.tail = 0;
-        pthread_mutex_unlock(&(GPUCmdFIFO.mutex));
+        atomic_store(&GPUCmdFIFO.isClearing, 0);
       } else {
         uint32_t *buf = calloc(5, sizeof(uint32_t));
         memcpy(buf, (void *)&GPUMsg, sizeof(uint32_t) * 5);
@@ -274,7 +385,7 @@ uint32_t HandleControlStore(uint32_t *trap, uint32_t addy, uint32_t val) {
           GPUMsg[i] = 0;
         }
         if (FIFOWrite(&GPUCmdFIFO, buf) == -1) {
-          fprintf(stderr, "Failed to push command to buffer!\n");
+          free(buf);  // To prevent the gpu command memory from leaking.
         }
       }
     }
@@ -289,8 +400,16 @@ const char *GPUMagicStr = "EMBRGPU \0\0\0";
 uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy) {
   if (addy >= 0xf0000000 && addy <= (0xf0000000 + ROMSize)) {  // ROM
     return *((uint32_t *)(ROMData + (addy - 0xf0000000)));
-  } else if (addy >= 0x20000000 && addy <= 0x2000008) {  // GPU Magic Number
+  } else if (addy >= 0x20000000 && addy <= 0x2000007) {  // GPU Magic Number
     return *((uint32_t *)(GPUMagicStr + (addy - 0x20000000)));
+  } else if (addy >= 0x2000001c && addy <= 0x2000001f) {  // GPU Flags
+    uint32_t num = GPUFlags;
+    GPUFlags &= 0xfffffff0;
+    num |=
+        ((((GPUCmdFIFO.head + 1) % GPUCmdFIFO.size) == GPUCmdFIFO.tail) ? 0x4
+                                                                        : 0x0);
+    num |= ((GPUCmdFIFO.tail == GPUCmdFIFO.head) ? 0x8 : 0x0);
+    return num;
   } else {
     *trap = (5 + 1);
   }

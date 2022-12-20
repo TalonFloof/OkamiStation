@@ -230,8 +230,25 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
                 rval = CSR(timerh);
               else if (rsval == 0x1000bff8)
                 rval = CSR(timerl);
-              else
+              else {
                 MINIRV32_HANDLE_MEM_LOAD_CONTROL(&trap, rsval, rval);
+                switch ((ir >> 12) & 0x7) {
+                  case 0b000:
+                    rval = (int8_t)rval;
+                    break;
+                  case 0b001:
+                    rval = (int16_t)rval;
+                    break;
+                  case 0b010:
+                    break;
+                  case 0b100:
+                    rval = (uint8_t)rval;
+                    break;
+                  case 0b101:
+                    rval = (uint16_t)rval;
+                    break;
+                }
+              }
             } else {
               trap = (5 + 1);
               rval = rsval;

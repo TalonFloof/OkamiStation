@@ -19,9 +19,29 @@ typedef struct {
   uint32_t posXY;
   uint32_t posZ;
   uint32_t color;
-  uint32_t texCoordX;
-  uint32_t texCoordY;
+  uint32_t texCoords;
 } EWVertex;
+
+typedef enum {
+  GPU_NOP = 0x00,
+  GPU_CLEAR_FIFO = 0x01,
+  GPU_SET_FOG_INFO = 0x02,
+  GPU_SET_AMBIENT_LIGHT = 0x03,
+  GPU_SET_LIGHT_INFO = 0x04,
+  GPU_CLEAR = 0x05,
+
+  GPU_UPLOAD_GEOMETRY = 0x10,
+  GPU_FREE_GEOMETRY = 0x11,
+  GPU_RENDER_GEOMETRY = 0x12,
+
+  GPU_UPLOAD_TEXTURE = 0x20,
+  GPU_FREE_TEXTURE = 0x21,
+  GPU_BIND_TEXTURE = 0x22,
+
+  GPU_MATRIX_MODE = 0x30,
+
+  GPU_SWAP_BUFFERS = 0xff,
+} GPUCommands;
 
 Backend NewBackend();
 void Backend_Run(Backend *backend);

@@ -3,7 +3,7 @@
 .align 4
 
 _start:
-	lui sp, 0x40 // Top of 4 MiB RAM
+	lui sp, 0x40
     // Copy Data Segment to Bottom of RAM
     li a0, 0x10
     la a1, __DATA_BEGIN__
@@ -15,7 +15,7 @@ _start:
     jal ra, _mem_clear
     // Run the EWFirmwareStart C Function
 	addi sp,sp,-16
-	sw	ra,12(sp)
+	sw	ra, 12(sp)
 	jal	ra, EWFirmwareStart
 
 _mem_copy:

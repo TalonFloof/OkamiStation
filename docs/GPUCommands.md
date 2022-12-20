@@ -1,9 +1,13 @@
 GPU Address: `0x20000000`    
 ```
 Layout:
- 0x2000_0000: String: 'EMBRGPU '
- 0x2000_0008-0x2000_001b: Command FIFO
- 0x2000_001c:  u32  : FIFO Ready (0 if full)
+ 0x20000000: String: 'EMBRGPU '
+ 0x20000008-0x2000001b: Command FIFO
+ 0x2000001c:  u32  : Flags
+  0x1: Geometry Cache Overflow
+  0x2: Texture Cache Overflow
+  0x4: FIFO Full
+  0x8: FIFO Empty
 
 Commands:
  NOP [0x00]
@@ -21,7 +25,7 @@ Commands:
 
   Changes the current state of the fog info
  SET_AMBIENT_LIGHT [0x03]
-  
+  u32 color
  SET_LIGHT_INFO [0x04]
   u32 id
   u32 color
@@ -31,29 +35,44 @@ Commands:
   u32 color
 
   Clears the framebuffer with the given color.
- SET_CAMERA [0x06]
- UPLOAD_GEOMETRY [0x07]
- UPLOAD_GEOMETRY_LIGHT [0x08]
- UPLOAD_GEOMETRY_FOG [0x09]
- UPLOAD_GEOMETRY_LIGHT_FOG [0x0a]
+ UPLOAD_GEOMETRY [0x10]
+  u32 id
   u32 topology
     0: Triangles
     1: Lines
   u32 count
-  Vertex* verticies
+  Vertex* vertices
 
   --- STRUCT DECLARATION ---
   typedef struct {
-        uint32_t posXY;
-        uint32_t posZ;
+        uint32_t posXY; // (Signed, 12-bit fractional, 3-bit integer)
+        uint32_t posZ; // (Signed, 12-bit fractional, 3-bit integer)
         uint32_t color;
-        uint32_t texCoordX;
-        uint32_t texCoordY;
+        uint32_t texCoords; // (Signed, 15-bit fractional, no integer)
   } Vertex;
 
-  Constructs a 3-Dimensional Mesh and Rasterizes it onto the Framebuffer
-  Will also apply fog and lighting if enabled to do such with the mesh
- UPLOAD_TEXTURE [0x0b]
- FREE_TEXTURE [0x0c]
- BIND_TEXTURE [0x0d]
+  Constructs a 3-Dimensional Mesh using a list of vertices and saves it to the GPU's Geometry Cache.
+ FREE_GEOMETRY [0x11]
+  u32 id
+
+  Frees the Mesh stored with this ID.
+ RENDER_GEOMETRY [0x12]
+  u32 id
+
+
+ UPLOAD_TEXTURE [0x20]
+ FREE_TEXTURE [0x21]
+ BIND_TEXTURE [0x22]
+
+
+ MATRIX_MODE [0x30]
+  u32 matrixType
+   0: Geometry Matrix
+   1: View Matrix
+   2: Projection Matrix
+  
+ SWAP_BUFFERS [0xff]
+  No arguments
+
+  Swaps GPU framebuffers, in other words, display the changes made.
 ```
