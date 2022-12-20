@@ -15,6 +15,14 @@ typedef struct {
   struct MiniRV32IMAState state;
 } Backend;
 
+typedef struct {
+  uint32_t posXY;
+  uint32_t posZ;
+  uint32_t color;
+  uint32_t texCoordX;
+  uint32_t texCoordY;
+} EWVertex;
+
 Backend NewBackend();
 void Backend_Run(Backend *backend);
 

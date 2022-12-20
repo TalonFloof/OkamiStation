@@ -226,9 +226,9 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
             if (rsval >= 0x10000000 /*&& rsval < 0x12000000*/)  // UART, CLNT
             {
               if (rsval ==
-                  0x1100bffc)  // https://chromitem-soc.readthedocs.io/en/latest/clint.html
+                  0x1000bffc)  // https://chromitem-soc.readthedocs.io/en/latest/clint.html
                 rval = CSR(timerh);
-              else if (rsval == 0x1100bff8)
+              else if (rsval == 0x1000bff8)
                 rval = CSR(timerl);
               else
                 MINIRV32_HANDLE_MEM_LOAD_CONTROL(&trap, rsval, rval);
@@ -273,9 +273,9 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep(struct MiniRV32IMAState* state,
             addy -= MINIRV32_RAM_IMAGE_OFFSET;
             if (addy >= 0x10000000 /*&& addy < 0x12000000*/) {
               // Should be stuff like SYSCON, 8250, CLNT
-              if (addy == 0x11004004)  // CLNT
+              if (addy == 0x10004004)  // CLNT
                 CSR(timermatchh) = rs2;
-              else if (addy == 0x11004000)  // CLNT
+              else if (addy == 0x10004000)  // CLNT
                 CSR(timermatchl) = rs2;
               /*else if (addy == 0x11100000)  // SYSCON (reboot, poweroff, etc.)
               {
