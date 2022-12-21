@@ -47,4 +47,6 @@ _mem_clear:
 1:
     jr ra
 .section .header
-.string "Copyright (C) 2022-2023 TalonFox, firmware is licensed under the MIT License"
+.global _copyright_notice
+_copyright_notice:
+.string "EmberWolf Firmware, Copyright (C) 2022-2023 TalonFox.\nLicensed under the MIT License, see the LICENSE file for more information.\n\0"

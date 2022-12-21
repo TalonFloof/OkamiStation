@@ -319,10 +319,24 @@ void Backend_Run(Backend *backend) {
           break;
         }
         case GPU_FREE_GEOMETRY: {
-          map_get(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+          Model *model =
+              map_get(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+          if (model == NULL) {
+            break;
+          }
+          GPUVertexCount -= model->meshes[0].vertexCount;
+          UnloadModel(*model);
+          map_remove(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
           break;
         }
         case GPU_RENDER_GEOMETRY:
+          break;
+
+        case GPU_SWAP_BUFFERS:
+          BeginMode2D(fbCamera);
+          DrawTexturePro(framebuffer.texture, fbSourceRec, fbDestRec, fbOrigin,
+                         0.0f, WHITE);
+          EndMode2D();
           break;
         default:
           fprintf(stderr,
@@ -338,10 +352,6 @@ void Backend_Run(Backend *backend) {
         &((float[3]){backend->camera.position.x, backend->camera.position.y,
                      backend->camera.position.z}),
         SHADER_UNIFORM_VEC3);
-    BeginMode2D(fbCamera);
-    DrawTexturePro(framebuffer.texture, fbSourceRec, fbDestRec, fbOrigin, 0.0f,
-                   WHITE);
-    EndMode2D();
     EndDrawing();
     if (floor(prevSecond) != floor(GetTime())) {
       SetWindowTitle(TextFormat("EmberWolf - Built on %s (%.2f MIPS)",

@@ -70,6 +70,16 @@ Commands:
    0: Geometry Matrix
    1: View Matrix
    2: Projection Matrix
+
+  Sets the current matrix that we're working with to the specified matrix type.
+ MATRIX_IDENTIFY [0x31]
+  No arguments
+
+  Sets the matrix to the identity matrix
+ MATRIX_IDENTIFY [0x32]
+  No arguments
+
+  Sets the matrix to the identity matrix
   
  SWAP_BUFFERS [0xff]
   No arguments
