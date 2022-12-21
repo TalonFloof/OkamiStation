@@ -5,7 +5,7 @@ find_package(raylib 3.2 REQUIRED) # Requires at least version 3.2
 
 set(CMAKE_C_STANDARD 99) # Requires C99 standard
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lm")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lm -O3")
 
 file(GLOB sources src/*.c)
 add_executable(${PROJECT_NAME} ${sources})

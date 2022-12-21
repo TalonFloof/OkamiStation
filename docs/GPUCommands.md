@@ -45,10 +45,10 @@ Commands:
 
   --- STRUCT DECLARATION ---
   typedef struct {
-        uint32_t posXY; // (Signed, 12-bit fractional, 3-bit integer)
-        uint32_t posZ; // (Signed, 12-bit fractional, 3-bit integer)
+        uint32_t posXY;   // (Signed, 15-bit fractional, divides by 256)
+        uint32_t posZ;    // (Signed, 15-bit fractional, divides by 256)
         uint32_t color;
-        uint32_t texCoords; // (Signed, 15-bit fractional, no integer)
+        uint32_t texCoords; // (Signed, 15-bit fractional, divides by 16384, fractional value beyond 0.0-1.0 (0x4000) is prohibited)
   } Vertex;
 
   Constructs a 3-Dimensional Mesh using a list of vertices and saves it to the GPU's Geometry Cache.
@@ -59,7 +59,7 @@ Commands:
  RENDER_GEOMETRY [0x12]
   u32 id
 
-
+  Renders the Mesh stored at the given ID onto the screen (GPU Matrices are also applied as well.)
  UPLOAD_TEXTURE [0x20]
  FREE_TEXTURE [0x21]
  BIND_TEXTURE [0x22]
@@ -67,19 +67,36 @@ Commands:
 
  MATRIX_MODE [0x30]
   u32 matrixType
-   0: Geometry Matrix
-   1: View Matrix
-   2: Projection Matrix
+   0: Projection Matrix
+   1: Geometry Matrix
+   2: View Matrix
 
   Sets the current matrix that we're working with to the specified matrix type.
- MATRIX_IDENTIFY [0x31]
+ MATRIX_IDENTITY [0x31]
   No arguments
 
   Sets the matrix to the identity matrix
- MATRIX_IDENTIFY [0x32]
-  No arguments
+ MATRIX_PERSPECTIVE [0x32]
+  u32 nearPlane
+  u32 farPlane
+  u32 fov
 
-  Sets the matrix to the identity matrix
+  Calculates the perspective matrix and sets the current active matrix to the result.
+ MATRIX_TRANSLATE [0x33]
+  u32 posXY // (Signed, 15-bit fractional, divides by 128)
+  u32 posZ  // (Signed, 15-bit fractional, divides by 128)
+
+  Translates the current matrix to the given vector.
+ MATRIX_ROTATE [0x34]
+  u32 rotXY // (Signed, 15-bit fractional, divides by 32768)
+  u32 rotZ  // (Signed, 15-bit fractional, divides by 32768)
+
+  Rotates the current matrix to the given value. (Note: 8192 = 90 degress, 16384 = 180 degrees, just though I note that ;3)
+ MATRIX_SCALE [0x35]
+  u32 sclXY // (Signed, 15-bit fractional, divides by 128)
+  u32 sclZ  // (Signed, 15-bit fractional, divides by 128)
+
+  Scales the current matrix to the given value.
   
  SWAP_BUFFERS [0xff]
   No arguments

@@ -20,15 +20,22 @@ typedef enum {
   GPU_BIND_TEXTURE = 0x22,
 
   GPU_MATRIX_MODE = 0x30,
+  GPU_MATRIX_IDENTITY = 0x31,
+  GPU_MATRIX_PERSPECTIVE = 0x32,
+  GPU_MATRIX_TRANSLATE = 0x33,
+  GPU_MATRIX_ROTATE = 0x34,
+  GPU_MATRIX_SCALE = 0x35,
 
   GPU_SWAP_BUFFERS = 0xff,
 } GPUCommands;
 
+#define XY(x, y) (((uint32_t)((uint16_t)y) << 16) | (uint32_t)((uint16_t)x))
+
 typedef struct {
-  uint32_t posXY;  // (Signed, 12-bit fractional, 3-bit integer)
-  uint32_t posZ;   // (Signed, 12-bit fractional, 3-bit integer)
+  uint32_t posXY;  // (Signed, 15-bit fractional, divides by 256)
+  uint32_t posZ;   // (Signed, 15-bit fractional, divides by 256)
   uint32_t color;
-  uint32_t texCoords;  // (Signed, 15-bit fractional, no integer)
+  uint32_t texCoords;  // (Signed, 15-bit fractional, divides by 16384)
 } Vertex;
 
 static void GPUSendCommand(uint32_t cmd, uint32_t arg1, uint32_t arg2,
