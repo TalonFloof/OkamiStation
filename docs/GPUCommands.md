@@ -30,8 +30,8 @@ Commands:
  SET_LIGHT_INFO [0x04]
   u32 id
   u32 color
-  u32* pos[3]
-  u32 step
+  u32 posXY // (Signed, 15-bit fractional, divides by 128)
+  u32 posZStep // (Signed, 15-bit fractional, divides by 128) (Step is a 16-bit unsigned integer and is not a float) 
  CLEAR [0x05]
   u32 color
 
@@ -62,6 +62,13 @@ Commands:
 
   Renders the Mesh stored at the given ID onto the screen (GPU Matrices are also applied as well.)
  UPLOAD_TEXTURE [0x20]
+  u32 formatAndId
+   0: 16 Color Indexed
+   1: 256 Color Indexed
+   2: 15-bit color with 1-bit alpha
+  u32 size
+  void* data
+  void* palette (Can be a null pointer if format is 15-bit color)
  FREE_TEXTURE [0x21]
  BIND_TEXTURE [0x22]
 

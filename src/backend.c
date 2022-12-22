@@ -45,15 +45,11 @@ Backend NewBackend() {
 }
 
 void Backend_SetFog(Backend *backend, float depth[3], Color color) {
-  float col[4] = {0.0, 0.0, 0.0, 0.0};
-  col[0] = ((float)color.r) / 255;
-  col[1] = ((float)color.g) / 255;
-  col[2] = ((float)color.b) / 255;
-  col[3] = ((float)color.a) / 255;
+  Vector4 col = ColorNormalize(color);
   int fogDepthLoc = GetShaderLocation(backend->shader, "u_fogDepth");
   int fogColorLoc = GetShaderLocation(backend->shader, "u_fogColor");
   SetShaderValue(backend->shader, fogDepthLoc, depth, SHADER_UNIFORM_VEC3);
-  SetShaderValue(backend->shader, fogColorLoc, col, SHADER_UNIFORM_VEC4);
+  SetShaderValue(backend->shader, fogColorLoc, &col, SHADER_UNIFORM_VEC4);
 }
 
 void Backend_SetLight(Backend *backend, int lightID, int enabled, Color color,
@@ -194,6 +190,7 @@ void Backend_Run(Backend *backend) {
   /* INITIALIZE GPU MATRICES */
   Matrix GPUMatrices[3];
   int GPUActiveMatrix = 0;
+  Vector3 GPUViewPos = Vector3Zero();
   /* LOAD FIRMWARE */
   ROMData = LoadFileData(TextFormat("%s/resources/EmberWolfFirmware", execPath),
                          &ROMSize);
@@ -250,7 +247,11 @@ void Backend_Run(Backend *backend) {
           SetShaderValue(backend->shader, loc, &finalCol, SHADER_UNIFORM_VEC4);
           break;
         case GPU_SET_LIGHT_INFO:
-          //Backend_SetLight(backend,cmdData[1],cmdData[2]);
+          float pos[3] = {0,0,0};
+          pos[0] = EWMatrixFloat16ToFloat((uint16_t)(cmdData[3] & 0xFFFF));
+          pos[1] = EWMatrixFloat16ToFloat((uint16_t)((cmdData[3] & 0xFFFF0000) >> 16));
+          pos[2] = EWMatrixFloat16ToFloat((uint16_t)(cmdData[4] & 0xFFFF));
+          Backend_SetLight(backend,cmdData[1],(cmdData[2] & 0x38000 != 0) ? 1 : 0,EWColorToRLColor(cmdData[2]),pos,(uint16_t)((cmdData[4] & 0xFFFF0000) >> 16));
           break;
         case GPU_CLEAR:
           BeginTextureMode(framebuffer);
@@ -382,6 +383,10 @@ void Backend_Run(Backend *backend) {
           BeginTextureMode(framebuffer);
           //BeginMode3D(backend->camera);
           EWBeginMode3D(GPUMatrices[0], GPUMatrices[2]);
+          SetShaderValue(
+          backend->shader, backend->shader.locs[SHADER_LOC_VECTOR_VIEW],
+          &((float[3]){GPUViewPos.x, GPUViewPos.y, GPUViewPos.z}),
+          SHADER_UNIFORM_VEC3);
           DrawMesh(model->meshes[0], model->materials[0], GPUMatrices[1]);
           EndMode3D();
           EndTextureMode();
@@ -392,19 +397,21 @@ void Backend_Run(Backend *backend) {
           break;
         case GPU_MATRIX_IDENTITY:
           GPUMatrices[GPUActiveMatrix] = MatrixIdentity();
+          if(GPUActiveMatrix == 2)
+            GPUViewPos = Vector3Zero();
           break;
         case GPU_MATRIX_PERSPECTIVE:
           GPUMatrices[GPUActiveMatrix] = MatrixPerspective(
               ((double)cmdData[3]) * DEG2RAD, 4.0 / 3.0, 1, 10000);
           break;
         case GPU_MATRIX_TRANSLATE:
-          GPUMatrices[GPUActiveMatrix] = MatrixMultiply(
-              MatrixTranslate(
-                  EWMatrixFloat16ToFloat((uint16_t)(cmdData[1] & 0xFFFF)),
+          Vector3 vec = (Vector3){EWMatrixFloat16ToFloat((uint16_t)(cmdData[1] & 0xFFFF)),
                   EWMatrixFloat16ToFloat(
                       (uint16_t)((cmdData[1] & 0xFFFF0000) >> 16)),
-                  EWMatrixFloat16ToFloat((uint16_t)(cmdData[2] & 0xFFFF))),
-              GPUMatrices[GPUActiveMatrix]);
+                  EWMatrixFloat16ToFloat((uint16_t)(cmdData[2] & 0xFFFF))};
+          GPUMatrices[GPUActiveMatrix] = MatrixMultiply(MatrixTranslate(vec.x,vec.y,vec.z),GPUMatrices[GPUActiveMatrix]);
+          if(GPUActiveMatrix == 2)
+            GPUViewPos = Vector3Add(GPUViewPos,vec);
           break;
         case GPU_MATRIX_ROTATE:
           GPUMatrices[GPUActiveMatrix] = MatrixMultiply(
