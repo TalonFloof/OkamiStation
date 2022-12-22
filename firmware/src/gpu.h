@@ -50,4 +50,6 @@ static void GPUSendCommand(uint32_t cmd, uint32_t arg1, uint32_t arg2,
   ((uint32_t*)0x20000008)[0] = cmd;
 }
 
+static inline uint32_t GPUCurrentFrame() {return ((uint32_t*)0x20000020)[0];}
+
 #endif

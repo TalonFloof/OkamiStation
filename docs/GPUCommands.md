@@ -8,6 +8,7 @@ Layout:
   0x2: Texture Cache Overflow
   0x4: FIFO Full
   0x8: FIFO Empty
+ 0x20000020:  u32  : Frame Count
 
 Commands:
  NOP [0x00]

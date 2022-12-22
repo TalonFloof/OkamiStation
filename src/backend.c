@@ -30,16 +30,16 @@ const int HEIGHT = 192;
 
 const float RATIO = (float)WIDTH / (float)HEIGHT;
 
-const int CYCLES = 66000000; /* 33 MHz Clock Speed */
+const int CYCLES = 33868000; /* 33 MHz Clock Speed */
 
 uint8_t RAM[4 * 1024 * 1024];
 
 Backend NewBackend() {
   Camera3D camera = {0};
-  camera.position = (Vector3){-1.5f, -1.5f, -2.0f};
+  camera.position = (Vector3){5.0f, 5.0f, 5.0f};
   camera.target = (Vector3){0.0f, 0.0f, 0.0f};
-  camera.up = (Vector3){0.0f, 0.5f, 0.0f};
-  camera.fovy = 45.0f;
+  camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+  camera.fovy = 60.0f;
   camera.projection = CAMERA_PERSPECTIVE;
   return (Backend){.camera = camera};
 }
@@ -76,6 +76,7 @@ static float ips = 0;
 static atomic_bool backendReady = 0;
 static uint8_t *ROMData = NULL;
 static unsigned int ROMSize = 0;
+static uint32_t frameCount = 0;
 
 uint64_t GetUsTimestamp() {
   struct timeval tv;
@@ -95,8 +96,8 @@ void *RISCVProcThread(Backend *backend) {
   while (1) {
     uint64_t beginTime = GetUsTimestamp();
     uint64_t prevTime = GetUsTimestamp();
-    for (int i = 0; i < CYCLES; i += 10000) {
-      if (GetUsTimestamp() >= (beginTime + 1000000)) break;
+    for (int i = 0; i < CYCLES / 60; i += 10000) {
+      if (GetUsTimestamp() >= (beginTime + (1000000 / 60))) break;
       uint64_t elapsedUs = GetUsTimestamp() / 1 - prevTime;
       prevTime += elapsedUs;
       int ret = MiniRV32IMAStep(&(backend->state), RAM, 0, (uint32_t)elapsedUs,
@@ -115,8 +116,9 @@ void *RISCVProcThread(Backend *backend) {
       }
       ips += 10000;
     }
-    if (GetUsTimestamp() < (beginTime + 1000000))
-      usleep((beginTime + 1000000) - GetUsTimestamp());
+    if (GetUsTimestamp() < (beginTime + (1000000 / 60)))
+      usleep((beginTime + (1000000 / 60)) - GetUsTimestamp());
+    frameCount++;
   }
   pthread_exit(NULL);
   return NULL;
@@ -161,6 +163,24 @@ void PrintMatrix(Matrix matrix) {
 }
 
 typedef map_t(Model) ModelMap;
+
+void EWBeginMode3D(Matrix proj, Matrix view) {
+  rlDrawRenderBatchActive();  // Update and draw internal render batch
+
+  rlMatrixMode(RL_PROJECTION);  // Switch to projection matrix
+  rlPushMatrix();  // Save previous matrix, which contains the settings for the
+                   // 2d ortho projection
+  rlLoadIdentity();  // Reset current matrix (projection)
+  rlMultMatrixf(MatrixToFloat(proj));
+
+  rlMatrixMode(RL_MODELVIEW);  // Switch back to modelview matrix
+  rlLoadIdentity();            // Reset current matrix (modelview)
+
+  rlMultMatrixf(MatrixToFloat(
+      view));  // Multiply modelview matrix by view matrix (camera)
+
+  rlEnableDepthTest();  // Enable DEPTH_TEST for 3D
+}
 
 void Backend_Run(Backend *backend) {
   /* INITIALIZE GPU COMMAND FIFO */
@@ -207,29 +227,34 @@ void Backend_Run(Backend *backend) {
   backend->shader.locs[SHADER_LOC_MATRIX_MODEL] =
       GetShaderLocation(backend->shader, "matModel");
 
-  SetCameraMode(backend->camera, CAMERA_PERSPECTIVE);
-
   double prevSecond = GetTime();
   atomic_store(&backendReady, 1);
   uint32_t *cmdData;
+
+  SetCameraMode(backend->camera, CAMERA_FREE);
+
   while (!WindowShouldClose()) {
+    UpdateCamera(&backend->camera);
     // Check FIFO Buffer
     BeginDrawing();
     while ((cmdData = FIFORead(&GPUCmdFIFO)) != NULL) {
       switch (cmdData[0]) {
-        case 0x00:
+        case GPU_NOP:
           break;
         case GPU_SET_FOG_INFO:
           break;
         case GPU_SET_AMBIENT_LIGHT:
+          Color col = EWColorToRLColor(cmdData[1]);
+          int loc = GetShaderLocation(backend->shader, "u_lightAmbient");
+          float finalCol[4] = {((float)col.r) / 255, ((float)col.g) / 255, ((float)col.b) / 255, ((float)col.a) / 255};
+          SetShaderValue(backend->shader, loc, &finalCol, SHADER_UNIFORM_VEC4);
           break;
         case GPU_SET_LIGHT_INFO:
+          //Backend_SetLight(backend,cmdData[1],cmdData[2]);
           break;
         case GPU_CLEAR:
           BeginTextureMode(framebuffer);
           ClearBackground(EWColorToRLColor(cmdData[1]));
-          BeginMode3D(backend->camera);
-          EndMode3D();
           EndTextureMode();
           break;
 
@@ -256,9 +281,9 @@ void Backend_Run(Backend *backend) {
           mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4 *
                                                   sizeof(unsigned char));
           for (int i = 0; i < cmdData[3]; i += 3) {
-            EWVertex *ver1 = verptr + i;
-            EWVertex *ver2 = verptr + i + 1;
-            EWVertex *ver3 = verptr + i + 2;
+            EWVertex *ver1 = &verptr[i];
+            EWVertex *ver2 = &verptr[i+1];
+            EWVertex *ver3 = &verptr[i+2];
             mesh.vertices[(i * 3) + 0] =
                 EWVertex16ToFloat((uint16_t)(ver1->posXY & 0xFFFF));
             mesh.vertices[(i * 3) + 1] =
@@ -321,7 +346,7 @@ void Backend_Run(Backend *backend) {
             mesh.normals[(i * 3) + 6] = faceNormal.x;
             mesh.normals[(i * 3) + 7] = faceNormal.y;
             mesh.normals[(i * 3) + 8] = faceNormal.z;
-            Color *colPtr = (Color *)(mesh.colors + ((i * 3)));
+            Color *colPtr = (Color *)(mesh.colors + ((i * 4)));
             colPtr[0] = EWColorToRLColor(ver1->color);
             colPtr[1] = EWColorToRLColor(ver2->color);
             colPtr[2] = EWColorToRLColor(ver3->color);
@@ -355,16 +380,9 @@ void Backend_Run(Backend *backend) {
             break;
           }
           BeginTextureMode(framebuffer);
-          BeginMode3D(backend->camera);
-          Matrix oldProjMatrix = rlGetMatrixProjection();
-          Matrix oldViewMatrix = rlGetMatrixModelview();
-          PrintMatrix(rlGetMatrixProjection());
-          rlSetMatrixProjection(GPUMatrices[0]);
-          rlSetMatrixModelview(GPUMatrices[2]);
-          PrintMatrix(rlGetMatrixProjection());
+          //BeginMode3D(backend->camera);
+          EWBeginMode3D(GPUMatrices[0], GPUMatrices[2]);
           DrawMesh(model->meshes[0], model->materials[0], GPUMatrices[1]);
-          rlSetMatrixModelview(oldViewMatrix);
-          rlSetMatrixProjection(oldProjMatrix);
           EndMode3D();
           EndTextureMode();
           break;
@@ -377,7 +395,7 @@ void Backend_Run(Backend *backend) {
           break;
         case GPU_MATRIX_PERSPECTIVE:
           GPUMatrices[GPUActiveMatrix] = MatrixPerspective(
-              ((double)cmdData[3]) * DEG2RAD, 4.0 / 3.0, 1, 20);
+              ((double)cmdData[3]) * DEG2RAD, 4.0 / 3.0, 1, 10000);
           break;
         case GPU_MATRIX_TRANSLATE:
           GPUMatrices[GPUActiveMatrix] = MatrixMultiply(
@@ -391,10 +409,13 @@ void Backend_Run(Backend *backend) {
         case GPU_MATRIX_ROTATE:
           GPUMatrices[GPUActiveMatrix] = MatrixMultiply(
               MatrixRotateXYZ((Vector3){
-                  .x = EWMatrixRot16ToFloat((uint16_t)(cmdData[1] & 0xFFFF)),
+                  .x = EWMatrixRot16ToFloat((uint16_t)(cmdData[1] & 0xFFFF)) *
+                       PI,
                   .y = EWMatrixRot16ToFloat(
-                      (uint16_t)((cmdData[1] & 0xFFFF0000) >> 16)),
-                  .z = EWMatrixRot16ToFloat((uint16_t)(cmdData[2] & 0xFFFF))}),
+                           (uint16_t)((cmdData[1] & 0xFFFF0000) >> 16)) *
+                       PI,
+                  .z = EWMatrixRot16ToFloat((uint16_t)(cmdData[2] & 0xFFFF)) *
+                       PI}),
               GPUMatrices[GPUActiveMatrix]);
           break;
         case GPU_MATRIX_SCALE:
@@ -431,10 +452,17 @@ void Backend_Run(Backend *backend) {
     if (floor(prevSecond) != floor(GetTime())) {
       SetWindowTitle(TextFormat(
           "EmberWolf - Built on %s (%.2f MIPS%s)", __TIMESTAMP__, ips / 1000000,
-          ((ips / 1000000) < 60) ? ", CPU TOO SLOW!" : ""));
+          ((ips / 1000000) < 30) ? ", CPU TOO SLOW!" : ""));
       ips = 0;
       prevSecond = GetTime();
     }
+  }
+
+  const char *key;
+  map_iter_t iter = map_iter(&GPUGeometryCache);
+
+  while ((key = map_next(&GPUGeometryCache, &iter))) {
+    UnloadModel(*(map_get(&GPUGeometryCache, key)));
   }
 
   UnloadShader(backend->shader);
@@ -496,31 +524,10 @@ uint32_t HandleControlLoad(uint32_t *trap, uint32_t addy) {
                                                                         : 0x0);
     num |= ((GPUCmdFIFO.tail == GPUCmdFIFO.head) ? 0x8 : 0x0);
     return num;
+  } else if (addy >= 0x20000020 && addy <= 0x20000023) {
+    return frameCount;
   } else {
     *trap = (5 + 1);
   }
   return 0;
 }
-
-/*
-        if (m_normalsModeState == ENormalsMode::Flat)
-        {
-            for (size_t i = 0; i < m_vertexState.count; i+=3)
-            {
-                Vec3f v1 = m_vertexState[i+1].pos - m_vertexState[i].pos;
-                Vec3f v2 = m_vertexState[i+2].pos - m_vertexState[i].pos;
-                Vec3f faceNormal = Vec3f::Cross(v1, v2).GetNormalized();
-
-                m_vertexState[i].norm = faceNormal;
-                m_vertexState[i+1].norm = faceNormal;
-                m_vertexState[i+2].norm = faceNormal;
-            }
-
-            // create vertex buffer
-            uint32_t numVertices = (uint32_t)m_vertexState.count;
-            if (numVertices != bgfx::getAvailTransientVertexBuffer(numVertices,
-   m_layout) ) return; bgfx::allocTransientVertexBuffer(&vertexBuffer,
-   numVertices, m_layout); VertexData* verts = (VertexData*)vertexBuffer.data;
-            bx::memCopy(verts, m_vertexState.pData, numVertices *
-   sizeof(VertexData) );
-*/
