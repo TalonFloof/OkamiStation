@@ -460,10 +460,10 @@ void Backend_Run(Backend *backend) {
           backend->shader, backend->shader.locs[SHADER_LOC_VECTOR_VIEW],
           &((float[3]){GPUViewPos.x, GPUViewPos.y, GPUViewPos.z}),
           SHADER_UNIFORM_VEC3);
-          rlDisableBackfaceCulling();
           model->materials[model->meshMaterial[0]]
               .maps[MATERIAL_MAP_DIFFUSE]
               .color = EWColorToRLColor(cmdData[2]);
+          rlDisableBackfaceCulling();
           DrawMesh(model->meshes[0], model->materials[0], GPUMatrices[1]);
           EndMode3D();
           EndTextureMode();
