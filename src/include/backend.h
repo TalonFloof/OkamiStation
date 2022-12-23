@@ -1,6 +1,7 @@
 #ifndef _BACKEND_H
 #define _BACKEND_H 1
 
+#include <stdint.h>
 #include <mini-rv32ima.h>
 #include <pthread.h>
 #include <raylib.h>

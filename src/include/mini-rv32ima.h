@@ -4,8 +4,6 @@
 #ifndef _MINI_RV32IMAH_H
 #define _MINI_RV32IMAH_H
 
-#include <stdint.h>
-
 /**
     To use mini-rv32ima.h for the bare minimum, the following:
         #define MINI_RV32_RAM_SIZE ram_amt
