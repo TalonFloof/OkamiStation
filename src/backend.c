@@ -133,6 +133,20 @@ Color EWColorToRLColor(uint32_t color) {
   };
 }
 
+Color EWShortColorToRLColor(uint16_t color) {
+  return (Color){
+      .r = (uint8_t)(((double)((color & (0b11111 << 10)) >> 10) / 31) * 255),
+      .g = (uint8_t)(((double)((color & (0b11111 << 5)) >> 5) / 31) * 255),
+      .b = (uint8_t)(((double)(color & (0b11111 << 0)) / 31) * 255),
+      .a = (uint8_t)(((color & 0x8000) >> 15) * 255),
+  };
+}
+
+uint16_t EWShortColorToR5G5B5A1(uint16_t color) {
+  uint16_t a = (color & 0x8000) >> 15;
+  return (color << 1) | a;
+}
+
 float EWVertex16ToFloat(uint16_t num) { return ((float)((int16_t)num)) / 256; }
 
 float EWTexCoord16ToFloat(uint16_t num) {
@@ -147,6 +161,10 @@ float EWMatrixRot16ToFloat(uint16_t num) {
   return ((float)((int16_t)num)) / 32768;
 }
 
+float EWFog16ToFloat(uint16_t num) {
+  return ((float)((int16_t)num)) / 32;
+}
+
 void PrintMatrix(Matrix matrix) {
   for (int y = 0; y < 4; y++) {
     fprintf(stderr, "| ");
@@ -159,6 +177,7 @@ void PrintMatrix(Matrix matrix) {
 }
 
 typedef map_t(Model) ModelMap;
+typedef map_t(Texture2D) TextureMap;
 
 void EWBeginMode3D(Matrix proj, Matrix view) {
   rlDrawRenderBatchActive();  // Update and draw internal render batch
@@ -178,15 +197,76 @@ void EWBeginMode3D(Matrix proj, Matrix view) {
   rlEnableDepthTest();  // Enable DEPTH_TEST for 3D
 }
 
+void* ConvertPointer(uint32_t ptr) {
+  if(ptr <= (4*1024*1024)) { // General Purpose RAM
+    return (void*)(((uint8_t*)&RAM)+ptr);
+  } else if(ptr >= 0x80000000 && ptr <= 0xefffffff) { // Cartridge
+    return NULL; // For Now
+  } else if(ptr >= 0xf0000000) {
+    return (void*)(ROMData+(ptr-0xf0000000));
+  }
+  return NULL;
+}
+
+Image Indexed4ToImage(uint32_t width, uint32_t height, uint8_t* buf, uint16_t* pal) {
+  uint16_t* pixels = (uint16_t*)MemAlloc(width*height*2);
+  Image finalImg = {
+    .data = pixels,
+    .width = width,
+    .height = height,
+    .format = PIXELFORMAT_UNCOMPRESSED_R5G5B5A1,
+    .mipmaps = 1
+  };
+  for(int i = 0; i < (width*height); i++) {
+    uint32_t data = (uint32_t)((i%2 == 0) ? (buf[i/2] & 0xF) : ((buf[i/2] & 0xF0) >> 4));
+    pixels[i] = EWShortColorToR5G5B5A1(pal[data]);
+  }
+  return finalImg;
+}
+
+Image Indexed8ToImage(uint32_t width, uint32_t height, uint8_t* buf, uint16_t* pal) {
+  uint16_t* pixels = (uint16_t*)MemAlloc(width*height*2);
+  Image finalImg = {
+    .data = pixels,
+    .width = width,
+    .height = height,
+    .format = PIXELFORMAT_UNCOMPRESSED_R5G5B5A1,
+    .mipmaps = 1
+  };
+  for(int i = 0; i < (width*height); i++) {
+    pixels[i] = EWShortColorToR5G5B5A1(pal[buf[i]]);
+  }
+  return finalImg;
+}
+
+Image EW16BitToImage(uint32_t width, uint32_t height, uint16_t* buf, uint16_t* pal) {
+  uint16_t* pixels = (uint16_t*)MemAlloc(width*height*2);
+  Image finalImg = {
+    .data = pixels,
+    .width = width,
+    .height = height,
+    .format = PIXELFORMAT_UNCOMPRESSED_R5G5B5A1,
+    .mipmaps = 1
+  };
+  for(int i = 0; i < (width*height); i++) {
+    pixels[i] = EWShortColorToR5G5B5A1(buf[i]);
+  }
+  return finalImg;
+}
+
 void Backend_Run(Backend *backend) {
+  //SetTraceLogLevel(LOG_ERROR);
   /* INITIALIZE GPU COMMAND FIFO */
   GPUCmdFIFO.isClearing = 0;
   GPUCmdFIFO.size = 256;
   GPUCmdFIFO.data = malloc(256 * sizeof(uintptr_t));
-  /* INITIALIZE GPU GEOMETRY CACHE */
+  /* INITIALIZE GPU CACHES */
   ModelMap GPUGeometryCache;
+  TextureMap GPUTextureCache;
   int GPUVertexCount = 0;
+  int GPUTexDataCount = 0;
   map_init(&GPUGeometryCache);
+  map_init(&GPUTextureCache);
   /* INITIALIZE GPU MATRICES */
   Matrix GPUMatrices[3];
   int GPUActiveMatrix = 0;
@@ -201,7 +281,7 @@ void Backend_Run(Backend *backend) {
   pthread_t processorThreadID;
   pthread_create(&processorThreadID, NULL, (void *(*)(void *))RISCVProcThread,
                  backend);
-  SetConfigFlags(FLAG_WINDOW_TRANSPARENT);
+  SetConfigFlags(0);
   InitWindow(WIDTH * 3, HEIGHT * 3, TextFormat("EmberWolf"));
 
   RenderTexture2D framebuffer = LoadRenderTexture(WIDTH, HEIGHT);
@@ -228,10 +308,10 @@ void Backend_Run(Backend *backend) {
   atomic_store(&backendReady, 1);
   uint32_t *cmdData;
 
-  SetCameraMode(backend->camera, CAMERA_FREE);
+  //SetCameraMode(backend->camera, CAMERA_FREE);
 
   while (!WindowShouldClose()) {
-    UpdateCamera(&backend->camera);
+    //UpdateCamera(&backend->camera);
     // Check FIFO Buffer
     BeginDrawing();
     while ((cmdData = FIFORead(&GPUCmdFIFO)) != NULL) {
@@ -239,40 +319,48 @@ void Backend_Run(Backend *backend) {
         case GPU_NOP:
           break;
         case GPU_SET_FOG_INFO:
+          Backend_SetFog(backend,(float[3]){EWFog16ToFloat((uint16_t)(cmdData[2] & 0xFFFF)),EWFog16ToFloat((uint16_t)((cmdData[2] & 0xFFFF0000) >> 16)),cmdData[1]},EWColorToRLColor(cmdData[3]));
           break;
-        case GPU_SET_AMBIENT_LIGHT:
+        case GPU_SET_AMBIENT_LIGHT: {
           Color col = EWColorToRLColor(cmdData[1]);
           int loc = GetShaderLocation(backend->shader, "u_lightAmbient");
           float finalCol[4] = {((float)col.r) / 255, ((float)col.g) / 255, ((float)col.b) / 255, ((float)col.a) / 255};
           SetShaderValue(backend->shader, loc, &finalCol, SHADER_UNIFORM_VEC4);
           break;
-        case GPU_SET_LIGHT_INFO:
+        }
+        case GPU_SET_LIGHT_INFO: {
           float pos[3] = {0,0,0};
           pos[0] = EWMatrixFloat16ToFloat((uint16_t)(cmdData[3] & 0xFFFF));
           pos[1] = EWMatrixFloat16ToFloat((uint16_t)((cmdData[3] & 0xFFFF0000) >> 16));
           pos[2] = EWMatrixFloat16ToFloat((uint16_t)(cmdData[4] & 0xFFFF));
           Backend_SetLight(backend,cmdData[1],(cmdData[2] & 0x38000 != 0) ? 1 : 0,EWColorToRLColor(cmdData[2]),pos,(uint16_t)((cmdData[4] & 0xFFFF0000) >> 16));
           break;
+        }
         case GPU_CLEAR:
           BeginTextureMode(framebuffer);
           ClearBackground(EWColorToRLColor(cmdData[1]));
           EndTextureMode();
           break;
-
+        
+        case GPU_UPLOAD_INDEXED_GEOMETRY:
         case GPU_UPLOAD_GEOMETRY: {
-          if (GPUVertexCount + cmdData[3] > 6144) {
+          uint32_t count1 = cmdData[2] & 0xFFFF;
+          uint32_t count2 = (cmdData[0] == GPU_UPLOAD_INDEXED_GEOMETRY) ? ((cmdData[2] & 0xFFFF0000) >> 16) : count1;
+          if (GPUVertexCount + count1 > 6144) {
             GPUFlags |= 0x1;
             break;
           }
-          GPUVertexCount += cmdData[3];
+          GPUVertexCount += count1;
           // Construct Mesh
-          EWVertex *verptr =
-              (EWVertex *)((cmdData[4] > 0xf0000000)
-                               ? (ROMData + (cmdData[4] - 0xf0000000))
-                               : (((uint8_t *)&RAM) + cmdData[3]));
+          EWVertex *verptr = (EWVertex*)ConvertPointer(cmdData[3]);
+          uint16_t *indptr = NULL;
           Mesh mesh = {0};
-          mesh.triangleCount = cmdData[3] / 3;
-          mesh.vertexCount = mesh.triangleCount * 3;
+          mesh.triangleCount = count1 / 3;
+          mesh.vertexCount = count2;
+          if(cmdData[0] == GPU_UPLOAD_INDEXED_GEOMETRY) {
+            mesh.indices = (uint16_t*)MemAlloc(count1 * sizeof(uint16_t));
+            indptr = (uint16_t*)ConvertPointer(cmdData[4]);
+          }
           mesh.vertices =
               (float *)MemAlloc(mesh.vertexCount * 3 * sizeof(float));
           mesh.texcoords =
@@ -281,7 +369,7 @@ void Backend_Run(Backend *backend) {
               (float *)MemAlloc(mesh.vertexCount * 3 * sizeof(float));
           mesh.colors = (unsigned char *)MemAlloc(mesh.vertexCount * 4 *
                                                   sizeof(unsigned char));
-          for (int i = 0; i < cmdData[3]; i += 3) {
+          for (int i = 0; i < count2; i += 3) {
             EWVertex *ver1 = &verptr[i];
             EWVertex *ver2 = &verptr[i+1];
             EWVertex *ver3 = &verptr[i+2];
@@ -316,27 +404,11 @@ void Backend_Run(Backend *backend) {
             mesh.texcoords[(i * 2) + 5] = EWTexCoord16ToFloat(
                 (uint16_t)((ver3->texCoords & 0xFFFF0000) >> 16));
             Vector3 v1 = Vector3Subtract(
-                (Vector3){
-                    .x = mesh.vertices[(i * 3) + 3],
-                    .y = mesh.vertices[(i * 3) + 4],
-                    .z = mesh.vertices[(i * 3) + 5],
-                },
-                (Vector3){
-                    .x = mesh.vertices[(i * 3) + 0],
-                    .y = mesh.vertices[(i * 3) + 1],
-                    .z = mesh.vertices[(i * 3) + 2],
-                });
+                (Vector3){mesh.vertices[(i * 3) + 3],mesh.vertices[(i * 3) + 4],mesh.vertices[(i * 3) + 5],},
+                (Vector3){mesh.vertices[(i * 3) + 0],mesh.vertices[(i * 3) + 1],mesh.vertices[(i * 3) + 2],});
             Vector3 v2 = Vector3Subtract(
-                (Vector3){
-                    .x = mesh.vertices[(i * 3) + 6],
-                    .y = mesh.vertices[(i * 3) + 7],
-                    .z = mesh.vertices[(i * 3) + 8],
-                },
-                (Vector3){
-                    .x = mesh.vertices[(i * 3) + 0],
-                    .y = mesh.vertices[(i * 3) + 1],
-                    .z = mesh.vertices[(i * 3) + 2],
-                });
+                (Vector3){mesh.vertices[(i * 3) + 6],mesh.vertices[(i * 3) + 7],mesh.vertices[(i * 3) + 8],},
+                (Vector3){mesh.vertices[(i * 3) + 0],mesh.vertices[(i * 3) + 1],mesh.vertices[(i * 3) + 2],});
             Vector3 faceNormal = Vector3Normalize(Vector3CrossProduct(v1, v2));
             mesh.normals[(i * 3) + 0] = faceNormal.x;
             mesh.normals[(i * 3) + 1] = faceNormal.y;
@@ -352,45 +424,101 @@ void Backend_Run(Backend *backend) {
             colPtr[1] = EWColorToRLColor(ver2->color);
             colPtr[2] = EWColorToRLColor(ver3->color);
           }
+          if(indptr != NULL) {
+            for (int i = 0; i < count1; i++) {
+              mesh.indices[i] = indptr[i];
+            }
+          }
           // Upload Mesh
           UploadMesh(&mesh, false);
           // Construct Model
           Model model = LoadModelFromMesh(mesh);
-          model.materials[model.meshMaterial[0]]
-              .maps[MATERIAL_MAP_DIFFUSE]
-              .color = WHITE;
           model.materials[0].shader = backend->shader;
-          map_set(&GPUGeometryCache, TextFormat("%08x", cmdData[1]), model);
+          map_set(&GPUGeometryCache, TextFormat("%04x", (uint16_t)cmdData[1]), model);
           break;
         }
         case GPU_FREE_GEOMETRY: {
           Model *model =
-              map_get(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+              map_get(&GPUGeometryCache, TextFormat("%04x", (uint16_t)cmdData[1]));
           if (model == NULL) {
             break;
           }
           GPUVertexCount -= model->meshes[0].vertexCount;
           UnloadModel(*model);
-          map_remove(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+          map_remove(&GPUGeometryCache, TextFormat("%04x", (uint16_t)cmdData[1]));
           break;
         }
-        case GPU_RENDER_GEOMETRY:
+        case GPU_RENDER_GEOMETRY: {
           Model *model =
-              map_get(&GPUGeometryCache, TextFormat("%08x", cmdData[1]));
+              map_get(&GPUGeometryCache, TextFormat("%04x", (uint16_t)cmdData[1]));
           if (model == NULL) {
             break;
           }
           BeginTextureMode(framebuffer);
-          //BeginMode3D(backend->camera);
           EWBeginMode3D(GPUMatrices[0], GPUMatrices[2]);
           SetShaderValue(
           backend->shader, backend->shader.locs[SHADER_LOC_VECTOR_VIEW],
           &((float[3]){GPUViewPos.x, GPUViewPos.y, GPUViewPos.z}),
           SHADER_UNIFORM_VEC3);
+          rlDisableBackfaceCulling();
+          model->materials[model->meshMaterial[0]]
+              .maps[MATERIAL_MAP_DIFFUSE]
+              .color = EWColorToRLColor(cmdData[2]);
           DrawMesh(model->meshes[0], model->materials[0], GPUMatrices[1]);
           EndMode3D();
           EndTextureMode();
           break;
+        }
+
+        case GPU_UPLOAD_TEXTURE: {
+          Image img;
+          switch((cmdData[1] & 0xFFFF)) {
+            case 0: // 16 Color Indexed
+              img = Indexed4ToImage((uint32_t)(cmdData[2] & 0xFFFF),(uint32_t)((cmdData[2] & 0xFFFF0000) >> 16),(uint8_t*)ConvertPointer(cmdData[3]),(uint16_t*)ConvertPointer(cmdData[4]));
+              break;
+            case 1: // 256 Color Indexed
+              img = Indexed8ToImage((uint32_t)(cmdData[2] & 0xFFFF),(uint32_t)((cmdData[2] & 0xFFFF0000) >> 16),(uint8_t*)ConvertPointer(cmdData[3]),(uint16_t*)ConvertPointer(cmdData[4]));
+              break;
+            case 2: // A1R5G5B5
+              img = EW16BitToImage((uint32_t)(cmdData[2] & 0xFFFF),(uint32_t)((cmdData[2] & 0xFFFF0000) >> 16),(uint16_t*)ConvertPointer(cmdData[3]),(uint16_t*)ConvertPointer(cmdData[4]));
+              break;
+            default:
+              break;
+          }
+          Texture2D tex = LoadTextureFromImage(img);
+          UnloadImage(img);
+          map_set(&GPUTextureCache, TextFormat("%04x", ((cmdData[1] & 0xFFFF0000) >> 16)), tex);
+          break;
+        }
+        case GPU_FREE_TEXTURE: {
+          Texture2D *tex =
+              map_get(&GPUTextureCache, TextFormat("%04x", cmdData[1]));
+          if (tex == NULL) {
+            break;
+          }
+          UnloadTexture(*tex);
+          map_remove(&GPUTextureCache, TextFormat("%04x", cmdData[1]));
+          break;
+        }
+        case GPU_BIND_TEXTURE: {
+          Model *model =
+              map_get(&GPUGeometryCache, TextFormat("%04x", (uint16_t)cmdData[2]));
+          if (model == NULL) {
+            break;
+          }
+          if(cmdData[1] == 0) {
+            model->materials[0].maps[MATERIAL_MAP_ALBEDO].texture = (Texture2D){ rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+          } else {
+            Texture2D *tex =
+              map_get(&GPUTextureCache, TextFormat("%04x", cmdData[1]));
+            if (tex == NULL) {
+              break;
+            }
+            
+            model->materials[0].maps[MATERIAL_MAP_ALBEDO].texture = *tex;
+          }
+          break;
+        }
 
         case GPU_MATRIX_MODE:
           GPUActiveMatrix = cmdData[1];
@@ -402,9 +530,9 @@ void Backend_Run(Backend *backend) {
           break;
         case GPU_MATRIX_PERSPECTIVE:
           GPUMatrices[GPUActiveMatrix] = MatrixPerspective(
-              ((double)cmdData[3]) * DEG2RAD, 4.0 / 3.0, 1, 10000);
+              ((double)cmdData[3]) * DEG2RAD, 4.0 / 3.0, cmdData[1], cmdData[2]);
           break;
-        case GPU_MATRIX_TRANSLATE:
+        case GPU_MATRIX_TRANSLATE: {
           Vector3 vec = (Vector3){EWMatrixFloat16ToFloat((uint16_t)(cmdData[1] & 0xFFFF)),
                   EWMatrixFloat16ToFloat(
                       (uint16_t)((cmdData[1] & 0xFFFF0000) >> 16)),
@@ -413,6 +541,7 @@ void Backend_Run(Backend *backend) {
           if(GPUActiveMatrix == 2)
             GPUViewPos = Vector3Add(GPUViewPos,vec);
           break;
+        }
         case GPU_MATRIX_ROTATE:
           GPUMatrices[GPUActiveMatrix] = MatrixMultiply(
               MatrixRotateXYZ((Vector3){

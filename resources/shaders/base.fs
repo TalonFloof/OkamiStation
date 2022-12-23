@@ -45,7 +45,7 @@ vec4 nearestColour(vec4 inColor) {
 
 void main() {
 	float spread = 1.0 / (0.299 * (32.0 - 1.0) + 0.587 * (32.0 - 1.0) + 0.114 * (32.0 - 1.0));
-    vec4 color = fragColor * texture(texture0, fragTexCoord);
+    vec4 color = fragColor * texture2D(texture0, fragTexCoord);
 	vec2 entry = mod(gl_FragCoord.xy, vec2(bayerSize, bayerSize));
 
 	if(u_lightAmbient.w != 0) {
@@ -64,8 +64,8 @@ void main() {
 	if(u_fogDepth.z != 0) {
 		float depth = length(u_viewPos - fragPosition);
 		float fogDensity = clamp((depth-u_fogDepth.x)/(u_fogDepth.y-u_fogDepth.x), 0.0, 1.0);
-        finalColor = nearestColour(vec4(mix(color.xyz, u_fogColor.xyz, fogDensity), color.w));
+        finalColor = nearestColour(vec4(mix(color.xyz, u_fogColor.xyz, fogDensity), color.w)*colDiffuse);
 	} else {
-		finalColor = nearestColour(color);
+		finalColor = nearestColour(color*colDiffuse);
 	}
 }

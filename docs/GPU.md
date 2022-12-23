@@ -9,6 +9,7 @@ Layout:
   0x4: FIFO Full
   0x8: FIFO Empty
  0x20000020:  u32  : Frame Count
+ 0x20000024-0x20000fff: Reserved
 
 Commands:
  NOP [0x00]
@@ -20,8 +21,8 @@ Commands:
 
   Clears the Command FIFO
  SET_FOG_INFO [0x02]
-  u32 Fog Start
-  u32 Fog End
+  u32 Fog Enable
+  u32 Fog Start & End
   u32 Fog Color
 
   Changes the current state of the fog info
@@ -37,8 +38,7 @@ Commands:
 
   Clears the framebuffer with the given color.
  UPLOAD_GEOMETRY [0x10]
-  u32 id
-  u32 topology
+  u32 idAndTopology
     0: Triangles
     1: Lines
   u32 count
@@ -53,25 +53,46 @@ Commands:
   } Vertex;
 
   Constructs a 3-Dimensional Mesh using a list of vertices and saves it to the GPU's Geometry Cache.
+ 
+ UPLOAD_INDEXED_GEOMETRY [0x11]
+  u32 idAndTopology
+    0: Triangles
+    1: Lines
+  u32 indiceAndVertexCount
+  Vertex* vertices
+  u16* indices
+
+  Constructs a 3-Dimensional Mesh using a list of indices and saves it to the GPU's Geometry Cache.
+
  FREE_GEOMETRY [0x11]
   u32 id
 
   Frees the Mesh stored with this ID.
  RENDER_GEOMETRY [0x12]
   u32 id
+  u32 tint
 
   Renders the Mesh stored at the given ID onto the screen (GPU Matrices are also applied as well.)
  UPLOAD_TEXTURE [0x20]
   u32 formatAndId
    0: 16 Color Indexed
    1: 256 Color Indexed
-   2: 15-bit color with 1-bit alpha
+   2: A1R5G5B5
   u32 size
   void* data
-  void* palette (Can be a null pointer if format is 15-bit color)
- FREE_TEXTURE [0x21]
- BIND_TEXTURE [0x22]
+  void* palette (Can be a null pointer if format is A1R5G5B5)
 
+  Uploads the texture data and adds it to the Texture Cache.
+ FREE_TEXTURE [0x21]
+  u16 textureID
+
+  Frees the texture data from the Texture Cache.
+ BIND_TEXTURE [0x22]
+  u32 textureID
+  u32 geometryID
+
+  Binds the texture from the Texture Cache to the a mesh in the Geometry Cache.
+  If the texture id is 0, then a texture unbinds from a mesh.
 
  MATRIX_MODE [0x30]
   u32 matrixType
@@ -106,6 +127,11 @@ Commands:
 
   Scales the current matrix to the given value.
   
+ BLIT_TEXTURE [0x40]
+  u32 posXY
+
+
+  Tells the 2D GPU to render onto the screen. (You still need to swap buffers afterwards)
  SWAP_BUFFERS [0xff]
   No arguments
 

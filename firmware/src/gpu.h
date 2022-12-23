@@ -12,8 +12,9 @@ typedef enum {
   GPU_CLEAR = 0x05,
 
   GPU_UPLOAD_GEOMETRY = 0x10,
-  GPU_FREE_GEOMETRY = 0x11,
-  GPU_RENDER_GEOMETRY = 0x12,
+  GPU_UPLOAD_INDEXED_GEOMETRY = 0x11,
+  GPU_FREE_GEOMETRY = 0x12,
+  GPU_RENDER_GEOMETRY = 0x13,
 
   GPU_UPLOAD_TEXTURE = 0x20,
   GPU_FREE_TEXTURE = 0x21,
@@ -38,10 +39,11 @@ typedef struct {
   uint32_t texCoords;  // (Signed, 15-bit fractional, divides by 16384)
 } Vertex;
 
+#define VERTEX(x,y,z,col,u,v) (Vertex){XY(x,y),XY(z,0),col,XY(u,v)}
+
 static void GPUSendCommand(uint32_t cmd, uint32_t arg1, uint32_t arg2,
                            uint32_t arg3, uint32_t arg4) {
-  while (((*((uint32_t*)0x20000001c)) & 0x4) != 0) {
-  }
+  while (((*((uint32_t*)0x20000001c)) & 0x4) != 0) {}
   ((uint32_t*)0x20000008)[1] = arg1;
   ((uint32_t*)0x20000008)[2] = arg2;
   ((uint32_t*)0x20000008)[3] = arg3;
