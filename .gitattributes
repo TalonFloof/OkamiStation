@@ -2,3 +2,4 @@
 *.bat eol=crlf
 
 **/*.h linguist-language=C
+oamkisdk/**/*.lua linguist-language=C
