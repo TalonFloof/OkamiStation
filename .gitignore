@@ -1,5 +1,1 @@
-/build/
 *.o
-EmberWolfFirmware
-EmberWolfFirmware.elf
-bin2header.py
