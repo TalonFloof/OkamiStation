@@ -32,7 +32,7 @@ void setRegister(int index, uint32_t value) {
 }
 
 void flushICacheLine(int index) {
-    
+
 }
 
 void flushDCacheLine(int index) {
@@ -94,5 +94,11 @@ void next() {
         return;
     }
     PC += 4;
-    switch()
+    uint32_t opcode = (instr & 0xFC000000) >> 26;
+    switch(opcode) {
+        case 0: { // ADD
+
+            break;
+        }
+    }
 }
