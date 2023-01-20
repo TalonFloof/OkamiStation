@@ -22,9 +22,9 @@ local function printhelp()
 	print("usage: asmfx.lua [source] [dest]")
 end
 
-local target = "xr17032"
+local target = "okami1041"
 
-local format = "xloff"
+local format = "flat"
 
 for k,v in pairs(arg) do
 	if v:sub(1,7) == "target=" then

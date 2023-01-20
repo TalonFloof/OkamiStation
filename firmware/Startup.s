@@ -1,4 +1,4 @@
-.text
+.section text
 _OkamiStationFirmwareStartup:
     ; We must first clear the caches
 

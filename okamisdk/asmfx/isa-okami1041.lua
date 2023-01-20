@@ -82,7 +82,12 @@ function isa.relocate(sections)
 		end
 	end
 
-	return true
+	return false
+end
+
+function isa.reloctype(format, relocation)
+	print("asm: isa-okami1041: I don't support "..format.name)
+	return false
 end
 
 local function addFormat(operandinfo, encodingstring, formatstring)
