@@ -4,7 +4,7 @@
 #include "koribus.h"
 
 uint32_t registers[32];
-uint32_t PC;
+uint32_t PC = 0x;
 
 uint32_t extRegisters[0x14];
 
@@ -70,16 +70,16 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 return true;
             } else { // Cache Miss
                 stallTicks = 4;
-                dCacheTags[index] = (addr & 0xFFFFFFFC) | 1;
-                dCacheLines[index][0]
+                flushDCacheLine(index);
+                KoriBusRead(&dCacheLines[index][0]);
             }
         }
     } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel2 segment
         stallTicks = 3; // Uncached Stall
         if(write) {
-            return (bool)KoriBusWrite(addr,len,buf);
+            return (bool)KoriBusWrite(addr-0xc0000000,len,buf);
         } else {
-            return (bool)KoriBusRead(addr,len,buf);
+            return (bool)KoriBusRead(addr-0xc0000000,len,buf);
         }
     }
 }
@@ -95,9 +95,48 @@ void next() {
     }
     PC += 4;
     uint32_t opcode = (instr & 0xFC000000) >> 26;
-    switch(opcode) {
-        case 0: { // ADD
+    switch((opcode & 0b110000) >> 4) {
+        case 0: {
+            uint32_t rd = (instr & 0xf800) >> 11;
+            uint32_t rs1 = (instr & 0x1F0000) >> 16;
+            uint32_t rs2 = (instr & 0x3E00000) >> 21;
+            switch((opcode & 0b1111)) {
+                case 0: { // ADD
+                    setRegister(rd,getRegister(rs1)+getRegister(rs2));
+                    break;
+                }
+                case 1: { // SUB
+                    setRegister(rd,getRegister(rs1)-getRegister(rs2));
+                    break;
+                }
+                case 2: { // AND
+                    setRegister(rd,getRegister(rs1)&getRegister(rs2));
+                    break;
+                }
+                case 3: { // OR
+                    setRegister(rd,getRegister(rs1)|getRegister(rs2));
+                    break;
+                }
+                case 4: { // XOR
+                    setRegister(rd,getRegister(rs1)^getRegister(rs2));
+                    break;
+                }
+                case 5: { // SLL
+                    setRegister(rd,getRegister(rs1)<<getRegister(rs2));
+                    break;
+                }
+                case 6: { // SRL/SRA
+                    if(instr & 0x400) {
+                        setRegister(rd,((int32_t)getRegister(rs1))>>((int32_t)getRegister(rs2)));
+                    } else {
+                        setRegister(rd,getRegister(rs1)>>getRegister(rs2));
+                    }
+                    break;
+                }
+                case 7: { // SLT/SLTU
 
+                }
+            }
             break;
         }
     }
