@@ -185,6 +185,14 @@ void next() {
                     setRegister(rd,getRegister(rs)&constS);
                     break;
                 }
+                case 2: { // ORI
+                    setRegister(rd,getRegister(rs)|constS);
+                    break;
+                }
+                case 3: { // ANDI
+                    setRegister(rd,getRegister(rs)&constS);
+                    break;
+                }
                 default: {
                     // TODO: Trigger Trap
                     break;
