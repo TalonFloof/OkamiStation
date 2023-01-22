@@ -133,8 +133,61 @@ void next() {
                     }
                     break;
                 }
-                case 7: { // SLT/SLTU
-
+                case 7: { // SLT
+                    setRegister(rd,(((int32_t)getRegister(rs1))<((int32_t)getRegister(rs2)))?1:0);
+                    break;
+                }
+                case 8: { // SLTU
+                    setRegister(rd,(getRegister(rs1)<getRegister(rs2))?1:0);
+                    break;
+                }
+                case 9: { // MUL/MULU
+                    uint32_t lowRd = (instr & 0x7C0) >> 6;
+                    if(instr & 0x8) {
+                        uint64_t result = ((uint64_t)getRegister(rs1))*((uint64_t)getRegister(rs2));
+                        setRegister(lowRd, result & 0xFFFFFFFF);
+                        setRegister(rd, result >> 32);
+                    } else {
+                        uint64_t result = (uint64_t)(((int64_t)getRegister(rs1))*((int64_t)getRegister(rs2)));
+                        setRegister(lowRd, result & 0xFFFFFFFF);
+                        setRegister(rd, result >> 32);
+                    }
+                    break;
+                }
+                case 10: { // DIV/DIVU
+                    uint32_t lowRd = (instr & 0x7C0) >> 6;
+                    if(instr & 0x8) {
+                        setRegister(lowRd, getRegister(rs1)/getRegister(rs2));
+                    } else {
+                        setRegister(lowRd, getRegister(rs1)/getRegister(rs2));
+                        setRegister(rd, getRegister(rs1)%getRegister(rs2));
+                    }
+                    break;
+                }
+                default: {
+                    // TODO: Trigger Trap
+                    break;
+                }
+            }
+            break;
+        }
+        case 1: {
+            int32_t constS = (int32_t)((int16_t)(instr & 0xFFFF));
+            uint32_t constU = instr & 0xFFFF;
+            uint32_t rd = (instr & 0x1F0000) >> 16;
+            uint32_t rs = (instr & 0x3E00000) >> 21;
+            switch((opcode & 0b1111)) {
+                case 0: { // ADDI
+                    setRegister(rd,getRegister(rs)+constS);
+                    break;
+                }
+                case 1: { // ANDI
+                    setRegister(rd,getRegister(rs)&constS);
+                    break;
+                }
+                default: {
+                    // TODO: Trigger Trap
+                    break;
                 }
             }
             break;
