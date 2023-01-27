@@ -405,7 +405,7 @@ r31 - ra: Return Address
 ```
 
 # Cache Line Layout
-| ~63-56~<br>Checksum | ~55-53~<br>Reserved | ~52~<br>Valid | ~51-32~<br>High Bits of Address | ~0-31~<br>Word |
+| <sub>63-56</sub><br>Checksum | <sub>55-53</sub><br>Reserved | <sub>52</sub><br>Valid | <sub>51-32</sub><br>High Bits of Address | <sub>0-31</sub><br>Word |
 |-|-|-|-|-|
 > Note: The formula for the checksum field is this polynomial:    
 > ```math
