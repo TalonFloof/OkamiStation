@@ -11,13 +11,15 @@ opcode_0 = {
 
 opcode_1 = {
     "kcall" |
-    "aupc"
+    "b" | /* PSEUDO-MNEMONIC */
+    "br" /* PSEUDO-MNEMONIC */
 }
 
 opcode_2 = {
     "lui" |
     "mfex" |
-    "mtex"
+    "mtex" |
+    "aupc"
 }
 
 opcode_2_mem = {
@@ -32,5 +34,24 @@ opcode_2_mem = {
 }
 
 opcode_3 = {
-    "add"
+    "add" |
+    "addi" |
+    "sub" |
+    "and" |
+    "andi" |
+    "or" |
+    "ori" |
+    "xor" |
+    "xori" |
+    "sll" |
+    "slli" |
+    "srl" |
+    "srli" |
+    "sra" |
+    "srai" |
+    "slt" |
+    "slti" |
+    "sltu" |
+    "sltiu" |
+
 }

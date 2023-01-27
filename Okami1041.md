@@ -350,9 +350,10 @@
 
 # Memory Map (from CPU's POV)
 ```
-0x00000000-0x7fffffff user (MMU Enabled, Caches Enabled)
-0x80000000-0xbfffffff kernel1 (MMU Disabled, Caches Enabled)
-0xc0000000-0xffffffff kernel2 (MMU Disabled, Caches Disabled)
+0x00000000-0x3fffffff user (MMU Enabled, Caches Enabled)
+0x40000000-0x7fffffff kernel1 (MMU Enabled, Caches Enabled)
+0x80000000-0xbfffffff kernel2 (MMU Disabled, Caches Enabled)
+0xc0000000-0xffffffff kernel3 (MMU Disabled, Caches Disabled)
 ```
 
 # ABI
@@ -403,3 +404,10 @@ r31 - ra: Return Address
     Useful if you just want to fill a random TLB entry.
 ```
 
+# Cache Line Layout
+| ~63-56~<br>Checksum | ~55-53~<br>Reserved | ~52~<br>Valid | ~51-32~<br>High Bits of Address | ~0-31~<br>Word |
+|-|-|-|-|-|
+> Note: The formula for the checksum field is this polynomial:    
+> ```math
+> x^{8}+x^{7}+x^{6}+x^{4}+x^{2}+1
+> ```
