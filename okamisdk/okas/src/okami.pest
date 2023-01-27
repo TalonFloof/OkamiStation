@@ -30,3 +30,7 @@ opcode_2_mem = {
     "sh" |
     "sw"
 }
+
+opcode_3 = {
+    "add"
+}
