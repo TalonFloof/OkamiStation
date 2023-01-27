@@ -405,9 +405,6 @@ r31 - ra: Return Address
 ```
 
 # Cache Line Layout
-| <sub>63-56</sub><br>Checksum | <sub>55-53</sub><br>Reserved | <sub>52</sub><br>Valid | <sub>51-32</sub><br>High Bits of Address | <sub>0-31</sub><br>Word |
+| <sub>63-56</sub><br>ParityByte | <sub>55</sub><br>Valid | <sub>54-52</sub><br>Reserved | <sub>51-32</sub><br>HighAddress | <sub>0-31</sub><br>Word |
 |-|-|-|-|-|
-> Note: The formula for the checksum field is this polynomial:    
-> ```math
-> x^{8}+x^{7}+x^{6}+x^{4}+x^{2}+1
-> ```
+> Note: The ParityByte is computed by Exclusive ORing (XORing) every byte before the parity byte (including the reserved spot)
