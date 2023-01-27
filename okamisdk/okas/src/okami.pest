@@ -15,5 +15,18 @@ opcode_1 = {
 }
 
 opcode_2 = {
-    ""
+    "lui" |
+    "mfex" |
+    "mtex"
+}
+
+opcode_2_mem = {
+    "lb" |
+    "lh" |
+    "lw" |
+    "lbu" |
+    "lhu" |
+    "sb" |
+    "sh" |
+    "sw"
 }
