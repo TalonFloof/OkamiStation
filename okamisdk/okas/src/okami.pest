@@ -1,0 +1,19 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\x0B" | "\x0C" | "\xA0" | SPACE_SEPARATOR }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* }
+
+assembly = {
+    SOI ~ (origin | include_bin | data | constant | label | instruction)* ~ EOI
+}
+
+opcode_0 = {
+    "rft"
+}
+
+opcode_1 = {
+    "kcall" |
+    "aupc"
+}
+
+opcode_2 = {
+    ""
+}
