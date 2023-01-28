@@ -49,7 +49,7 @@ int TLBLookup(uint32_t addr) {
 
 uint32_t readICacheLine(uint32_t addr) {
     int index = (addr / 4) % 4096;
-    if(index == 
+    
 }
 
 uint32_t readDCacheLine(uint32_t addr) {
@@ -96,7 +96,7 @@ void next() {
         return;
     }
     uint32_t instr = 0;
-    if(!MemAccess(PC,&instr,4,false,true)) {
+    if(!memAccess(PC,&instr,4,false,true)) {
         return;
     }
     PC += 4;

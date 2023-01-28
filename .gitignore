@@ -3,3 +3,4 @@ target/
 Cargo.lock
 okamisdk/asm/
 okamisdk/asm/**
+okamistation
