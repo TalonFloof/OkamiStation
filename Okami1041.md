@@ -1,3 +1,6 @@
+# Okami1041
+<img src="docs/okami1041-badge.png" width="256">
+
 # Instructions
 ## Arithmetic
 ```
@@ -401,6 +404,7 @@ r31 - ra: Return Address
 0x13: OKAMI_TLB_RANDOM_INDEX
     Starts from 63 and decrements every cpu tick, it wraps around after trying to decrement 0.
     Useful if you just want to fill a random TLB entry.
+0x14: OKAMI_TLB_ADDRSPACE_ID
 ```
 
 # Cache Line Layout
@@ -410,4 +414,7 @@ r31 - ra: Return Address
 # TLB Line Layout
 | <sub>63-40</sub><br>PhysicalAddress | <sub>39-32</sub><br>AddrSpaceID | <sub>8-31</sub><br>VirtualAddress | <sub>3-7</sub><br>Size (1&lt;&lt;n) | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
 |-|-|-|-|-|-|-|
-> Note: Size must be a least 8 (which is a 256 byte page), any value less than that will trigger a TLB miss when accessed.
+> Note 1: Size must be a least 8 (which is a 256 byte page), any value less than that will trigger a TLB miss when accessed.    
+> Note 2: AddrSpaceIDs can only be positive signed 8-bit numbers, if its negative than the CPU will bypass AddrSpaceID checking (Similar to MIPS's Global Bit).    
+
+> You might notice that TLB Entries don't have a flag for making pages read-only. This is because the behavior of the Dirty Flag acts as a form of write-protection; Okami can't write if the dirty flag is cleared. However, when it is set, write-access is allowed.

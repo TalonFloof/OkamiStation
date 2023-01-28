@@ -6,7 +6,7 @@
 uint32_t registers[32];
 uint32_t PC = 0xfc000000;
 
-uint32_t extRegisters[0x14];
+uint32_t extRegisters[0x15];
 
 uint64_t TLB[64];
 
@@ -33,15 +33,23 @@ int TLBLookup(uint32_t addr) {
     int i;
     uint32_t vaddr = addr & 0xFFFFFF00;
     for(i=0; i < 64; i++) {
-        if((TLB[i] & 1) && (TLB[i] & 0xFFFFFF00) == vaddr) {
-            return i;
+        if((TLB[i] & 1) && (((TLB[i] >> 32) & 0xFF) == extRegisters[0x14] || ((TLB[i] >> 32) & 0x80))) {
+            /* Check if we're within the size boundary */
+            uint32_t size = 1 << ((TLB[i] & 0xF8) >> 3);
+            if(size < 256)
+                continue;
+            if(vaddr >= (TLB[i] & 0xFFFFFF00) && vaddr <= (TLB[i] & 0xFFFFFF00)+size) {
+                return i;
+            }
+            continue;
         }
     }
     return -1; /* TLB Miss */
 }
 
 uint32_t readICacheLine(uint32_t addr) {
-
+    int index = (addr / 4) % 4096;
+    if(index == 
 }
 
 uint32_t readDCacheLine(uint32_t addr) {
