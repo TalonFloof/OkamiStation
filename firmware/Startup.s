@@ -9,7 +9,8 @@ _OkamiStationFirmwareStartup:
     ori t0, t0, 0x18
     mtex t0, 0x00
 .icache_loop:
-    sb zero, 0(t1)
-    addi t1, t1, 16
+    sw zero, 0(t1)
+    sw zero, 4(t1)
+    addi t1, t1, 8
     blt t1, t2, .icache_loop
     

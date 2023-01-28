@@ -311,7 +311,6 @@
 ```
     mfex rd, regnum
         [0:15]: offset
-        [16:20]: rs
         [21:25]: rd
         [26:31]: 0b111100
         
@@ -348,7 +347,7 @@
         PC = OAMKI_TRAP_PC;
 ```
 
-# Memory Map (from CPU's POV)
+# Memory Map
 ```
 0x00000000-0x3fffffff user (MMU Enabled, Caches Enabled)
 0x40000000-0x7fffffff kernel1 (MMU Enabled, Caches Enabled)
@@ -405,6 +404,10 @@ r31 - ra: Return Address
 ```
 
 # Cache Line Layout
-| <sub>63-56</sub><br>ParityByte | <sub>55</sub><br>Valid | <sub>54-52</sub><br>Reserved | <sub>51-32</sub><br>HighAddress | <sub>0-31</sub><br>Word |
+| <sub>63-60</sub><br>Parity | <sub>59</sub><br>Valid | <sub>58-56</sub><br>Reserved | <sub>55-32</sub><br>HighAddress | <sub>0-31</sub><br>Word |
 |-|-|-|-|-|
-> Note: The ParityByte is computed by Exclusive ORing (XORing) every byte before the parity byte (including the reserved spot)
+> Note: Parity is computed by Exclusive ORing (XORing) every nibble before the parity nibble (including the reserved spot and the valid bit)
+# TLB Line Layout
+| <sub>63-40</sub><br>PhysicalAddress | <sub>39-32</sub><br>AddrSpaceID | <sub>8-31</sub><br>VirtualAddress | <sub>3-7</sub><br>Size (1&lt;&lt;n) | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
+|-|-|-|-|-|-|-|
+> Note: Size must be a least 8 (which is a 256 byte page), any value less than that will trigger a TLB miss when accessed.

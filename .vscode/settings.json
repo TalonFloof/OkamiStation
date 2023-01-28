@@ -1,7 +1,7 @@
 {
     "files.associations": {
         "*.h": "c",
-        "*.vos": "go",
+        "*.vos": "plaintext",
         "array": "c",
         "string": "c",
         "string_view": "c"

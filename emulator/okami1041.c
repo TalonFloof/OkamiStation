@@ -4,16 +4,14 @@
 #include "koribus.h"
 
 uint32_t registers[32];
-uint32_t PC = 0x;
+uint32_t PC = 0xfc000000;
 
 uint32_t extRegisters[0x14];
 
 uint64_t TLB[64];
 
-uint32_t iCacheTags[1024];
-uint32_t dCacheTags[1024];
-uint8_t iCacheLines[1024][16];
-uint8_t dCacheLines[1024][4];
+uint64_t iCacheTags[4096];
+uint64_t dCacheTags[1024];
 
 int stallTicks = 0;
 
@@ -31,50 +29,50 @@ void setRegister(int index, uint32_t value) {
     }
 }
 
-void flushICacheLine(int index) {
+int TLBLookup(uint32_t addr) {
+    int i;
+    uint32_t vaddr = addr & 0xFFFFFF00;
+    for(i=0; i < 64; i++) {
+        if((TLB[i] & 1) && (TLB[i] & 0xFFFFFF00) == vaddr) {
+            return i;
+        }
+    }
+    return -1; /* TLB Miss */
+}
+
+uint32_t readICacheLine(uint32_t addr) {
 
 }
 
-void flushDCacheLine(int index) {
-    
+uint32_t readDCacheLine(uint32_t addr) {
+
+}
+
+void writeDCacheLine(uint32_t addr, uint32_t value) {
+
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
     uint32_t kaddr = addr & 0x3FFFFFFF;
-    if(addr < 0x80000000) { // user segment
-
-    } else if(addr >= 0x80000000 && addr <= 0xbfffffff) { // kernel1 segment
-        if(fetch) {
-            int index = ((addr & 0x3FF0) >> 4);
-            int offset = addr & 0xF;
-
-            if((iCacheTags[index] & 1) && ((iCacheTags[index] & 0xFFFFFFF0) == (addr & 0xFFFFFFF0))) {
-                if(write) {
-                    memcpy((&iCacheLines[index][offset]),buf,len);
-                } else {
-                    memcpy(buf,(&iCacheLines[index][offset]),len);
-                }
-                return true;
-            } else { // Cache Miss
-                stallTicks = 4;
-            }
-        } else {
-            int index = ((addr & 0xFFC) >> 2);
-            int offset = addr & 0x3;
-            if((dCacheTags[index] & 1) && ((dCacheTags[index] & 0xFFFFFFFC) == (addr & 0xFFFFFFFC))) {
-                if(write) {
-                    memcpy((&dCacheLines[index][offset]),buf,len);
-                } else {
-                    memcpy(buf,(&dCacheLines[index][offset]),len);
-                }
-                return true;
-            } else { // Cache Miss
-                stallTicks = 4;
-                flushDCacheLine(index);
-                KoriBusRead(&dCacheLines[index][0]);
-            }
+    if(addr < 0x40000000) { // user segment
+        int tlbEntry = TLBLookup(addr);
+        if(tlbEntry == -1) {
+            /* TODO: Trigger TLB Miss */
+            return true;
         }
-    } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel2 segment
+    } else if(addr >= 0x40000000 && addr <= 0x7fffffff) { // kernel1 segment
+        int tlbEntry = TLBLookup(addr);
+        if(tlbEntry == -1) {
+            /* TODO: Trigger TLB Miss */
+            return true;
+        }
+    } else if(addr >= 0x80000000 && addr <= 0xbfffffff) { // kernel2 segment
+        if(fetch) {
+            
+        } else {
+            
+        }
+    } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel3 segment
         stallTicks = 3; // Uncached Stall
         if(write) {
             return (bool)KoriBusWrite(addr-0xc0000000,len,buf);

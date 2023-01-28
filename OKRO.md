@@ -18,9 +18,7 @@
 typedef enum {
     LOWPTR,
     HIGHPTR,
-    AUPC,
-    JMP_SHORT,
-    JMP_LONG,
+    AUPC
 } RelocationType;
 
 typedef struct {
