@@ -8,6 +8,7 @@ extern crate lazy_static;
 
 use lazy_static::lazy_static;
 use pest::Parser;
+use std::collections::HashMap;
 use std::env;
 use std::process::exit;
 use std::sync::Mutex;
@@ -162,11 +163,33 @@ enum InstructionFour {
     Divu,
 }
 
+#[derive(PartialEq, Debug, Clone, Copy)]
+#[allow(dead_code)]
+enum RelocationType {
+    Branch28,
+    Ptr16,
+    Ptr32,
+    La32,
+    Aupc16,
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+#[allow(dead_code)]
+struct RelocationEntry {
+    section: SectionType,
+    offset: u32,
+    reloc_type: RelocationType,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+#[allow(dead_code)]
 struct Segments {
     text: Vec<u8>,
     rodata: Vec<u8>,
     data: Vec<u8>,
     bss: u32,
+    labels: HashMap<String, (SectionType, u32)>,
+    reloc: HashMap<String, Vec<RelocationEntry>>,
 }
 
 impl Segments {
@@ -176,6 +199,8 @@ impl Segments {
             rodata: Vec::new(),
             data: Vec::new(),
             bss: 0,
+            labels: HashMap::new(),
+            reloc: HashMap::new(),
         };
     }
     pub fn push(&mut self, segment: SectionType, data: &[u8]) {
@@ -209,8 +234,29 @@ impl Segments {
             _ => todo!(),
         }
     }
+    pub fn add_reloc_entry(
+        &mut self,
+        segment: SectionType,
+        name: String,
+        reloc_type: RelocationType,
+    ) {
+        let seg_size = self.get_size(segment);
+        self.reloc.get_mut(&name).unwrap().push(RelocationEntry {
+            section: segment,
+            offset: seg_size,
+            reloc_type,
+        });
+    }
     pub fn extend_bss(&mut self, size: u32) {
         self.bss += size;
+    }
+    pub fn get_size(&self, segment: SectionType) -> u32 {
+        return match segment {
+            SectionType::Text => self.text.len() as u32,
+            SectionType::RoData => self.rodata.len() as u32,
+            SectionType::Data => self.data.len() as u32,
+            SectionType::Bss => self.bss,
+        };
     }
 }
 
@@ -249,10 +295,16 @@ fn main() {
             }
             ASTNode::LabelDefine {
                 name,
-                is_local,
-                is_extern,
-                is_global,
-            } => {}
+                is_local: _,
+                is_extern: _,
+                is_global: _,
+            } => {
+                segments.labels.insert(
+                    name.clone(),
+                    (current_section, segments.get_size(current_section)),
+                );
+                segments.reloc.insert(name, Vec::new());
+            }
             ASTNode::InstructionZero { op } => match op {
                 InstructionZero::Nop => segments.push32(current_section, 0), // add zero, zero, zero
                 InstructionZero::Rft => segments.push32(current_section, 0xFC000000),
@@ -270,7 +322,22 @@ fn main() {
                         name: label,
                         is_local: _,
                     } = *arg1
-                    {};
+                    {
+                        segments.add_reloc_entry(current_section, label, RelocationType::Branch28);
+                    } else {
+                        panic!("Branch with non label operand.");
+                    }
+                }
+                InstructionOne::Bl => {
+                    if let ASTNode::LabelRef {
+                        name: label,
+                        is_local: _,
+                    } = *arg1
+                    {
+                        segments.add_reloc_entry(current_section, label, RelocationType::Branch28);
+                    } else {
+                        panic!("Linked Branch with non label operand.");
+                    }
                 }
                 _ => {}
             },
@@ -278,10 +345,9 @@ fn main() {
                 op,
                 operand1: arg1,
                 operand2: arg2,
-            } => {
-                match op {};
-            }
+            } => {}
             _ => {
+                println!("{:?}", segments);
                 panic!("Unsupported AST Node: {:?}", node);
             }
         }
