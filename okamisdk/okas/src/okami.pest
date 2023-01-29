@@ -53,5 +53,5 @@ opcode_3 = {
     "slti" |
     "sltu" |
     "sltiu" |
-
+    ""
 }

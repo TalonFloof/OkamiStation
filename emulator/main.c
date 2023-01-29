@@ -56,8 +56,8 @@ const char* fragmentShader =
 "}\n"
 "float pixel_size_x = 1.0/1024*1;\n"
 "float pixel_size_y = 1.0/768*1;\n"
-"vec4 color_left = texture(textureSampler,xy - vec2(pixel_size_x, pixel_size_y));\n"
-"vec4 current_color = texture(textureSampler,xy);\n"
+"vec4 color_left = texture(textureSampler,vec2(xy.x,1.0-xy.y) - vec2(pixel_size_x, pixel_size_y));\n"
+"vec4 current_color = texture(textureSampler,vec2(xy.x,1.0-xy.y));\n"
 "get_color_bleeding(current_color,color_left);\n"
 "vec4 c = current_color+color_left;\n"
 "get_color_scanline(xy,c,TIME);\n"
@@ -188,7 +188,7 @@ int main() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 768, 0, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)&finalFBTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 768, 0, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)&GIMP_IMAGE_pixel_data);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindTexture(GL_TEXTURE_2D, 0);
         glfwSwapBuffers(w);

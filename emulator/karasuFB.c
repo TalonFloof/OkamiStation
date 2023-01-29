@@ -1,5 +1,6 @@
 #define _KARASU_IMPL
 #include "karasuFB.h"
+#include "koribus.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -11,8 +12,11 @@ void KarasuInit() {
     for(int i=0; i < 8*8*3; i++) {
         resetBuffer[i] = random()%256;
     }
-    for(int i=0; i < 768;i += 8) {
-        int action = random()%32;
+    finalFBTexture[0] = 0xFF;
+    finalFBTexture[1] = 0xFF;
+    finalFBTexture[2] = 0xFF;
+    /*for(int i=0; i < 768;i += 8) {
+        int action = random()%30;
         if(action == 0) {
             continue;
         } else if(action == 1) {
@@ -33,5 +37,7 @@ void KarasuInit() {
                 }
             }
         }
-    }
+    }*/
+    KoriBusBanks[8].Used = true;
+
 }

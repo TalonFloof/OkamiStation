@@ -195,9 +195,33 @@ void next() {
                     setRegister(rd,getRegister(rs)|constS);
                     break;
                 }
-                case 3: { // ANDI
-                    setRegister(rd,getRegister(rs)&constS);
+                case 3: { // XORI
+                    setRegister(rd,getRegister(rs)^constS);
                     break;
+                }
+                case 4: { // SLLI
+                    setRegister(rd,getRegister(rs)<<constU);
+                    break;
+                }
+                case 5: { // SRLI/SRAI
+                    if(instr & 0x400) {
+                        setRegister(rd,(uint32_t)((int32_t)getRegister(rs)>>(int32_t)constU));
+                    } else {
+                        setRegister(rd,getRegister(rs)>>constU);
+                    }
+                    break;
+                }
+                case 6: { // SLTI
+                    
+                }
+                case 7: { // SLTIU
+
+                }
+                case 8: { // LUI
+
+                }
+                case 9: { // AUPC
+
                 }
                 default: {
                     // TODO: Trigger Trap

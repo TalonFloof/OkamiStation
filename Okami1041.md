@@ -189,7 +189,7 @@
         [26:31]: 0b011000
         
         rd[0:31] = const << 16
-    aupc const
+    aupc rd, const
         [0:15]: const
         [16:20]: rd
         [26:31] 0b011001
