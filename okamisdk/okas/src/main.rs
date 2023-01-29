@@ -22,15 +22,6 @@ struct OkamiParser;
 
 #[derive(PartialEq, Debug, Clone)]
 #[allow(dead_code)]
-enum LabelRefType {
-    Branch28,
-    Ptr16,
-    Ptr32,
-    La32,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-#[allow(dead_code)]
 enum ASTNode {
     InstructionZero {
         op: InstructionZero,
@@ -69,7 +60,7 @@ enum ASTNode {
     Register(u8),
     LabelRef {
         name: String,
-        reftype: LabelRefType,
+        is_local: bool,
     },
     LabelDefine {
         name: String,
@@ -195,7 +186,10 @@ fn main() {
             };
         }
     }
-    let ast_nodes = parse(&infile);
+    let ast_nodes = parse(&infile).unwrap();
+    drop(infile);
+    println!("{:?}", ast_nodes);
+    // Time to parse the AST Nodes!
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
@@ -239,6 +233,10 @@ fn parse(source: &str) -> Result<Vec<ASTNode>, ()> {
         }
     }
     Ok(ast)
+}
+
+fn splice_underscores(s: &str) -> String {
+    String::from_iter(s.chars().filter(|c| *c != '_'))
 }
 
 fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
@@ -394,9 +392,164 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
             }
         }
         Rule::label => {
-            println!("{}", pair.into_inner().next().unwrap());
-            todo!();
+            let inner = pair.into_inner().next().unwrap();
+            return match inner.as_rule() {
+                Rule::label_local_scope => ASTNode::LabelDefine {
+                    name: String::from(inner.into_inner().next().unwrap().as_str()),
+                    is_local: true,
+                    is_extern: false,
+                    is_global: false,
+                },
+                Rule::label_global_scope => {
+                    let in_in = &mut inner.into_inner();
+                    let lbl_val1 = in_in.next().unwrap();
+                    match lbl_val1.as_rule() {
+                        Rule::label_kind => {
+                            let lbl_val2 = in_in.next().unwrap();
+                            let lbl_kind = lbl_val1.into_inner().next().unwrap().as_rule();
+                            ASTNode::LabelDefine {
+                                name: String::from(lbl_val2.as_str()),
+                                is_local: false,
+                                is_extern: lbl_kind == Rule::label_external,
+                                is_global: lbl_kind == Rule::label_global,
+                            }
+                        }
+                        Rule::label_name => ASTNode::LabelDefine {
+                            name: String::from(lbl_val1.as_str()),
+                            is_local: false,
+                            is_extern: false,
+                            is_global: false,
+                        },
+                        _ => todo!(),
+                    }
+                }
+                _ => todo!(),
+            };
         }
-        _ => todo!(),
+        Rule::operand => {
+            let val = pair.into_inner().next().unwrap();
+            return match val.as_rule() {
+                Rule::imm_bin => {
+                    let num = u32::from_str_radix(
+                        &splice_underscores(val.into_inner().next().unwrap().as_str()),
+                        2,
+                    )
+                    .unwrap();
+                    let len = 32 - num.leading_zeros();
+                    if (0..=8).contains(&len) {
+                        return ASTNode::ImmediateByte(num as u8);
+                    } else if (9..=16).contains(&len) {
+                        return ASTNode::ImmediateHalf(num as u16);
+                    } else {
+                        return ASTNode::ImmediateWord(num);
+                    }
+                }
+                Rule::imm_hex => {
+                    let num = u32::from_str_radix(
+                        &splice_underscores(val.into_inner().next().unwrap().as_str()),
+                        16,
+                    )
+                    .unwrap();
+                    let len = 32 - num.leading_zeros();
+                    if (0..=8).contains(&len) {
+                        return ASTNode::ImmediateByte(num as u8);
+                    } else if (9..=16).contains(&len) {
+                        return ASTNode::ImmediateHalf(num as u16);
+                    } else {
+                        return ASTNode::ImmediateWord(num);
+                    }
+                }
+                Rule::imm_dec => {
+                    let num_str = &splice_underscores(val.into_inner().next().unwrap().as_str());
+                    let num = i32::from_str_radix(num_str, 10)
+                        .unwrap_or_else(|_| u32::from_str_radix(num_str, 10).unwrap() as i32);
+                    let len = 32 - (num as u32).leading_zeros();
+                    if (0..=8).contains(&len) {
+                        return ASTNode::ImmediateByte(num as u8);
+                    } else if (9..=16).contains(&len) {
+                        return ASTNode::ImmediateHalf(num as u16);
+                    } else {
+                        return ASTNode::ImmediateWord(num as u32);
+                    }
+                }
+                Rule::imm_char => {
+                    ASTNode::ImmediateByte(val.into_inner().next().unwrap().as_str().as_bytes()[0])
+                }
+                Rule::label_name => {
+                    if val.as_str().starts_with(".") {
+                        ASTNode::LabelRef {
+                            name: String::from(val.as_str().split_once(".").unwrap().1),
+                            is_local: true,
+                        }
+                    } else {
+                        ASTNode::LabelRef {
+                            name: String::from(val.as_str()),
+                            is_local: false,
+                        }
+                    }
+                }
+                Rule::register => ASTNode::Register(match val.as_str() {
+                    "zero" => 0,
+                    "a0" => 1,
+                    "a1" => 2,
+                    "a2" => 3,
+                    "a3" => 4,
+                    "a4" => 5,
+                    "a5" => 6,
+                    "a6" => 7,
+                    "a7" => 8,
+                    "t0" => 9,
+                    "t1" => 10,
+                    "t2" => 11,
+                    "t3" => 12,
+                    "t4" => 13,
+                    "t5" => 14,
+                    "t6" => 15,
+                    "t7" => 16,
+                    "s0" => 17,
+                    "s1" => 18,
+                    "s2" => 19,
+                    "s3" => 20,
+                    "s4" => 21,
+                    "s5" => 22,
+                    "s6" => 23,
+                    "s7" => 24,
+                    "s8" => 25,
+                    "s9" => 26,
+                    "gp" => 27,
+                    "tp" => 28,
+                    "fp" => 29,
+                    "sp" => 30,
+                    "ra" => 31,
+                    _ => todo!(),
+                }),
+                _ => todo!(),
+            };
+        }
+        Rule::data => {
+            let val = pair.into_inner().next().unwrap();
+            match val.as_rule() {
+                Rule::data_byte | Rule::data_half | Rule::data_word => {
+                    return ASTNode::DataNum(Box::new(to_ast_symbol(
+                        val.into_inner().next().unwrap(),
+                    )));
+                }
+                Rule::data_str => {
+                    let s = val
+                        .into_inner()
+                        .next()
+                        .unwrap()
+                        .into_inner()
+                        .next()
+                        .unwrap()
+                        .as_str();
+                    return ASTNode::DataString(String::from(s));
+                }
+                _ => todo!(),
+            }
+        }
+        _ => {
+            panic!("UNKNOWN TOKEN: {}", pair.into_inner());
+        }
     }
 }

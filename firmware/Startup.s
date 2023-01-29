@@ -1,5 +1,5 @@
 .text
-_OkamiStationFirmwareStartup:
+.global _OkamiStationFirmwareStartup:
     /* We must first clear the caches */
     la t0, ClearCaches /* Assembler will relocate
                         * to 0x8000_0000 as base, we need to fix that. 
@@ -8,12 +8,10 @@ _OkamiStationFirmwareStartup:
     add t0, t0, t1
     blr ra, t0
     /* Caches are now cleared, reset the KoriBus Controller */
-halt:
-    beq zero, zero, halt
+.halt:
+    beq zero, zero, .halt
 
-.string ""
-
-ClearCaches:
+.global ClearCaches:
     /* Clear Instruction Cache */
     la t1, 0x80000000
     la t2, 0x80008000
@@ -35,3 +33,6 @@ ClearCaches:
     andi t0, t0, -9 /* -9 is 0xFFFFFFF7 */
     mtex t0, 0x00
     blr zero, ra
+
+.rodata
+.global OkamiStationFirmwareCopyright: .string "OkamiStation (C) 2023 TalonFox. Licensed under the MIT License." .byte 0
