@@ -4,7 +4,6 @@
 
 #ifndef _KARASU_IMPL
 extern uint8_t finalFBTexture[1024*768*3];
-extern uint8_t GIMP_IMAGE_pixel_data[1024*768*3];
 #endif
 
 void KarasuInit();

@@ -16,9 +16,11 @@
 ## Relocation Table Entry
 ```c
 typedef enum {
-    LOWPTR,
-    HIGHPTR,
-    AUPC
+    BRANCH28,
+    PTR16,
+    PTR32,
+    LUI16,
+    AUPC16
 } RelocationType;
 
 typedef struct {
