@@ -1,16 +1,14 @@
 /*
 Vos Symbols:
-+ - * u* / u/ % & | ^ > < == != >= <= u> u< u>= u<=
-pop nip dup swap 
++ - * u* / u/ % /% u/% & | ^ > < == != >= <= u> u< u>= u<=
+pop nip dup swap rot
 @ ! b@ b! h@ h! w@ w!
 var "String"
 
-if elseif else while for break
+if elseif else while for break end
 struct 
 */
 
-struct 
-
-main() {
-
-}
+fn Main()
+    
+end

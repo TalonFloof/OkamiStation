@@ -19,7 +19,7 @@ typedef enum {
     BRANCH28,
     PTR16,
     PTR32,
-    LUI16,
+    LA32,
     AUPC16
 } RelocationType;
 

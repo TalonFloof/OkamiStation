@@ -5,5 +5,8 @@
         "array": "c",
         "string": "c",
         "string_view": "c"
-    }
+    },
+    "rust-analyzer.linkedProjects": [
+        "okamisdk/okas/Cargo.toml"
+    ]
 }

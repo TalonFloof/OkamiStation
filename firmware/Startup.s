@@ -1,12 +1,17 @@
 .text
 _OkamiStationFirmwareStartup:
     /* We must first clear the caches */
-    la t0, ClearCaches /* Assembler will relocate to 0x8000_0000 as base, we need to fix that. */
+    la t0, ClearCaches /* Assembler will relocate
+                        * to 0x8000_0000 as base, we need to fix that. 
+                        */
     la t1, 0x7c000000
     add t0, t0, t1
     blr ra, t0
-    /* Caches are now cleared, copy firmware to bottom of RAM */
-    
+    /* Caches are now cleared, reset the KoriBus Controller */
+halt:
+    beq zero, zero, halt
+
+.string ""
 
 ClearCaches:
     /* Clear Instruction Cache */

@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 pest = "*"
 pest_derive = "*"
+lazy_static = "1.4.0"
