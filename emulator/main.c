@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
+#include <stdlib.h>
+#include "karasuFB.h"
 
 const char* vertexShader =
 "#version 330\n"
@@ -19,35 +22,59 @@ const char* fragmentShader =
 "in vec2 outTexCoord;\n"
 "out vec4 fragColor;\n"
 "uniform sampler2D textureSampler;\n"
-"/* This shader is a modified version of Hazukiaoi's CRT Shader */\n"
-"/* The shader can be found here: https://github.com/Hazukiaoi/CRTMonitorShader/blob/master/Shader/CRT.shader */\n"
-"float sdLine(in vec2 p, in vec2 a, in vec2 b) {\n"
-"vec2 pa = p - a, ba = b - a;\n"
-"float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);\n"
-"return length(pa - ba * h);\n"
+"uniform float TIME;"
+"/* This shader is a modified version of henriquelalves's CRT Shader */\n"
+"/* The shader can be found here: https://github.com/henriquelalves/SimpleGodotCRTShader/blob/master/addons/crt_shader/CRTShader.shader */\n"
+"vec2 distort(vec2 p) {\n"
+"float angle = p.y / p.x;\n"
+"float theta = atan(p.y,p.x);\n"
+"float radius = pow(length(p), 1.1 /*BarrelPower*/);\n"
+"p.x = radius * cos(theta);\n"
+"p.y = radius * sin(theta);\n"
+"return 0.5 * (p + vec2(1.0,1.0));\n"
+"}\n"
+"void get_color_bleeding(inout vec4 current_color,inout vec4 color_left) {\n"
+"current_color = current_color*vec4(1.2,0.5,1.0-1.2,1);\n"
+"color_left = color_left*vec4(1.0-1.2,0.5,1.2,1);\n"
+"}\n"
+"void get_color_scanline(vec2 uv,inout vec4 c,float time) { /* The 768 is the screen height */ \n"
+"float line_row = floor((uv.y * 768.0/2.0) + mod(time*30.0, 4.0));\n"
+"float n = 1.0 - ceil((mod(line_row,4.0)/4.0));\n"
+"c = c - n*c*(1.0 - 0.9);\n"
+"c.a = 1.0;\n"
 "}\n"
 "\n"
 "void main() {\n"
-"vec2 scaleDir = normalize(outTexCoord - vec2(0.5, 0.5));\n"
-"float _scale = distance(outTexCoord, vec2(0.5, 0.5));\n"
-"vec2 scaledUV = outTexCoord + scaleDir * pow(max(0, _scale),3) * 0.5 /* Round Scale */;\n"
-"vec2 uv = scaledUV * 50.0 /* Count */;\n"
-"\n"
-"vec4 _mainTex = texture(textureSampler, round( scaledUV * 50.0 /* Count */) / 50.0 /* Count */);\n"
-"vec3 lineSize = clamp(_mainTex.rgb,0.0,1.0) * 0.35;\n"
-"vec3 smoothSizeOffset = (1 - clamp(_mainTex.rgb,0.0,1.0)) * 0.1;\n"
-"vec2 smoothSize = vec2(0.1, 0.2);\n"
-"float dr = 1 - smoothstep(smoothSize.x - smoothSizeOffset.r, smoothSize.y + smoothSizeOffset.r, sdLine(uv, vec2(0.2, 0.5 - lineSize.r), vec2(0.2, 0.5 + lineSize.r)));\n"
-"float dg = 1 - smoothstep(smoothSize.x - smoothSizeOffset.g, smoothSize.y + smoothSizeOffset.g, sdLine(uv, vec2(0.5, 0.5 - lineSize.g), vec2(0.5, 0.5 + lineSize.g)));\n"
-"float db = 1 - smoothstep(smoothSize.x - smoothSizeOffset.b, smoothSize.y + smoothSizeOffset.b, sdLine(uv, vec2(0.8, 0.5 - lineSize.b), vec2(0.8, 0.5 + lineSize.b)));\n"
-"float mask = (smoothstep(0.0, 0.01, scaledUV.x)) * (1 - smoothstep(0.99, 1.0, scaledUV.x)) * (smoothstep(0.0, 0.01, scaledUV.y)) * (1 - smoothstep(0.99, 1.0, scaledUV.y));\n"
-"vec4 findColor = vec4(dr, dg, db, 1) * _mainTex;\n"
-"findColor.a = mask;\n"
-"fragColor = findColor;\n"
+"vec2 xy = outTexCoord * 2.0;\n"
+"xy.x -= 1.0;\n"
+"xy.y -= 1.0;\n"
+"float d = length(xy);\n"
+"if(d < 1.5) {\n"
+"xy = distort(xy);\n"
+"} else {\n"
+"xy = outTexCoord.xy;\n"
+"}\n"
+"float pixel_size_x = 1.0/1024*1;\n"
+"float pixel_size_y = 1.0/768*1;\n"
+"vec4 color_left = texture(textureSampler,xy - vec2(pixel_size_x, pixel_size_y));\n"
+"vec4 current_color = texture(textureSampler,xy);\n"
+"get_color_bleeding(current_color,color_left);\n"
+"vec4 c = current_color+color_left;\n"
+"get_color_scanline(xy,c,TIME);\n"
+"if(TIME < 5) {\n"
+"fragColor = vec4(0.0,0.0,0.0,1.0);\n"
+"} else {\n"
+"fragColor = vec4(c.rgb * min(1.0,(TIME-5.0)/10.0),1.0);\n"
+"}\n"
 "}"
 ;
 
 int main() {
+    struct timeval timeVal;
+    gettimeofday(&timeVal, 0);
+    srandom(timeVal.tv_sec);
+    KarasuInit();
+
     glfwInit();
     GLFWwindow* w = glfwCreateWindow(1024, 768, "OkamiStation", NULL, NULL);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -67,16 +94,34 @@ int main() {
         -1.f, -1.f, 0.0f,
          1.f, -1.f, 0.0f,
 	};
-    uint32_t v;
-    glGenBuffers(1, &v);
-    glBindBuffer(GL_ARRAY_BUFFER, v);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(t)*sizeof(t)/sizeof(t[0]),
-		&t[0], GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3,
-		 (void*)0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE,
-        sizeof(float) * 10, (void*)(sizeof(float) * 6));
+    float tex[] =
+	{
+		0.f, 1.f,
+		0.f, 0.f,
+		1.f, 1.f,
+        1.f, 1.f,
+        0.f, 0.f,
+        1.f, 0.f,
+	};
+    uint32_t VAO;
+    glGenVertexArrays(1,&VAO);
+    glBindVertexArray(VAO);
+    uint32_t PosVBO;
+    uint32_t TexVBO;
+    glGenBuffers(1,&PosVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, PosVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(t), (void*)&t, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glGenBuffers(1,&TexVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, TexVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(tex), (void*)&tex, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    uint32_t texture;
+    glGenTextures(1, &texture);
+
     GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertShader, 1, &vertexShader, NULL);
     glCompileShader(vertShader);
@@ -127,11 +172,26 @@ int main() {
     glDeleteShader(fragShader);
     glUseProgram(program);
 	glViewport(0, 0, 1024, 768);
+    double beginTime = ((double)timeVal.tv_sec) + (((double)timeVal.tv_usec)/1000000.0);
+    GLint timeUniform = glGetUniformLocation(program, "TIME");
     while(!glfwWindowShouldClose(w))
 	{
+        gettimeofday(&timeVal, 0);
+        double elapsedTime = (((double)timeVal.tv_sec) + (((double)timeVal.tv_usec)/1000000.0)) - beginTime;
+        glUniform1f(timeUniform, elapsedTime);
+
 		glClear(GL_COLOR_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1024, 768, 0, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)&finalFBTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glfwSwapBuffers(w);
+		glBindTexture(GL_TEXTURE_2D, 0);
+        glfwSwapBuffers(w);
 		glfwPollEvents();
 	}
 	glfwTerminate();
