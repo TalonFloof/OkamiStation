@@ -14,6 +14,7 @@ use std::sync::Mutex;
 
 lazy_static! {
     static ref SOURCE_PATH: Mutex<std::path::PathBuf> = Mutex::new(std::path::PathBuf::new());
+    static ref LAST_GLOBAL_LABEL: Mutex<String> = Mutex::new(String::new());
 }
 
 #[derive(Parser)]
@@ -54,9 +55,7 @@ enum ASTNode {
         operand3: Box<ASTNode>,
         operand4: Box<ASTNode>,
     },
-    ImmediateByte(u8),
-    ImmediateHalf(u16),
-    ImmediateWord(u32),
+    Immediate(u32),
     Register(u8),
     LabelRef {
         name: String,
@@ -68,7 +67,7 @@ enum ASTNode {
         is_extern: bool,
         is_global: bool,
     },
-    BinaryInclude(String),
+    BinaryInclude(Vec<u8>),
     DataNum(Box<ASTNode>),
     DataString(String),
     Section(SectionType),
@@ -163,6 +162,58 @@ enum InstructionFour {
     Divu,
 }
 
+struct Segments {
+    text: Vec<u8>,
+    rodata: Vec<u8>,
+    data: Vec<u8>,
+    bss: u32,
+}
+
+impl Segments {
+    pub fn new() -> Self {
+        return Self {
+            text: Vec::new(),
+            rodata: Vec::new(),
+            data: Vec::new(),
+            bss: 0,
+        };
+    }
+    pub fn push(&mut self, segment: SectionType, data: &[u8]) {
+        match segment {
+            SectionType::Text => {
+                self.text.extend_from_slice(data);
+            }
+            SectionType::RoData => {
+                self.rodata.extend_from_slice(data);
+            }
+            SectionType::Data => {
+                self.data.extend_from_slice(data);
+            }
+            _ => todo!(),
+        }
+    }
+    pub fn push32(&mut self, segment: SectionType, data: u32) {
+        self.push(segment, data.to_le_bytes().as_slice());
+    }
+    pub fn push_vec(&mut self, segment: SectionType, data: &mut Vec<u8>) {
+        match segment {
+            SectionType::Text => {
+                self.text.append(data);
+            }
+            SectionType::RoData => {
+                self.rodata.append(data);
+            }
+            SectionType::Data => {
+                self.data.append(data);
+            }
+            _ => todo!(),
+        }
+    }
+    pub fn extend_bss(&mut self, size: u32) {
+        self.bss += size;
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
@@ -188,8 +239,53 @@ fn main() {
     }
     let ast_nodes = parse(&infile).unwrap();
     drop(infile);
-    println!("{:?}", ast_nodes);
-    // Time to parse the AST Nodes!
+    // Time to start assembly
+    let mut current_section = SectionType::Text;
+    let mut segments = Segments::new();
+    for node in ast_nodes {
+        match node {
+            ASTNode::Section(section) => {
+                current_section = section;
+            }
+            ASTNode::LabelDefine {
+                name,
+                is_local,
+                is_extern,
+                is_global,
+            } => {}
+            ASTNode::InstructionZero { op } => match op {
+                InstructionZero::Nop => segments.push32(current_section, 0), // add zero, zero, zero
+                InstructionZero::Rft => segments.push32(current_section, 0xFC000000),
+            },
+            ASTNode::InstructionOne { op, operand: arg1 } => match op {
+                InstructionOne::KCall => {
+                    if let ASTNode::Immediate(num) = *arg1 {
+                        segments.push32(current_section, 0x3FFFFFF);
+                    } else {
+                        panic!("KCall with non integer operand.");
+                    }
+                }
+                InstructionOne::B => {
+                    if let ASTNode::LabelRef {
+                        name: label,
+                        is_local: _,
+                    } = *arg1
+                    {};
+                }
+                _ => {}
+            },
+            ASTNode::InstructionTwo {
+                op,
+                operand1: arg1,
+                operand2: arg2,
+            } => {
+                match op {};
+            }
+            _ => {
+                panic!("Unsupported AST Node: {:?}", node);
+            }
+        }
+    }
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
@@ -247,7 +343,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
             match inner.as_rule() {
                 Rule::imm_str => {
                     let s = inner.into_inner().next().unwrap().as_str();
-                    return ASTNode::BinaryInclude(String::from(s));
+                    return ASTNode::BinaryInclude(std::fs::read(s).unwrap());
                 }
                 _ => todo!(),
             }
@@ -394,19 +490,25 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
         Rule::label => {
             let inner = pair.into_inner().next().unwrap();
             return match inner.as_rule() {
-                Rule::label_local_scope => ASTNode::LabelDefine {
-                    name: String::from(inner.into_inner().next().unwrap().as_str()),
-                    is_local: true,
-                    is_extern: false,
-                    is_global: false,
-                },
+                Rule::label_local_scope => {
+                    let mut name = LAST_GLOBAL_LABEL.lock().unwrap().clone();
+                    name.push_str(inner.into_inner().next().unwrap().as_str());
+                    return ASTNode::LabelDefine {
+                        name,
+                        is_local: true,
+                        is_extern: false,
+                        is_global: false,
+                    };
+                }
                 Rule::label_global_scope => {
                     let in_in = &mut inner.into_inner();
                     let lbl_val1 = in_in.next().unwrap();
+                    *LAST_GLOBAL_LABEL.lock().unwrap() = String::from(lbl_val1.as_str());
                     match lbl_val1.as_rule() {
                         Rule::label_kind => {
                             let lbl_val2 = in_in.next().unwrap();
                             let lbl_kind = lbl_val1.into_inner().next().unwrap().as_rule();
+
                             ASTNode::LabelDefine {
                                 name: String::from(lbl_val2.as_str()),
                                 is_local: false,
@@ -414,12 +516,14 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                                 is_global: lbl_kind == Rule::label_global,
                             }
                         }
-                        Rule::label_name => ASTNode::LabelDefine {
-                            name: String::from(lbl_val1.as_str()),
-                            is_local: false,
-                            is_extern: false,
-                            is_global: false,
-                        },
+                        Rule::label_name => {
+                            return ASTNode::LabelDefine {
+                                name: String::from(lbl_val1.as_str()),
+                                is_local: false,
+                                is_extern: false,
+                                is_global: false,
+                            };
+                        }
                         _ => todo!(),
                     }
                 }
@@ -436,13 +540,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                     )
                     .unwrap();
                     let len = 32 - num.leading_zeros();
-                    if (0..=8).contains(&len) {
-                        return ASTNode::ImmediateByte(num as u8);
-                    } else if (9..=16).contains(&len) {
-                        return ASTNode::ImmediateHalf(num as u16);
-                    } else {
-                        return ASTNode::ImmediateWord(num);
-                    }
+                    return ASTNode::Immediate(num);
                 }
                 Rule::imm_hex => {
                     let num = u32::from_str_radix(
@@ -451,34 +549,24 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                     )
                     .unwrap();
                     let len = 32 - num.leading_zeros();
-                    if (0..=8).contains(&len) {
-                        return ASTNode::ImmediateByte(num as u8);
-                    } else if (9..=16).contains(&len) {
-                        return ASTNode::ImmediateHalf(num as u16);
-                    } else {
-                        return ASTNode::ImmediateWord(num);
-                    }
+                    return ASTNode::Immediate(num);
                 }
                 Rule::imm_dec => {
                     let num_str = &splice_underscores(val.into_inner().next().unwrap().as_str());
                     let num = i32::from_str_radix(num_str, 10)
                         .unwrap_or_else(|_| u32::from_str_radix(num_str, 10).unwrap() as i32);
                     let len = 32 - (num as u32).leading_zeros();
-                    if (0..=8).contains(&len) {
-                        return ASTNode::ImmediateByte(num as u8);
-                    } else if (9..=16).contains(&len) {
-                        return ASTNode::ImmediateHalf(num as u16);
-                    } else {
-                        return ASTNode::ImmediateWord(num as u32);
-                    }
+                    return ASTNode::Immediate(num as u32);
                 }
-                Rule::imm_char => {
-                    ASTNode::ImmediateByte(val.into_inner().next().unwrap().as_str().as_bytes()[0])
-                }
+                Rule::imm_char => ASTNode::Immediate(
+                    val.into_inner().next().unwrap().as_str().as_bytes()[0] as u32,
+                ),
                 Rule::label_name => {
                     if val.as_str().starts_with(".") {
+                        let mut name = LAST_GLOBAL_LABEL.lock().unwrap().clone();
+                        name.push_str(val.as_str());
                         ASTNode::LabelRef {
-                            name: String::from(val.as_str().split_once(".").unwrap().1),
+                            name: name,
                             is_local: true,
                         }
                     } else {
