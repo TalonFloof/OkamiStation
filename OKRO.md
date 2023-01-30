@@ -32,8 +32,9 @@ typedef enum {
 
 typedef struct {
     RelocationType type;
-    uint32_t offset;
-    SegmentType segment;
-    uint32_t target;
+    SegmentType srcSegment;
+    SegmentType dstSegment;
+    uint32_t srcOffset;
+    uint32_t dstOffset;
 } RelocationEntry;
 ```
