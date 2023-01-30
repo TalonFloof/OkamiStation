@@ -727,6 +727,132 @@ fn main() {
                         }
                     }
                 }
+                InstructionThree::Beq => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0x8C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Bne => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0x90000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Bgeu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0x9C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Bltu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0xA0000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Bge => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0x94000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Blt => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::LabelRef {
+                                name: label,
+                                is_local: _,
+                            } = *arg3
+                            {
+                                segments.add_reloc_entry(
+                                    current_section,
+                                    label,
+                                    RelocationType::Rel16,
+                                );
+                                segments.push32(
+                                    current_section,
+                                    0x98000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
                 _ => {
                     println!("{:?}", segments);
                     panic!("Unsupported Instruction {:?}", op);
@@ -943,6 +1069,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
             return match inner.as_rule() {
                 Rule::label_local_scope => {
                     let mut name = LAST_GLOBAL_LABEL.lock().unwrap().clone();
+                    name.push('.');
                     name.push_str(inner.into_inner().next().unwrap().as_str());
                     return ASTNode::LabelDefine {
                         name,
