@@ -232,11 +232,11 @@ void next() {
                     break;
                 }
                 case 2: { // ORI
-                    setRegister(rd,getRegister(rs)|constS);
+                    setRegister(rd,getRegister(rs)|constU);
                     break;
                 }
                 case 3: { // XORI
-                    setRegister(rd,getRegister(rs)^constS);
+                    setRegister(rd,getRegister(rs)^constU);
                     break;
                 }
                 case 4: { // SLLI
@@ -261,10 +261,6 @@ void next() {
                 }
                 case 8: { // LUI
                     setRegister(rd,constU<<16);
-                    break;
-                }
-                case 9: { // AUPC
-                    setRegister(rd,PC+(constU<<16));
                     break;
                 }
                 default: {

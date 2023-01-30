@@ -8,7 +8,7 @@ extern crate lazy_static;
 
 use lazy_static::lazy_static;
 use pest::Parser;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::process::exit;
 use std::sync::Mutex;
@@ -105,7 +105,6 @@ enum InstructionTwo {
     Lui,
     Mfex,
     Mtex,
-    Aupc,
     Blr,
     La,
     Li,
@@ -170,8 +169,7 @@ enum RelocationType {
     Ptr16 = 1,
     Ptr32 = 2,
     La32 = 3,
-    Aupc16 = 4,
-    Rel16 = 5,
+    Rel16 = 4,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -189,8 +187,8 @@ struct Segments {
     rodata: Vec<u8>,
     data: Vec<u8>,
     bss: u32,
-    labels: HashMap<String, (SectionType, u32)>,
-    reloc: HashMap<String, Vec<RelocationEntry>>,
+    labels: BTreeMap<String, (SectionType, u32)>,
+    reloc: BTreeMap<String, Vec<RelocationEntry>>,
 }
 
 impl Segments {
@@ -200,8 +198,8 @@ impl Segments {
             rodata: Vec::new(),
             data: Vec::new(),
             bss: 0,
-            labels: HashMap::new(),
-            reloc: HashMap::new(),
+            labels: BTreeMap::new(),
+            reloc: BTreeMap::new(),
         };
     }
     pub fn push(&mut self, segment: SectionType, data: &[u8]) {
@@ -242,11 +240,21 @@ impl Segments {
         reloc_type: RelocationType,
     ) {
         let seg_size = self.get_size(segment);
-        self.reloc.get_mut(&name).unwrap().push(RelocationEntry {
-            section: segment,
-            offset: seg_size,
-            reloc_type,
-        });
+        if let Some(val) = self.reloc.get_mut(&name) {
+            val.push(RelocationEntry {
+                section: segment,
+                offset: seg_size,
+                reloc_type,
+            });
+        } else {
+            let mut entries = Vec::new();
+            entries.push(RelocationEntry {
+                section: segment,
+                offset: seg_size,
+                reloc_type,
+            });
+            self.reloc.insert(name, entries);
+        }
     }
     pub fn extend_bss(&mut self, size: u32) {
         self.bss += size;
@@ -304,7 +312,6 @@ fn main() {
                     name.clone(),
                     (current_section, segments.get_size(current_section)),
                 );
-                segments.reloc.insert(name, Vec::new());
             }
             ASTNode::InstructionZero { op } => match op {
                 InstructionZero::Nop => segments.push32(current_section, 0), // add zero, zero, zero
@@ -342,13 +349,239 @@ fn main() {
                         panic!("Linked Branch with non label operand.");
                     }
                 }
+                InstructionOne::Br => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        segments.push32(current_section, 0x88000000 | ((reg as u32) << 21));
+                    } else {
+                        panic!("Register Branch with non register operand.");
+                    }
+                }
                 _ => {}
             },
             ASTNode::InstructionTwo {
                 op,
                 operand1: arg1,
                 operand2: arg2,
-            } => {}
+            } => match op {
+                InstructionTwo::Lui => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        if let ASTNode::Immediate(val) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0x60000000 | ((reg as u32) << 16) | (val & 0xFFFF),
+                            );
+                        }
+                    }
+                }
+                InstructionTwo::Mfex => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        if let ASTNode::Immediate(val) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0xF0000000 | ((reg as u32) << 21) | (val & 0xFFFF),
+                            );
+                        }
+                    }
+                }
+                InstructionTwo::Mtex => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        if let ASTNode::Immediate(val) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0xF4000000 | ((reg as u32) << 16) | (val & 0xFFFF),
+                            );
+                        }
+                    }
+                }
+                InstructionTwo::Blr => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0x88000000 | ((reg1 as u32) << 16) | ((reg1 as u32) << 21),
+                            );
+                        }
+                    }
+                }
+                InstructionTwo::La => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        if let ASTNode::Immediate(val) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0x60000000 | ((reg as u32) << 16) | (val & 0xFFFF),
+                            );
+                            segments.push32(
+                                current_section,
+                                0x48000000 | ((reg as u32) << 16) | ((val & 0xFFFF0000) >> 16),
+                            );
+                        } else if let ASTNode::LabelRef {
+                            name: label,
+                            is_local: _,
+                        } = *arg2
+                        {
+                            segments.add_reloc_entry(current_section, label, RelocationType::La32);
+                            segments.push32(current_section, 0x60000000 | ((reg as u32) << 16));
+                            segments.push32(current_section, 0x48000000 | ((reg as u32) << 16));
+                        }
+                    }
+                }
+                InstructionTwo::Li => {
+                    if let ASTNode::Register(reg) = *arg1 {
+                        if let ASTNode::Immediate(val) = *arg2 {
+                            segments.push32(
+                                current_section,
+                                0x48000000 | ((reg as u32) << 16) | (val & 0xFFFF),
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            },
+            ASTNode::InstructionThree {
+                op,
+                operand1: arg1,
+                operand2: arg2,
+                operand3: arg3,
+            } => match op {
+                InstructionThree::Addi => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x40000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Add => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x0 | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Sub => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x4000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Andi => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x44000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::And => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x8000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Ori => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x48000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Or => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0xC000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Xori => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x4C000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Xor => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x10000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    println!("{:?}", segments);
+                    panic!("Unsupported Instruction {:?}", op);
+                }
+            },
             _ => {
                 println!("{:?}", segments);
                 panic!("Unsupported AST Node: {:?}", node);
@@ -453,7 +686,6 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                             "lui" => InstructionTwo::Lui,
                             "mfex" => InstructionTwo::Mfex,
                             "mtex" => InstructionTwo::Mtex,
-                            "aupc" => InstructionTwo::Aupc,
                             "blr" => InstructionTwo::Blr,
                             "la" => InstructionTwo::La,
                             "li" => InstructionTwo::Li,
@@ -572,14 +804,14 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                 Rule::label_global_scope => {
                     let in_in = &mut inner.into_inner();
                     let lbl_val1 = in_in.next().unwrap();
-                    *LAST_GLOBAL_LABEL.lock().unwrap() = String::from(lbl_val1.as_str());
+                    *LAST_GLOBAL_LABEL.lock().unwrap() = lbl_val1.as_str().to_string();
                     match lbl_val1.as_rule() {
                         Rule::label_kind => {
                             let lbl_val2 = in_in.next().unwrap();
                             let lbl_kind = lbl_val1.into_inner().next().unwrap().as_rule();
 
                             ASTNode::LabelDefine {
-                                name: String::from(lbl_val2.as_str()),
+                                name: lbl_val2.as_str().to_string(),
                                 is_local: false,
                                 is_extern: lbl_kind == Rule::label_external,
                                 is_global: lbl_kind == Rule::label_global,
@@ -587,7 +819,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         }
                         Rule::label_name => {
                             return ASTNode::LabelDefine {
-                                name: String::from(lbl_val1.as_str()),
+                                name: lbl_val1.as_str().to_string(),
                                 is_local: false,
                                 is_extern: false,
                                 is_global: false,
@@ -640,7 +872,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         }
                     } else {
                         ASTNode::LabelRef {
-                            name: String::from(val.as_str()),
+                            name: val.as_str().to_string(),
                             is_local: false,
                         }
                     }

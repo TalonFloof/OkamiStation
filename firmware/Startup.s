@@ -24,13 +24,13 @@
     blt t1, t2, .icache_loop
     /* Clear Data Cache */
     la t1, 0x80000000
-    andi t0, t0, -17 /* -17 is 0xFFFFFFEF */
+    andi t0, t0, 0xffef
     mtex t0, 0x00
 .dcache_loop:
     sw zero, 4(t1)
     addi t1, t1, 8
     blt t1, t2, .dcache_loop
-    andi t0, t0, -9 /* -9 is 0xFFFFFFF7 */
+    andi t0, t0, 0xfff7
     mtex t0, 0x00
     blr zero, ra
 
