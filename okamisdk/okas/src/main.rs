@@ -981,10 +981,88 @@ fn main() {
                         }
                     }
                 }
-                _ => {
-                    println!("{:?}", segments);
-                    panic!("Unsupported Instruction {:?}", op);
+                _ => {}
+            },
+            ASTNode::InstructionFour {
+                op,
+                operand1: arg1,
+                operand2: arg2,
+                operand3: arg3,
+                operand4: arg4,
+            } => match op {
+                InstructionFour::Mulu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                if let ASTNode::Register(reg4) = *arg4 {
+                                    segments.push32(
+                                        current_section,
+                                        0x24000008
+                                            | ((reg1 as u32) << 6)
+                                            | ((reg2 as u32) << 11)
+                                            | ((reg2 as u32) << 16)
+                                            | ((reg2 as u32) << 21),
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
+                InstructionFour::Mul => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                if let ASTNode::Register(reg4) = *arg4 {
+                                    segments.push32(
+                                        current_section,
+                                        0x24000000
+                                            | ((reg1 as u32) << 6)
+                                            | ((reg2 as u32) << 11)
+                                            | ((reg2 as u32) << 16)
+                                            | ((reg2 as u32) << 21),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                InstructionFour::Divu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                if let ASTNode::Register(reg4) = *arg4 {
+                                    segments.push32(
+                                        current_section,
+                                        0x28000008
+                                            | ((reg1 as u32) << 6)
+                                            | ((reg2 as u32) << 11)
+                                            | ((reg2 as u32) << 16)
+                                            | ((reg2 as u32) << 21),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                InstructionFour::Div => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                if let ASTNode::Register(reg4) = *arg4 {
+                                    segments.push32(
+                                        current_section,
+                                        0x28000000
+                                            | ((reg1 as u32) << 6)
+                                            | ((reg2 as u32) << 11)
+                                            | ((reg2 as u32) << 16)
+                                            | ((reg2 as u32) << 21),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
             },
             _ => {
                 println!("{:?}", segments);
