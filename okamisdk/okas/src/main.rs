@@ -1086,6 +1086,21 @@ fn main() {
             }
         }
     }
+    /* Now we need to relocate Rel16 branches */
+    for (i, j) in segments.reloc.iter_mut() {
+        for k in j.iter_mut().enumerate() {
+            if k.1.reloc_type == RelocationType::Rel16 {
+                let label_addr = segments.labels.get(i).unwrap().1;
+                let cur_addr = if label_addr >= k.1.offset {
+                    k.1.offset + 4
+                } else {
+                    k.1.offset + 8
+                };
+                println!("{}", (label_addr.wrapping_sub(cur_addr)) as i32);
+            }
+        }
+        j.retain(|x| x.reloc_type != RelocationType::Rel16);
+    }
     println!("{:?}", segments);
 }
 

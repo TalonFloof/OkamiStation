@@ -1,5 +1,5 @@
 .text
-.global _OkamiStationFirmwareStartup:
+.global OkamiStationFirmwareStartup:
     /* We must first clear the caches */
     la t0, ClearCaches /* Assembler will relocate
                         * to 0x8000_0000 as base, we need to fix that. 
