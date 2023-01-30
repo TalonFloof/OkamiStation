@@ -69,7 +69,7 @@ enum ASTNode {
         is_global: bool,
     },
     BinaryInclude(Vec<u8>),
-    DataNum(Box<ASTNode>),
+    DataNum(u8, Box<ASTNode>),
     DataString(String),
     Section(SectionType),
 }
@@ -312,6 +312,23 @@ fn main() {
                     name.clone(),
                     (current_section, segments.get_size(current_section)),
                 );
+            }
+            ASTNode::BinaryInclude(mut val) => {
+                segments.push_vec(current_section, &mut val);
+            }
+            ASTNode::DataNum(size, num) => {
+                if let ASTNode::Immediate(val) = *num {
+                    if (size == 1) {
+                        segments.push(current_section, [val.to_le_bytes()[0]].as_slice());
+                    } else if (size == 2) {
+                        segments.push(current_section, &val.to_le_bytes().as_slice()[0..=1]);
+                    } else if (size == 4) {
+                        segments.push(current_section, val.to_le_bytes().as_slice());
+                    }
+                }
+            }
+            ASTNode::DataString(str) => {
+                segments.push(current_section, str.as_bytes());
             }
             ASTNode::InstructionZero { op } => match op {
                 InstructionZero::Nop => segments.push32(current_section, 0), // add zero, zero, zero
@@ -1065,11 +1082,11 @@ fn main() {
                 _ => {}
             },
             _ => {
-                println!("{:?}", segments);
                 panic!("Unsupported AST Node: {:?}", node);
             }
         }
     }
+    println!("{:?}", segments);
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
@@ -1401,10 +1418,23 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
         Rule::data => {
             let val = pair.into_inner().next().unwrap();
             match val.as_rule() {
-                Rule::data_byte | Rule::data_half | Rule::data_word => {
-                    return ASTNode::DataNum(Box::new(to_ast_symbol(
-                        val.into_inner().next().unwrap(),
-                    )));
+                Rule::data_byte => {
+                    return ASTNode::DataNum(
+                        1,
+                        Box::new(to_ast_symbol(val.into_inner().next().unwrap())),
+                    );
+                }
+                Rule::data_half => {
+                    return ASTNode::DataNum(
+                        2,
+                        Box::new(to_ast_symbol(val.into_inner().next().unwrap())),
+                    );
+                }
+                Rule::data_word => {
+                    return ASTNode::DataNum(
+                        4,
+                        Box::new(to_ast_symbol(val.into_inner().next().unwrap())),
+                    );
                 }
                 Rule::data_str => {
                     let s = val
