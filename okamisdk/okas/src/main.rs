@@ -318,11 +318,11 @@ fn main() {
             }
             ASTNode::DataNum(size, num) => {
                 if let ASTNode::Immediate(val) = *num {
-                    if (size == 1) {
+                    if size == 1 {
                         segments.push(current_section, [val.to_le_bytes()[0]].as_slice());
-                    } else if (size == 2) {
+                    } else if size == 2 {
                         segments.push(current_section, &val.to_le_bytes().as_slice()[0..=1]);
-                    } else if (size == 4) {
+                    } else if size == 4 {
                         segments.push(current_section, val.to_le_bytes().as_slice());
                     }
                 }
@@ -373,7 +373,6 @@ fn main() {
                         panic!("Register Branch with non register operand.");
                     }
                 }
-                _ => {}
             },
             ASTNode::InstructionTwo {
                 op,
@@ -415,7 +414,7 @@ fn main() {
                         if let ASTNode::Register(reg2) = *arg2 {
                             segments.push32(
                                 current_section,
-                                0x88000000 | ((reg1 as u32) << 16) | ((reg1 as u32) << 21),
+                                0x88000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                             );
                         }
                     }
@@ -452,7 +451,6 @@ fn main() {
                         }
                     }
                 }
-                _ => {}
             },
             ASTNode::InstructionTwoMemory {
                 op,
@@ -580,7 +578,6 @@ fn main() {
                         }
                     }
                 }
-                _ => {}
             },
             ASTNode::InstructionThree {
                 op,
@@ -998,7 +995,6 @@ fn main() {
                         }
                     }
                 }
-                _ => {}
             },
             ASTNode::InstructionFour {
                 op,
@@ -1017,8 +1013,8 @@ fn main() {
                                         0x24000008
                                             | ((reg1 as u32) << 6)
                                             | ((reg2 as u32) << 11)
-                                            | ((reg2 as u32) << 16)
-                                            | ((reg2 as u32) << 21),
+                                            | ((reg3 as u32) << 16)
+                                            | ((reg4 as u32) << 21),
                                     );
                                 }
                             }
@@ -1035,8 +1031,8 @@ fn main() {
                                         0x24000000
                                             | ((reg1 as u32) << 6)
                                             | ((reg2 as u32) << 11)
-                                            | ((reg2 as u32) << 16)
-                                            | ((reg2 as u32) << 21),
+                                            | ((reg3 as u32) << 16)
+                                            | ((reg4 as u32) << 21),
                                     );
                                 }
                             }
@@ -1053,8 +1049,8 @@ fn main() {
                                         0x28000008
                                             | ((reg1 as u32) << 6)
                                             | ((reg2 as u32) << 11)
-                                            | ((reg2 as u32) << 16)
-                                            | ((reg2 as u32) << 21),
+                                            | ((reg3 as u32) << 16)
+                                            | ((reg4 as u32) << 21),
                                     );
                                 }
                             }
@@ -1071,15 +1067,14 @@ fn main() {
                                         0x28000000
                                             | ((reg1 as u32) << 6)
                                             | ((reg2 as u32) << 11)
-                                            | ((reg2 as u32) << 16)
-                                            | ((reg2 as u32) << 21),
+                                            | ((reg3 as u32) << 16)
+                                            | ((reg4 as u32) << 21),
                                     );
                                 }
                             }
                         }
                     }
                 }
-                _ => {}
             },
             _ => {
                 panic!("Unsupported AST Node: {:?}", node);
@@ -1096,7 +1091,9 @@ fn main() {
                 } else {
                     k.1.offset + 8
                 };
-                println!("{}", (label_addr.wrapping_sub(cur_addr)) as i32);
+                let jump = (((label_addr.wrapping_sub(cur_addr)) as i32) / 4) as i16;
+                segments.text[k.1.offset as usize] = ((jump as u16) & 0xFF) as u8;
+                segments.text[(k.1.offset + 1) as usize] = (((jump as u16) & 0xFF00) >> 8) as u8;
             }
         }
         j.retain(|x| x.reloc_type != RelocationType::Rel16);
@@ -1355,7 +1352,6 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         2,
                     )
                     .unwrap();
-                    let len = 32 - num.leading_zeros();
                     return ASTNode::Immediate(num);
                 }
                 Rule::imm_hex => {
@@ -1364,14 +1360,12 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         16,
                     )
                     .unwrap();
-                    let len = 32 - num.leading_zeros();
                     return ASTNode::Immediate(num);
                 }
                 Rule::imm_dec => {
                     let num_str = &splice_underscores(val.into_inner().next().unwrap().as_str());
                     let num = i32::from_str_radix(num_str, 10)
                         .unwrap_or_else(|_| u32::from_str_radix(num_str, 10).unwrap() as i32);
-                    let len = 32 - (num as u32).leading_zeros();
                     return ASTNode::Immediate(num as u32);
                 }
                 Rule::imm_char => ASTNode::Immediate(
