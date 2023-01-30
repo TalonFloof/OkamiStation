@@ -667,7 +667,66 @@ fn main() {
                         }
                     }
                 }
-
+                InstructionThree::Sltu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x20000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Sltiu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x5C000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Slti => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x58000000
+                                        | ((reg1 as u32) << 16)
+                                        | ((reg2 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionThree::Slt => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Register(reg3) = *arg3 {
+                                segments.push32(
+                                    current_section,
+                                    0x1C000000
+                                        | ((reg1 as u32) << 11)
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg3 as u32) << 21),
+                                );
+                            }
+                        }
+                    }
+                }
                 _ => {
                     println!("{:?}", segments);
                     panic!("Unsupported Instruction {:?}", op);
