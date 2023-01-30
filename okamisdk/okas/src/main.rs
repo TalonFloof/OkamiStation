@@ -437,6 +437,134 @@ fn main() {
                 }
                 _ => {}
             },
+            ASTNode::InstructionTwoMemory {
+                op,
+                operand1: arg1,
+                offset: off,
+                operand2: arg2,
+            } => match op {
+                InstructionTwoMemory::Lbu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xC4000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Lhu => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xCC000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Lb => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xC0000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Lh => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xC8000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Lw => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xD0000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Sb => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xD4000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Sh => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xD8000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                InstructionTwoMemory::Sw => {
+                    if let ASTNode::Register(reg1) = *arg1 {
+                        if let ASTNode::Register(reg2) = *arg2 {
+                            if let ASTNode::Immediate(val) = *off {
+                                segments.push32(
+                                    current_section,
+                                    0xDC000000
+                                        | ((reg2 as u32) << 16)
+                                        | ((reg1 as u32) << 21)
+                                        | (val & 0xFFFF),
+                                );
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            },
             ASTNode::InstructionThree {
                 op,
                 operand1: arg1,
