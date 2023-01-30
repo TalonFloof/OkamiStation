@@ -166,11 +166,12 @@ enum InstructionFour {
 #[derive(PartialEq, Debug, Clone, Copy)]
 #[allow(dead_code)]
 enum RelocationType {
-    Branch28,
-    Ptr16,
-    Ptr32,
-    La32,
-    Aupc16,
+    Branch28 = 0,
+    Ptr16 = 1,
+    Ptr32 = 2,
+    La32 = 3,
+    Aupc16 = 4,
+    Rel16 = 5,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -312,7 +313,7 @@ fn main() {
             ASTNode::InstructionOne { op, operand: arg1 } => match op {
                 InstructionOne::KCall => {
                     if let ASTNode::Immediate(num) = *arg1 {
-                        segments.push32(current_section, 0x3FFFFFF);
+                        segments.push32(current_section, 0xF8000000 | (num & 0x3FFFFFF));
                     } else {
                         panic!("KCall with non integer operand.");
                     }
@@ -324,6 +325,7 @@ fn main() {
                     } = *arg1
                     {
                         segments.add_reloc_entry(current_section, label, RelocationType::Branch28);
+                        segments.push32(current_section, 0x80000000);
                     } else {
                         panic!("Branch with non label operand.");
                     }
@@ -335,6 +337,7 @@ fn main() {
                     } = *arg1
                     {
                         segments.add_reloc_entry(current_section, label, RelocationType::Branch28);
+                        segments.push32(current_section, 0x84000000);
                     } else {
                         panic!("Linked Branch with non label operand.");
                     }

@@ -1,2 +1,2 @@
 build:
-	gcc -O0 -g *.c -lGL -lglfw -I../thirdparty -o okamistation
+	gcc -O3 -g *.c -lSDL2 -o okamistation

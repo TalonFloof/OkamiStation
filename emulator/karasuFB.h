@@ -1,9 +1,10 @@
 #pragma once
-
+#include <SDL2/SDL.h>
 #include <stdint.h>
 
 #ifndef _KARASU_IMPL
-extern uint8_t finalFBTexture[1024*768*3];
+extern SDL_Texture *FBTexture;
 #endif
 
 void KarasuInit();
+void KarasuUploadFrame();
