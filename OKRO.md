@@ -8,10 +8,10 @@
 0x0000_0014-0x0000_0017: Size of Read-Only Data Segment
 0x0000_0018-0x0000_001b: Size of Data Segment
 0x0000_001c-0x0000_001f: Size of BSS Segment
-0x0000_0020-0x0000_0013: Size of Relocation Table
+0x0000_0020-0x0000_0023: Size of Relocation Table
 0x0000_0024-0x0000_0027: Size of Extended Information Table
 0x0000_0028-0x0000_002f: Reserved
-0x0000_0030: Beginning of Data (Starts with Text and Read-Only Data Segment)
+0x0000_0030: Beginning of Data (Starts with Text Segment)
 ```
 
 ## Relocation Table Entry

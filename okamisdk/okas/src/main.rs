@@ -1098,7 +1098,41 @@ fn main() {
         }
         j.retain(|x| x.reloc_type != RelocationType::Rel16);
     }
-    println!("{:?}", segments);
+    let mut data = Vec::new();
+    data.extend_from_slice(b"\x89OkamiRO\x01\0\0\0\0\0\0\0");
+    data.extend_from_slice((segments.text.len() as u32).to_le_bytes().as_slice());
+    data.extend_from_slice((segments.rodata.len() as u32).to_le_bytes().as_slice());
+    data.extend_from_slice((segments.data.len() as u32).to_le_bytes().as_slice());
+    data.extend_from_slice(segments.bss.to_le_bytes().as_slice());
+    let mut total_length = 0u32;
+    for (_, i) in segments.reloc.iter() {
+        total_length += (i.len() * 20) as u32;
+    }
+    data.extend_from_slice(total_length.to_le_bytes().as_slice());
+    data.extend_from_slice(b"\0\0\0\0\0\0\0\0\0\0\0\0");
+    data.extend_from_slice(segments.text.as_slice());
+    data.extend_from_slice(segments.rodata.as_slice());
+    data.extend_from_slice(segments.data.as_slice());
+    for (i, j) in segments.reloc.iter_mut() {
+        for k in j.iter_mut().enumerate() {
+            let label = segments.labels.get(i).unwrap();
+            data.extend_from_slice((k.1.reloc_type as u32).to_le_bytes().as_slice());
+            data.extend_from_slice((k.1.section as u32).to_le_bytes().as_slice());
+            data.extend_from_slice((label.0 as u32).to_le_bytes().as_slice());
+            data.extend_from_slice(k.1.offset.to_le_bytes().as_slice());
+            data.extend_from_slice(label.1.to_le_bytes().as_slice());
+        }
+    }
+    std::fs::write(&args[2], data.as_slice()).expect("File write failed!");
+    let end_time = std::time::Instant::now();
+    println!(
+        "Sucessfully compiled binary with size of {} bytes ({} secs elapsed)",
+        data.len(),
+        end_time
+            .checked_duration_since(start_time)
+            .unwrap()
+            .as_secs_f32()
+    );
 }
 
 fn include(line_number: usize, text: &str, data: String) -> String {
