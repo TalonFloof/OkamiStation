@@ -166,10 +166,9 @@ enum InstructionFour {
 #[allow(dead_code)]
 enum RelocationType {
     Branch28 = 0,
-    Ptr16 = 1,
-    Ptr32 = 2,
-    La32 = 3,
-    Rel16 = 4,
+    Ptr32 = 1,
+    La32 = 2,
+    Rel16 = 3,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]

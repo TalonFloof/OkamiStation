@@ -18,7 +18,6 @@
 ```c
 typedef enum {
     BRANCH28,
-    PTR16,
     PTR32,
     LA32
 } RelocationType;
