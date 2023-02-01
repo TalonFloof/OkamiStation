@@ -2,7 +2,7 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\x0B" | "\x0C" | "\xA0" | SPACE_SEPA
 COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 
 assembly = {
-    SOI ~ (section | include_bin | data | constant | label | instruction)* ~ EOI
+    SOI ~ (section | include_bin | data | align | constant | label | instruction)* ~ EOI
 }
 
 section = {
@@ -177,9 +177,17 @@ data = {
     data_byte |
     data_half |
     data_word |
-    data_str
+    data_str |
+    data_resb |
+    data_resh |
+    data_resw
 }
 data_byte = { ".byte" ~ operand }
 data_half = { ".half" ~ operand }
 data_word = { ".word" ~ operand }
 data_str  = { ".string" ~ imm_str }
+data_resb = { ".resb" ~ operand }
+data_resh = { ".resh" ~ operand }
+data_resw = { ".resw" ~ operand }
+
+align = { ".align" ~ operand }

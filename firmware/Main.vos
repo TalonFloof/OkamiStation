@@ -1,14 +1,26 @@
 /*
 Vos Symbols:
-+ - * u* / u/ % /% u/% & | ^ > < == != >= <= u> u< u>= u<=
-pop nip dup swap rot
-@ ! b@ b! h@ h! w@ w!
-var "String"
++ - * u* / u/ % /% u/% & | ^ > < = != >= <= u> u< u>= u<=
+pop nip dup swap rot over
+@ ! b@ sb@ b! h@ sh@ h!
+auto const var "String"
 
-if elseif else while for break end
-struct 
+if (cond) elseif (cond) else loop (cond) do break
+struct alloc
 */
 
-fn Main()
-    
+.include_asm "Startup.s"
+.include "Sources.hvos"
+
+fn main ()
+    /* Preform System Diagnostics */
+    RunSystemDiagnostics
+
+    if 2 dup 0 = do
+        /* 1 */
+    end elseif dup 1 = do
+        /* 2 */
+    end else
+        /* 3 */
+    end
 end

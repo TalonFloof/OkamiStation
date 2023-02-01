@@ -14,6 +14,8 @@
 0x0000_0030: Beginning of Data (Starts with Text Segment)
 ```
 
+> Note: All Segments are 4 byte aligned, however the size of the segment is exclusive of the extra alignment padding added.
+
 ## Relocation Table Entry
 ```c
 typedef enum {

@@ -71,6 +71,7 @@ enum ASTNode {
     BinaryInclude(Vec<u8>),
     DataNum(u8, Box<ASTNode>),
     DataString(String),
+    ExtendBSS(u32),
     Section(SectionType),
 }
 
@@ -186,7 +187,7 @@ struct Segments {
     rodata: Vec<u8>,
     data: Vec<u8>,
     bss: u32,
-    labels: BTreeMap<String, (SectionType, u32)>,
+    labels: BTreeMap<String, (SectionType, u32, bool)>,
     reloc: BTreeMap<String, Vec<RelocationEntry>>,
 }
 
@@ -305,15 +306,18 @@ fn main() {
                 name,
                 is_local: _,
                 is_extern: _,
-                is_global: _,
+                is_global: glob,
             } => {
                 segments.labels.insert(
                     name.clone(),
-                    (current_section, segments.get_size(current_section)),
+                    (current_section, segments.get_size(current_section), glob),
                 );
             }
             ASTNode::BinaryInclude(mut val) => {
                 segments.push_vec(current_section, &mut val);
+            }
+            ASTNode::ExtendBSS(size) => {
+                segments.extend_bss(size);
             }
             ASTNode::DataNum(size, num) => {
                 if let ASTNode::Immediate(val) = *num {
@@ -1110,8 +1114,17 @@ fn main() {
     data.extend_from_slice(total_length.to_le_bytes().as_slice());
     data.extend_from_slice(b"\0\0\0\0\0\0\0\0\0\0\0\0");
     data.extend_from_slice(segments.text.as_slice());
+    if segments.text.len() % 4 != 0 {
+        data.append(&mut vec![0u8; 4 - (segments.text.len() % 4)]);
+    }
     data.extend_from_slice(segments.rodata.as_slice());
+    if segments.rodata.len() % 4 != 0 {
+        data.append(&mut vec![0u8; 4 - (segments.rodata.len() % 4)]);
+    }
     data.extend_from_slice(segments.data.as_slice());
+    if segments.data.len() % 4 != 0 {
+        data.append(&mut vec![0u8; 4 - (segments.data.len() % 4)]);
+    }
     for (i, j) in segments.reloc.iter_mut() {
         for k in j.iter_mut().enumerate() {
             let label = segments.labels.get(i).unwrap();
@@ -1488,6 +1501,30 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         .unwrap()
                         .as_str();
                     return ASTNode::DataString(String::from(s));
+                }
+                Rule::data_resb => {
+                    if let ASTNode::Immediate(num) = to_ast_symbol(val.into_inner().next().unwrap())
+                    {
+                        return ASTNode::ExtendBSS(num);
+                    } else {
+                        panic!(".resb with non-integer immediate.");
+                    }
+                }
+                Rule::data_resh => {
+                    if let ASTNode::Immediate(num) = to_ast_symbol(val.into_inner().next().unwrap())
+                    {
+                        return ASTNode::ExtendBSS(num * 2);
+                    } else {
+                        panic!(".resh with non-integer immediate.");
+                    }
+                }
+                Rule::data_resw => {
+                    if let ASTNode::Immediate(num) = to_ast_symbol(val.into_inner().next().unwrap())
+                    {
+                        return ASTNode::ExtendBSS(num * 4);
+                    } else {
+                        panic!(".resw with non-integer immediate.");
+                    }
                 }
                 _ => todo!(),
             }

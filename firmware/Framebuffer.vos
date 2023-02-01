@@ -1,0 +1,40 @@
+const FRAMEBUFFER_BASE 0xE0001000
+
+fn FramebufferSetPixel(x y color) FRAMEBUFFER_BASE @x @y 1024 * + + ! end
+
+fn FramebufferDrawRect(x y w h color)
+    auto x2, y2
+    @x w + !x2
+    @y h + !y2
+
+    @x loop dup @x2 < do
+        @y loop dup @y2 < do
+            @color FramebufferSetPixel
+        end
+    end
+end
+
+fn FramebufferClear(color)
+    0 0 1024 768 @color FramebufferDrawRect
+end
+
+fn FramebufferRenderMonochromeBitmap(x y w h scale color line_size ptr)
+    auto i, j, byte_offset, bit_offset
+    loop @i @h < do
+        loop @h @w < do
+            @i 8 /  @line_size * + !byte_offset
+            @j 8 % !bit_offset
+            if @ptr @byte_offset + b@ 1 7 @bit_offset - << & do
+                @j @scale * @x + /* X Coord */
+                @i @scale * @y + /* Y Coord */
+                @scale @scale @color FramebufferDrawRect
+            end elseif 1 do
+                /* Test */
+            end else
+                /* Test */
+            end
+            @j 1 + !j
+        end
+        @i 1 + !i
+    end
+end
