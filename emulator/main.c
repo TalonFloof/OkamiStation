@@ -12,14 +12,15 @@
 SDL_Window *ScreenWindow;
 SDL_Renderer *ScreenRenderer;
 
-uint32_t tick_start;
-uint32_t tick_end;
+uint32_t tick_start = 0;
+uint32_t tick_end = 0;
 bool done = false;
 
 int main() {
     struct timeval timeVal;
     gettimeofday(&timeVal, 0);
     srandom(timeVal.tv_sec);
+    reset();
     RAMInit();
     KarasuInit();
     OkamiBoardInit();
@@ -59,8 +60,26 @@ int main() {
         .x = 0,
         .y = 0
     };
-
     while (!done) {
+        int dt = SDL_GetTicks() - tick_start;
+        tick_start = SDL_GetTicks();
+        if (!dt)
+		    dt = 1;
+        int cyclespertick = 25000000/60/dt;
+	    int extracycles = 25000000/60 - (cyclespertick*dt);
+        for (int i = 0; i < dt; i++) {
+            int cyclesleft = cyclespertick;
+            if (i == dt-1)
+                cyclesleft += extracycles;
+            while (cyclesleft > 0) {
+                next();
+			    cyclesleft -= 1;
+		    }
+        }
+        KarasuUploadFrame();
+        SDL_RenderClear(ScreenRenderer);
+        SDL_RenderCopy(ScreenRenderer, FBTexture, &screenrect, &winrect);
+        SDL_RenderPresent(ScreenRenderer);
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT: {
@@ -68,10 +87,6 @@ int main() {
                 }
             }
         }
-        KarasuUploadFrame();
-        SDL_RenderClear(ScreenRenderer);
-        SDL_RenderCopy(ScreenRenderer, FBTexture, &screenrect, &winrect);
-        SDL_RenderPresent(ScreenRenderer);
         tick_end = SDL_GetTicks();
 		int delay = 1000/60 - (tick_end - tick_start);
 		if (delay > 0) {
