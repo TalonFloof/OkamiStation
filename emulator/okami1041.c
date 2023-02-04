@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -97,7 +98,7 @@ void setExtRegister(int index, uint32_t val) {
 }
 
 void triggerTrap(uint32_t type, uint32_t addr) {
-    
+    fprintf(stderr, "TRAP 0x%x TRIGGERED: 0x%08x\n", type, PC-4);
 }
 
 int TLBLookup(uint32_t addr) {
@@ -306,6 +307,7 @@ void next() {
     if(!memAccess(PC,(uint8_t*)&instr,4,false,true)) {
         return;
     }
+    fprintf(stderr, "%08x: %08x\n", PC, instr);
     PC += 4;
     uint32_t opcode = (instr & 0xFC000000) >> 26;
     switch((opcode & 0b110000) >> 4) {

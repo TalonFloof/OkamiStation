@@ -63,10 +63,12 @@ int main() {
     while (!done) {
         int dt = SDL_GetTicks() - tick_start;
         tick_start = SDL_GetTicks();
-        if (!dt)
+        if (!dt || dt)
 		    dt = 1;
-        int cyclespertick = 25000000/60/dt;
-	    int extracycles = 25000000/60 - (cyclespertick*dt);
+        //int cyclespertick = 25000000/60/dt;
+	    //int extracycles = 25000000/60 - (cyclespertick*dt);
+        int cyclespertick = 1;
+        int extracycles = 0;
         for (int i = 0; i < dt; i++) {
             int cyclesleft = cyclespertick;
             if (i == dt-1)
