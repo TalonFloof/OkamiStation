@@ -427,11 +427,14 @@ fn main() {
                         if let ASTNode::Immediate(val) = *arg2 {
                             segments.push32(
                                 current_section,
-                                0x60000000 | ((reg as u32) << 16) | (val & 0xFFFF),
+                                0x60000000 | ((reg as u32) << 16) | ((val & 0xFFFF0000) >> 16),
                             );
                             segments.push32(
                                 current_section,
-                                0x48000000 | ((reg as u32) << 16) | ((val & 0xFFFF0000) >> 16),
+                                0x40000000
+                                    | ((reg as u32) << 16)
+                                    | ((reg as u32) << 21)
+                                    | (val & 0xFFFF),
                             );
                         } else if let ASTNode::LabelRef {
                             name: label,
@@ -440,7 +443,10 @@ fn main() {
                         {
                             segments.add_reloc_entry(current_section, label, RelocationType::La32);
                             segments.push32(current_section, 0x60000000 | ((reg as u32) << 16));
-                            segments.push32(current_section, 0x48000000 | ((reg as u32) << 16));
+                            segments.push32(
+                                current_section,
+                                0x40000000 | ((reg as u32) << 16) | ((reg as u32) << 21),
+                            );
                         }
                     }
                 }
@@ -1088,7 +1094,11 @@ fn main() {
     for (i, j) in segments.reloc.iter_mut() {
         for k in j.iter_mut().enumerate() {
             if k.1.reloc_type == RelocationType::Rel16 {
-                let label_addr = segments.labels.get(i).expect(format!("Label {} Doesn't exist!", i).as_str()).1;
+                let label_addr = segments
+                    .labels
+                    .get(i)
+                    .expect(format!("Label {} Doesn't exist!", i).as_str())
+                    .1;
                 let cur_addr = if label_addr >= k.1.offset {
                     k.1.offset + 4
                 } else {

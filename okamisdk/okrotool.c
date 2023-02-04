@@ -181,7 +181,8 @@ int main(int argc, const char* argv[]) {
             fprintf(stderr, "Magic number is invalid\n");
             return 2;
         }
-        preformRelocation(image,strtol(argv[2],NULL,16));
+        uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
+        preformRelocation(image,num);
         writeImage(argv[4],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
     }
     return 0;
