@@ -1,26 +1,18 @@
 /*
 Vos Symbols:
-+ - * u* / u/ % /% u/% & | ^ > < = != >= <= u> u< u>= u<=
-pop nip dup swap rot over
-@ ! b@ sb@ b! h@ sh@ h!
-auto const var "String"
++ - * u* / u/ % u% ! & | ^ < > == != >= <= u< u> u>= u<=
+w@ w! b@ sb@ b! h@ sh@ h!
+auto const var 12345 "String" =
 
-if (cond) elseif (cond) else loop (cond) do break
-struct alloc
+if while break return
+struct
 */
 
-.include_asm "Startup.s"
-.include "Sources.hvos"
+(include_asm "Startup.s")
+(include "Sources.hvos")
 
-fn main ()
+(fn main ()
+    (FramebufferClear 12)
     /* Preform System Diagnostics */
-    RunSystemDiagnostics
-
-    if 2 dup 0 = do
-        /* 1 */
-    end elseif dup 1 = do
-        /* 2 */
-    end else
-        /* 3 */
-    end
-end
+    (RunSystemDiagnostics)
+)

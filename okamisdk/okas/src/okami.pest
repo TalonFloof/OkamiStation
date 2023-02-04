@@ -57,9 +57,9 @@ opcode_0 = @{
 
 opcode_1 = @{
     "kcall" |
-    "b" |
     "bl" |
-    "br" /* PSEUDO-MNEMONIC */
+    "br" | /* PSEUDO-MNEMONIC */
+    "b"
 }
 
 opcode_2 = @{

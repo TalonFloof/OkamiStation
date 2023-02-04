@@ -8,8 +8,8 @@
     add t0, t0, t1
     blr ra, t0
     /* Caches are now cleared, reset the KoriBus Controller */
-.halt:
-    beq zero, zero, .halt
+    /* Copy to RAM */
+    
 
 .global ClearCaches:
     /* Clear Instruction Cache */
@@ -33,6 +33,3 @@
     andi t0, t0, 0xfff7
     mtex t0, 0x00
     blr zero, ra
-
-.rodata
-.global OkamiStationFirmwareCopyright: .string "OkamiStation (C) 2023 TalonFox. Licensed under the MIT License." .byte 0

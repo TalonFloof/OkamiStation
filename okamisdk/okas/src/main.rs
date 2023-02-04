@@ -1088,7 +1088,7 @@ fn main() {
     for (i, j) in segments.reloc.iter_mut() {
         for k in j.iter_mut().enumerate() {
             if k.1.reloc_type == RelocationType::Rel16 {
-                let label_addr = segments.labels.get(i).unwrap().1;
+                let label_addr = segments.labels.get(i).expect(format!("Label {} Doesn't exist!", i).as_str()).1;
                 let cur_addr = if label_addr >= k.1.offset {
                     k.1.offset + 4
                 } else {
