@@ -350,10 +350,10 @@
 
 # Memory Map
 ```
-0x00000000-0x3fffffff user (MMU Enabled, Caches Enabled)
-0x40000000-0x7fffffff kernel1 (MMU Enabled, Caches Enabled)
-0x80000000-0xbfffffff kernel2 (MMU Disabled, Caches Enabled)
-0xc0000000-0xffffffff kernel3 (MMU Disabled, Caches Disabled)
+0x00000000-0x7fffffff user (MMU Enabled, Caches Enabled)
+0x80000000-0x9fffffff kernel1 (MMU Disabled, Caches Enabled)
+0xa0000000-0xbfffffff kernel2 (MMU Disabled, Caches Disabled)
+0xc0000000-0xffffffff kernel3 (MMU Enabled, Caches Enabled)
 ```
 
 # ABI
@@ -400,7 +400,7 @@ r31 - ra: Return Address
 0x11: OKAMI_TLB_VALUE_LOW
 0x12: OAMKI_TLB_VALUE_HIGH
 0x13: OKAMI_TLB_RANDOM_INDEX
-    Starts from 63 and decrements every cpu tick, it wraps around after trying to decrement 0.
+    Starts from 63 and decrements every cpu tick, it wraps around after trying to decrement 8.
     Useful if you just want to fill a random TLB entry.
 0x14: OKAMI_TLB_ADDRSPACE_ID
 ```

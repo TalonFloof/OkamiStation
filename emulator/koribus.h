@@ -15,18 +15,18 @@ typedef struct {
 extern KoriBusBank KoriBusBanks[16];
 
 static inline int KoriBusRead(uint32_t addr, uint32_t len, uint8_t* buf) {
-    int bank = addr >> 26;
+    int bank = addr >> 25;
     if(KoriBusBanks[bank].Used) {
-        return KoriBusBanks[bank].Read(addr & 0x3FFFFFF, len, (void*)buf);
+        return KoriBusBanks[bank].Read(addr & 0x1FFFFFF, len, (void*)buf);
     }
     return 1;
 }
 
 
 static inline int KoriBusWrite(uint32_t addr, uint32_t len, uint8_t* buf) {
-    int bank = addr >> 26;
+    int bank = addr >> 25;
     if(KoriBusBanks[bank].Used) {
-        return KoriBusBanks[bank].Write(addr & 0x3FFFFFF, len, (void*)buf);
+        return KoriBusBanks[bank].Write(addr & 0x1FFFFFF, len, (void*)buf);
     }
     return 1;
 }

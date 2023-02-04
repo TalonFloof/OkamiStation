@@ -5,7 +5,7 @@
 #include "koribus.h"
 
 uint32_t registers[32];
-uint32_t PC = 0xfc000000;
+uint32_t PC = 0xbff00000;
 
 uint32_t extRegisters[0x15];
 
@@ -60,16 +60,44 @@ uint32_t getExtRegister(int index) {
             return extRegisters[index];
         }
         case 0x11: {
-            return ((uint64_t*)TLB)[index] & 0xFFFFFFFF;
+            return ((uint64_t*)&TLB)[index] & 0xFFFFFFFF;
         }
         case 0x12: {
-            return ((uint64_t*)TLB)[index] >> 32;
+            return ((uint64_t*)&TLB)[index] >> 32;
         }
         case 0x13: {
-            return random()%64; // Doesn't comply with my documentation but whatever, it's for debugging purposes anyway.
+            return (random()%56)+8; // Doesn't comply with my documentation but whatever, it's for debugging purposes anyway.
         }
     }
     return 0;
+}
+
+void setExtRegister(int index, uint32_t val) {
+    switch(index) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+        case 0x04:
+        case 0x05:
+        case 0x10:
+        case 0x14: {
+            extRegisters[index] = val;
+            break;
+        }
+        case 0x11: {
+            ((uint32_t*)&TLB)[index*2] = val;
+            break;
+        }
+        case 0x12: {
+            ((uint32_t*)&TLB)[(index*2)+1] = val;
+            break;
+        }
+    }
+}
+
+void triggerTrap(uint32_t type, uint32_t addr) {
+    
 }
 
 int TLBLookup(uint32_t addr) {
@@ -81,7 +109,7 @@ int TLBLookup(uint32_t addr) {
             uint32_t size = 1 << TLB[i].size;
             if(size < 256)
                 continue;
-            if(vaddr >= TLB[i].vaddr && vaddr <= TLB[i].vaddr+size) {
+            if(vaddr >= (TLB[i].vaddr << 8) && vaddr <= (TLB[i].vaddr << 8)+size) {
                 return i;
             }
             continue;
@@ -90,45 +118,157 @@ int TLBLookup(uint32_t addr) {
     return -1; /* TLB Miss */
 }
 
+uint64_t calculateParity(uint64_t line) {
+    uint64_t result = 0;
+    int i;
+    for(i=0; i < 20; i++) {
+        uint64_t digit = (line & (0x7 << (i*3))) >> (i*3);
+        result ^= digit;
+    }
+    return result;
+}
+
 uint32_t readICacheLine(uint32_t addr) {
-    int index = (addr / 4) % 4096;
-    
+    int index = (addr >> 2) & 0xFFF;
+    uint64_t parity = calculateParity(((uint64_t*)&iCacheTags)[index]);
+    if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && iCacheTags[index].cacheParity == parity) {
+        return iCacheTags[index].cacheWord;
+    } else {
+        stallTicks = 4; // Cache Miss Stall
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&iCacheTags)[index])) {
+            triggerTrap(8,addr); // Fetch Exception
+            return 0;
+        }
+        iCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        iCacheTags[index].isValid = 1;
+        iCacheTags[index].cacheParity = calculateParity(((uint64_t*)&iCacheTags)[index]);
+        return iCacheTags[index].cacheWord;
+    }
 }
 
-uint32_t readDCacheLine(uint32_t addr) {
-
+uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
+    int index = (addr >> 2) & 0xFFF;
+    uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
+    uint32_t val;
+    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity) {
+        val = dCacheTags[index].cacheWord;
+    } else {
+        stallTicks = 4; // Cache Miss Stall
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&dCacheTags)[index])) {
+            triggerTrap(9,addr); // Data Exception
+            return 0;
+        }
+        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        dCacheTags[index].isValid = 1;
+        dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
+        val = dCacheTags[index].cacheWord;
+    }
+    if(size == 1) {
+        val >>= (addr & 3)*8;
+    } else if(size == 2) {
+        val >>= (addr & 2)*16;
+    }
+    return val;
 }
 
-void writeDCacheLine(uint32_t addr, uint32_t value) {
-
+void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
+    int index = (addr >> 2) & 0xFFF;
+    uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
+    if(!KoriBusWrite(addr & 0x3FFFFFFC,4,&value)) {
+        triggerTrap(9,addr); // Data Exception
+        return;
+    }
+    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity) {
+        if(size == 1) {
+            uint32_t shift = (addr & 3)*8;
+            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
+        } else if(size == 2) {
+            uint32_t shift = (addr & 2)*16;
+            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFFFF << shift)) | (value << shift);
+        } else {
+            dCacheTags[index].cacheWord = value;
+        }
+        dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
+    } else {
+        stallTicks = 4; // Cache Miss Stall
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&dCacheTags)[index])) {
+            triggerTrap(9,addr); // Data Exception
+            return 0;
+        }
+        if(size == 1) {
+            uint32_t shift = (addr & 3)*8;
+            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
+        } else if(size == 2) {
+            uint32_t shift = (addr & 2)*16;
+            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFFFF << shift)) | (value << shift);
+        } else {
+            dCacheTags[index].cacheWord = value;
+        }
+        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        dCacheTags[index].isValid = 1;
+        dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
+    }
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
     uint32_t kaddr = addr & 0x3FFFFFFF;
-    if(addr < 0x40000000) { // user segment
+    if(addr < 0x80000000) { // user segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
-            /* TODO: Trigger TLB Miss */
-            return true;
+            triggerTrap(3,addr); // TLB Miss
+            return false;
         }
-    } else if(addr >= 0x40000000 && addr <= 0x7fffffff) { // kernel1 segment
-        int tlbEntry = TLBLookup(addr);
-        if(tlbEntry == -1) {
-            /* TODO: Trigger TLB Miss */
-            return true;
-        }
-    } else if(addr >= 0x80000000 && addr <= 0xbfffffff) { // kernel2 segment
+    } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
         if(fetch) {
-            
+            if(extRegisters[0] & 0x8) {
+                triggerTrap(8,addr); // Fetch Exception
+                return false;
+            }
+            uint32_t val = readICacheLine(addr-0x80000000);
+            memcpy(buf,(uint8_t*)&val,len);
+            return true;
         } else {
-            
+            if(extRegisters[0] & 0x8) {
+                if(extRegisters[0] & 0x10) {
+
+                } else {
+
+                }
+            } else {
+                if(write) {
+                    writeDCacheLine(addr-0x80000000,*((uint32_t*)buf),len);
+                    return true;
+                } else {
+                    uint32_t val = readDCacheLine(addr-0x80000000,len);
+                    memcpy(buf,(uint8_t*)&val,len);
+                    return true;
+                }
+            }
         }
-    } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel3 segment
+    } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
         stallTicks = 3; // Uncached Stall
         if(write) {
-            return (bool)KoriBusWrite(addr-0xc0000000,len,buf);
+            bool result = KoriBusWrite(addr-0xa0000000,len,buf);
+            if(!result) {
+                triggerTrap(7,addr); // Data Exception
+            }
+            return result;
         } else {
-            return (bool)KoriBusRead(addr-0xc0000000,len,buf);
+            bool result = KoriBusRead(addr-0xa0000000,len,buf);
+            if(!result) {
+                if(fetch) {
+                    triggerTrap(8,addr); // Fetch Exception
+                } else {
+                    triggerTrap(7,addr); // Data Exception
+                }
+            }
+            return result;
+        }
+    } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel3 segment
+        int tlbEntry = TLBLookup(addr);
+        if(tlbEntry == -1) {
+            triggerTrap(3,addr); // TLB Miss
+            return false;
         }
     }
 }
@@ -139,10 +279,10 @@ void reset() {
     memset((void*)extRegisters,0,sizeof(extRegisters));
     extRegisters[0] = 1;
     for(int i=0; i < 4096; i++) {
-        iCacheTags[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
-        dCacheTags[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
+        ((uint64_t*)&iCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
+        ((uint64_t*)&dCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         if(i < 64) {
-
+            ((uint64_t*)&TLB)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         }
     }
 }
@@ -356,9 +496,10 @@ void next() {
             if(opcode & 0b1000) {
                 uint32_t rs = (instr & 0x1F0000) >> 16;
                 uint32_t rd = (instr & 0x3E00000) >> 21;
+                uint32_t offset = (instr & 0xFFFF);
                 switch(opcode & 0b111) {
                     case 0b1100: { // MFEX
-
+                        setRegister(rd,getExtRegister(offset));
                         break;
                     }
                     case 0b1101: { // MTEX

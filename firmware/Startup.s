@@ -2,7 +2,7 @@
 .global OkamiStationFirmwareStartup:
     /* We must first clear the caches */
     la t0, ClearCaches /* Assembler will relocate to 0x8000_0000 as base, we need to fix that. */
-    lui t1, 0x7c00
+    lui t1, 0x3ff0
     add t0, t0, t1
     blr ra, t0
     /* Caches are now cleared, reset the KoriBus Controller */
