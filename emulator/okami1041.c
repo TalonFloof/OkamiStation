@@ -135,7 +135,7 @@ uint32_t readICacheLine(uint32_t addr) {
         return iCacheTags[index].cacheWord;
     } else {
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&iCacheTags)[index])) {
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(8,addr); // Fetch Exception
             return 0;
         }
@@ -154,7 +154,7 @@ uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
         val = dCacheTags[index].cacheWord;
     } else {
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&dCacheTags)[index])) {
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return 0;
         }
@@ -174,7 +174,7 @@ uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
 void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
     uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
-    if(!KoriBusWrite(addr & 0x3FFFFFFC,4,&value)) {
+    if(!KoriBusWrite(addr & 0x3FFFFFFC,4,(uint8_t*)&value)) {
         triggerTrap(9,addr); // Data Exception
         return;
     }
@@ -191,9 +191,9 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
         dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
     } else {
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint64_t*)&dCacheTags)[index])) {
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
-            return 0;
+            return;
         }
         if(size == 1) {
             uint32_t shift = (addr & 3)*8;
@@ -230,9 +230,19 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         } else {
             if(extRegisters[0] & 0x8) {
                 if(extRegisters[0] & 0x10) {
-
+                    if(write) {
+                        ((uint32_t*)&iCacheTags)[(addr-0x80000000) >> 2] = *((uint32_t*)buf);
+                    } else {
+                        uint32_t val = ((uint32_t*)&iCacheTags)[(addr-0x80000000) >> 2];
+                        memcpy(buf,(uint8_t*)&val,len);
+                    }
                 } else {
-
+                    if(write) {
+                        ((uint32_t*)&dCacheTags)[(addr-0x80000000) >> 2] = *((uint32_t*)buf);
+                    } else {
+                        uint32_t val = ((uint32_t*)&dCacheTags)[(addr-0x80000000) >> 2];
+                        memcpy(buf,(uint8_t*)&val,len);
+                    }
                 }
             } else {
                 if(write) {
@@ -274,7 +284,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
 }
 
 void reset() {
-    PC = 0xfc000000;
+    PC = 0xbff00000;
     memset((void*)registers,0,sizeof(registers));
     memset((void*)extRegisters,0,sizeof(extRegisters));
     extRegisters[0] = 1;
@@ -293,7 +303,7 @@ void next() {
         return;
     }
     uint32_t instr = 0;
-    if(!memAccess(PC,&instr,4,false,true)) {
+    if(!memAccess(PC,(uint8_t*)&instr,4,false,true)) {
         return;
     }
     PC += 4;
@@ -330,7 +340,7 @@ void next() {
                 }
                 case 6: { // SRL/SRA
                     if(instr & 0x400) {
-                        setRegister(rd,((int32_t)getRegister(rs1))>>((int32_t)getRegister(rs2)));
+                        setRegister(rd,((int32_t)getRegister(rs1))>>(getRegister(rs2)));
                     } else {
                         setRegister(rd,getRegister(rs1)>>getRegister(rs2));
                     }
@@ -368,7 +378,7 @@ void next() {
                     break;
                 }
                 default: {
-                    // TODO: Trigger Trap
+                    triggerTrap(4,0);
                     break;
                 }
             }
@@ -402,7 +412,7 @@ void next() {
                 }
                 case 5: { // SRLI/SRAI
                     if(instr & 0x400) {
-                        setRegister(rd,(uint32_t)((int32_t)getRegister(rs)>>(int32_t)constU));
+                        setRegister(rd,(uint32_t)((int32_t)getRegister(rs)>>constU));
                     } else {
                         setRegister(rd,getRegister(rs)>>constU);
                     }
@@ -413,7 +423,7 @@ void next() {
                     break;
                 }
                 case 7: { // SLTIU
-                    setRegister(rd,(getRegister(rs)<((uint32_t)constS))?1:0);
+                    setRegister(rd,(getRegister(rs)<constU)?1:0);
                     break;
                 }
                 case 8: { // LUI
@@ -421,7 +431,7 @@ void next() {
                     break;
                 }
                 default: {
-                    // TODO: Trigger Trap
+                    triggerTrap(4,0);
                     break;
                 }
             }
@@ -486,7 +496,7 @@ void next() {
                     break;
                 }
                 default: {
-                    // TODO: Trigger Trap
+                    triggerTrap(4,0);
                     break;
                 }
             }
@@ -503,10 +513,11 @@ void next() {
                         break;
                     }
                     case 0b1101: { // MTEX
+                        setExtRegister(offset,getRegister(rs));
                         break;
                     }
                     case 0b1110: { // KCALL
-                        // TODO: Trigger Trap
+                        triggerTrap(2,0);
                         break;
                     }
                     case 0b1111: { // RFT

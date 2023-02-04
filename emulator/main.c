@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include "karasuFB.h"
 #include "ram.h"
+#include "okamiboard.h"
 #include "okami1041.h"
 
 SDL_Window *ScreenWindow;
@@ -21,6 +22,7 @@ int main() {
     srandom(timeVal.tv_sec);
     RAMInit();
     KarasuInit();
+    OkamiBoardInit();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "unable to initialize SDL: %s", SDL_GetError());
