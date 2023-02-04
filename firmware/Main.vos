@@ -1,18 +1,8 @@
-/*
-Vos Symbols:
-+ - * u* / u/ % u% ! & | ^ < > == != >= <= u< u> u>= u<=
-w@ w! b@ sb@ b! h@ sh@ h!
-auto const var 12345 "String" =
-
-if while break return
-struct
-*/
-
 (include_asm "Startup.s")
 (include "Sources.hvos")
 
 (fn main ()
     (FramebufferClear 12)
     /* Preform System Diagnostics */
-    (RunSystemDiagnostics)
+    (while 1 (do))
 )

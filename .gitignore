@@ -5,3 +5,5 @@ okamisdk/asm/
 okamisdk/asm/**
 okamistation
 *.okro
+a.out
+*.bin

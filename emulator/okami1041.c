@@ -9,10 +9,27 @@ uint32_t PC = 0xfc000000;
 
 uint32_t extRegisters[0x15];
 
-uint64_t TLB[64];
+typedef struct {
+    uint64_t isValid : 1;
+    uint64_t nonCacheable : 1;
+    uint64_t isDirty : 1;
+    uint64_t size : 5;
+    uint64_t vaddr : 24;
+    uint64_t addrSpaceID : 8;
+    uint64_t paddr : 24;
+} TLBLine;
 
-uint64_t iCacheTags[4096];
-uint64_t dCacheTags[4096];
+TLBLine TLB[64];
+
+typedef struct {
+    uint64_t cacheWord : 32;
+    uint64_t cacheAddr : 28;
+    uint64_t isValid : 1;
+    uint64_t cacheParity : 3;
+} CacheLine;
+
+CacheLine iCacheTags[4096];
+CacheLine dCacheTags[4096];
 
 int stallTicks = 0;
 
@@ -43,10 +60,10 @@ uint32_t getExtRegister(int index) {
             return extRegisters[index];
         }
         case 0x11: {
-            return TLB[index] & 0xFFFFFFFF;
+            return ((uint64_t*)TLB)[index] & 0xFFFFFFFF;
         }
         case 0x12: {
-            return TLB[index] >> 32;
+            return ((uint64_t*)TLB)[index] >> 32;
         }
         case 0x13: {
             return random()%64; // Doesn't comply with my documentation but whatever, it's for debugging purposes anyway.
@@ -59,12 +76,12 @@ int TLBLookup(uint32_t addr) {
     int i;
     uint32_t vaddr = addr & 0xFFFFFF00;
     for(i=0; i < 64; i++) {
-        if((TLB[i] & 1) && (((TLB[i] >> 32) & 0xFF) == extRegisters[0x14] || ((TLB[i] >> 32) & 0x80))) {
+        if(TLB[i].isValid && (TLB[i].addrSpaceID == extRegisters[0x14] || (TLB[i].addrSpaceID & 0x80))) {
             /* Check if we're within the size boundary */
-            uint32_t size = 1 << ((TLB[i] & 0xF8) >> 3);
+            uint32_t size = 1 << TLB[i].size;
             if(size < 256)
                 continue;
-            if(vaddr >= (TLB[i] & 0xFFFFFF00) && vaddr <= (TLB[i] & 0xFFFFFF00)+size) {
+            if(vaddr >= TLB[i].vaddr && vaddr <= TLB[i].vaddr+size) {
                 return i;
             }
             continue;
