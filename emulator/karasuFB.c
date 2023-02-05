@@ -51,7 +51,7 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
         if(addr >= 0xC00) { // Palette
             KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
         }
-        return 0;
+        return 1;
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
@@ -62,8 +62,9 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
 		uint64_t y1 = (addr+len-1)/1024;
         memcpy(&framebuffer[addr], (uint8_t*)buf, len);
         MarkDirty(x,y,x1,y1);
-        return 0;
+        return 1;
     }
+    return 0;
 }
 
 int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
@@ -71,14 +72,15 @@ int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
         if(addr >= 0xC00) { // Palette
             *(uint32_t*)buf = KarasuPalette[addr-0xC00];
         }
-        return 0;
+        return 1;
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
 			return 1;
         memcpy(buf, &framebuffer[addr], len);
-        return 0;
+        return 1;
     }
+    return 0;
 }
 
 void KarasuInit() {

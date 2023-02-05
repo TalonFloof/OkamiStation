@@ -431,7 +431,7 @@ fn main() {
                             );
                             segments.push32(
                                 current_section,
-                                0x40000000
+                                0x48000000
                                     | ((reg as u32) << 16)
                                     | ((reg as u32) << 21)
                                     | (val & 0xFFFF),
@@ -445,7 +445,7 @@ fn main() {
                             segments.push32(current_section, 0x60000000 | ((reg as u32) << 16));
                             segments.push32(
                                 current_section,
-                                0x40000000 | ((reg as u32) << 16) | ((reg as u32) << 21),
+                                0x48000000 | ((reg as u32) << 16) | ((reg as u32) << 21),
                             );
                         }
                     }
@@ -886,14 +886,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0x8C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0x8C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -907,14 +907,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0x90000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0x90000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -928,14 +928,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0x9C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0x9C000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -949,14 +949,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0xA0000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0xA0000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -970,14 +970,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0x94000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0x94000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -991,14 +991,14 @@ fn main() {
                                 is_local: _,
                             } = *arg3
                             {
+                                segments.push32(
+                                    current_section,
+                                    0x98000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
+                                );
                                 segments.add_reloc_entry(
                                     current_section,
                                     label,
                                     RelocationType::Rel16,
-                                );
-                                segments.push32(
-                                    current_section,
-                                    0x98000000 | ((reg1 as u32) << 16) | ((reg2 as u32) << 21),
                                 );
                             }
                         }
@@ -1099,14 +1099,10 @@ fn main() {
                     .get(i)
                     .expect(format!("Label {} Doesn't exist!", i).as_str())
                     .1;
-                let cur_addr = if label_addr >= k.1.offset {
-                    k.1.offset + 4
-                } else {
-                    k.1.offset + 8
-                };
-                let jump = (((label_addr.wrapping_sub(cur_addr)) as i32) / 4) as i16;
-                segments.text[k.1.offset as usize] = ((jump as u16) & 0xFF) as u8;
-                segments.text[(k.1.offset + 1) as usize] = (((jump as u16) & 0xFF00) >> 8) as u8;
+                let offset = (label_addr as i32) - ((k.1.offset) as i32);
+                let jump = ((offset as i32) / 4) as i16;
+                segments.text[(k.1.offset - 4) as usize] = ((jump as u16) & 0xFF) as u8;
+                segments.text[(k.1.offset - 3) as usize] = (((jump as u16) & 0xFF00) >> 8) as u8;
             }
         }
         j.retain(|x| x.reloc_type != RelocationType::Rel16);
@@ -1280,8 +1276,8 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                             _ => todo!(),
                         },
                         operand1: Box::new(to_ast_symbol(val2)),
-                        offset: Box::new(to_ast_symbol(val4)),
-                        operand2: Box::new(to_ast_symbol(val3)),
+                        offset: Box::new(to_ast_symbol(val3)),
+                        operand2: Box::new(to_ast_symbol(val4)),
                     };
                 }
                 Rule::opcode_3 => {

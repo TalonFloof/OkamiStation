@@ -99,6 +99,7 @@ void setExtRegister(int index, uint32_t val) {
 
 void triggerTrap(uint32_t type, uint32_t addr) {
     fprintf(stderr, "TRAP 0x%x TRIGGERED: 0x%08x\n", type, PC-4);
+    exit(1);
 }
 
 int TLBLookup(uint32_t addr) {
@@ -212,7 +213,6 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
-    uint32_t kaddr = addr & 0x3FFFFFFF;
     if(addr < 0x80000000) { // user segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
@@ -397,7 +397,7 @@ void next() {
                     break;
                 }
                 case 1: { // ANDI
-                    setRegister(rd,getRegister(rs)&constS);
+                    setRegister(rd,getRegister(rs)&constU);
                     break;
                 }
                 case 2: { // ORI
@@ -510,19 +510,19 @@ void next() {
                 uint32_t rd = (instr & 0x3E00000) >> 21;
                 uint32_t offset = (instr & 0xFFFF);
                 switch(opcode & 0b111) {
-                    case 0b1100: { // MFEX
+                    case 0b100: { // MFEX
                         setRegister(rd,getExtRegister(offset));
                         break;
                     }
-                    case 0b1101: { // MTEX
+                    case 0b101: { // MTEX
                         setExtRegister(offset,getRegister(rs));
                         break;
                     }
-                    case 0b1110: { // KCALL
+                    case 0b110: { // KCALL
                         triggerTrap(2,0);
                         break;
                     }
-                    case 0b1111: { // RFT
+                    case 0b111: { // RFT
                         extRegisters[0] = ((extRegisters[0] & 3) >> 1) | (extRegisters[0] & ~3);
                         PC = extRegisters[2];
                         break;
