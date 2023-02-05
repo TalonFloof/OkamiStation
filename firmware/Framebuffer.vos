@@ -1,4 +1,4 @@
-(const FRAMEBUFFER_BASE 0xE0001000)
+(const FRAMEBUFFER_BASE 0xB0001000)
 
 (fn FramebufferSetPixel (x y color) 
     (b! (+ (FRAMEBUFFER_BASE) (u* y 1024) x) color)

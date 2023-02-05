@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "koribus.h"
 
+extern uint64_t cycle_count;
+
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
 
@@ -136,7 +138,7 @@ uint32_t readICacheLine(uint32_t addr) {
     if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && iCacheTags[index].cacheParity == parity) {
         return iCacheTags[index].cacheWord;
     } else {
-        stallTicks = 4; // Cache Miss Stall
+        //stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(8,addr); // Fetch Exception
             return 0;
@@ -155,7 +157,7 @@ uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
     if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity) {
         val = dCacheTags[index].cacheWord;
     } else {
-        stallTicks = 4; // Cache Miss Stall
+        //stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return 0;
@@ -192,7 +194,7 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
         }
         dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
     } else {
-        stallTicks = 4; // Cache Miss Stall
+        //stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return;
@@ -257,7 +259,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             }
         }
     } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
-        stallTicks = 3; // Uncached Stall
+        //stallTicks = 3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {
@@ -307,7 +309,7 @@ void next() {
     if(!memAccess(PC,(uint8_t*)&instr,4,false,true)) {
         return;
     }
-    fprintf(stderr, "%08x: %08x\n", PC, instr);
+    //fprintf(stderr, "%08x: %08x\n", PC, instr);
     PC += 4;
     uint32_t opcode = (instr & 0xFC000000) >> 26;
     switch((opcode & 0b110000) >> 4) {
@@ -445,7 +447,7 @@ void next() {
             uint32_t rs = rs1;
             uint32_t rd = rs2;
             int32_t jumpOffset = ((int32_t)((int16_t)(instr & 0xFFFF)))*4;
-            uint32_t jumpAddr = (jumpAddr & 0x3FFFFFF) << 2;
+            uint32_t jumpAddr = (instr & 0x3FFFFFF) << 2;
             switch((opcode & 0b1111)) {
                 case 0: { // B
                     PC = (PC & 0xF0000000) | jumpAddr;

@@ -14,10 +14,13 @@ SDL_Renderer *ScreenRenderer;
 
 uint32_t tick_start = 0;
 uint32_t tick_end = 0;
+int title_update = 0;
+uint64_t cycle_count = 0;
 bool done = false;
 
 int main() {
     struct timeval timeVal;
+    char title[96];
     gettimeofday(&timeVal, 0);
     srandom(timeVal.tv_sec);
     reset();
@@ -57,9 +60,8 @@ int main() {
     SDL_Rect winrect = {
         .w = 1024,
         .h = 768,
-        .x = 0,
-        .y = 0
     };
+    title_update = SDL_GetTicks()+1000;
     while (!done) {
         int dt = SDL_GetTicks() - tick_start;
         tick_start = SDL_GetTicks();
@@ -72,6 +74,7 @@ int main() {
             if (i == dt-1)
                 cyclesleft += extracycles;
             while (cyclesleft > 0) {
+                cycle_count += 1;
                 next();
 			    cyclesleft -= 1;
 		    }
@@ -92,6 +95,12 @@ int main() {
 		if (delay > 0) {
 			SDL_Delay(delay);
 		}
+        if(SDL_GetTicks() >= title_update) {
+            sprintf((char*)&title, "OkamiStation - %.2f MIPS", __TIMESTAMP__, (double)cycle_count/1000000.0);
+            SDL_SetWindowTitle(ScreenWindow, (char*)&title);
+            cycle_count = 0;
+            title_update = SDL_GetTicks()+1000;
+        }
     }
     return 0;
 }

@@ -476,7 +476,7 @@ fn main() {
                                     0xC4000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -491,7 +491,7 @@ fn main() {
                                     0xCC000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -506,7 +506,7 @@ fn main() {
                                     0xC0000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -521,7 +521,7 @@ fn main() {
                                     0xC8000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -536,7 +536,7 @@ fn main() {
                                     0xD0000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -551,7 +551,7 @@ fn main() {
                                     0xD4000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -566,7 +566,7 @@ fn main() {
                                     0xD8000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -581,7 +581,7 @@ fn main() {
                                     0xDC000000
                                         | ((reg2 as u32) << 16)
                                         | ((reg1 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -603,7 +603,7 @@ fn main() {
                                     0x40000000
                                         | ((reg1 as u32) << 16)
                                         | ((reg2 as u32) << 21)
-                                        | (val & 0xFFFF),
+                                        | ((((val as i32) as i16) as u16) as u32),
                                 );
                             }
                         }
@@ -1418,7 +1418,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                     let num_str = &splice_underscores(val.into_inner().next().unwrap().as_str());
                     let num = i32::from_str_radix(num_str, 10)
                         .unwrap_or_else(|_| u32::from_str_radix(num_str, 10).unwrap() as i32);
-                    return ASTNode::Immediate(num as u32);
+                    return ASTNode::Immediate(u32::from_ne_bytes(num.to_ne_bytes()));
                 }
                 Rule::imm_char => ASTNode::Immediate(
                     val.into_inner().next().unwrap().as_str().as_bytes()[0] as u32,

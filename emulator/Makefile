@@ -1,2 +1,2 @@
 build:
-	gcc -O3 -g *.c -lSDL2 -o okamistation
+	clang -O3 *.c -lSDL2 -o okamistation

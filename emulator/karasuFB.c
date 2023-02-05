@@ -55,7 +55,7 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
-			return 1;
+			return 0;
 		uint64_t x = addr%1024;
 		uint64_t y = addr/1024;
         uint64_t x1 = (addr+len-1)%1024;
@@ -76,7 +76,7 @@ int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
-			return 1;
+			return 0;
         memcpy(buf, &framebuffer[addr], len);
         return 1;
     }
@@ -96,18 +96,20 @@ void KarasuInit() {
         1024,
         768
     );
+    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
 }
 
 void KarasuUploadFrame() {
     if (!Dirty)
         return;
+    fprintf(stderr, "DRAW!\n");
     uint64_t dirty_index = (DirtyY1*1024)+DirtyX1;
     uint64_t pixbuf_index = 0;
     int w = DirtyX2-DirtyX1+1;
 	int h = DirtyY2-DirtyY1+1;
     for (int y = 0; y < h; y++) {
 		for (int x = 0; x < w; x++) {
-            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]&0xFF];
+            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]&0xFF] | 0xFF000000;
         }
         dirty_index += 1024;
     }
@@ -117,6 +119,6 @@ void KarasuUploadFrame() {
 		.w = w,
 		.h = h,
 	};
-    SDL_UpdateTexture(FBTexture, &rect, (void*)&outputTexture, rect.w * 4);
+    SDL_UpdateTexture(FBTexture, &rect, (void*)&outputTexture, 1024 * 4);
     Dirty = false;
 }
