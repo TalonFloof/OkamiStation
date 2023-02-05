@@ -74,7 +74,6 @@ int main() {
             if (i == dt-1)
                 cyclesleft += extracycles;
             while (cyclesleft > 0) {
-                cycle_count += 1;
                 next();
 			    cyclesleft -= 1;
 		    }

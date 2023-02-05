@@ -4,5 +4,6 @@
 (fn main ()
     (FramebufferClear 12)
     /* Preform System Diagnostics */
+    (FramebufferDrawRect 464 320 96 128 252)
     (while 1 (do))
 )
