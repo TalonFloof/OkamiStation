@@ -49,7 +49,7 @@ void MarkDirty(uint64_t x1, uint64_t y1, uint64_t x2, uint64_t y2) {
 int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
+            //KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
         }
         return 1;
     } else {
@@ -70,13 +70,13 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
 int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            *(uint32_t*)buf = KarasuPalette[addr-0xC00];
+            //*(uint32_t*)buf = KarasuPalette[addr-0xC00];
         }
         return 1;
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
-			return 0;
+			return 1;
         memcpy(buf, &framebuffer[addr], len);
         return 1;
     }
@@ -84,19 +84,27 @@ int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
 }
 
 void KarasuInit() {
-    memset((void*)&framebuffer,0,sizeof(framebuffer));
-    memset((void*)&outputTexture,0,sizeof(outputTexture));
+    //memset((void*)&framebuffer,0,sizeof(framebuffer));
+    //memset((void*)&outputTexture,0,sizeof(outputTexture));
     KoriBusBanks[8].Used = true;
     KoriBusBanks[8].Read = KarasuRead;
     KoriBusBanks[8].Write = KarasuWrite;
+    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
     FBTexture = SDL_CreateTexture(
         ScreenRenderer,
-        SDL_PIXELFORMAT_ABGR8888,
+        SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
         1024,
         768
     );
-    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
+    if(FBTexture == 0) {
+        fprintf(stderr, SDL_GetError());
+        fprintf(stderr, "\n");
+        abort();
+    }
+    DirtyX2 = 1024;
+	DirtyY2 = 767;
+    Dirty = true;
 }
 
 void KarasuUploadFrame() {
@@ -109,7 +117,7 @@ void KarasuUploadFrame() {
 	int h = DirtyY2-DirtyY1+1;
     for (int y = 0; y < h; y++) {
 		for (int x = 0; x < w; x++) {
-            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]&0xFF] | 0xFF000000;
+            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]&0xFF];
         }
         dirty_index += 1024;
     }
@@ -119,6 +127,10 @@ void KarasuUploadFrame() {
 		.w = w,
 		.h = h,
 	};
-    SDL_UpdateTexture(FBTexture, &rect, (void*)&outputTexture, 1024 * 4);
+    if(SDL_UpdateTexture(FBTexture, &rect, (uint32_t*)&outputTexture, 1024 * 4) != 0) {
+        fprintf(stderr, SDL_GetError());
+        fprintf(stderr, "\n");
+        abort();
+    }
     Dirty = false;
 }

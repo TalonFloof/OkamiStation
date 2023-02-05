@@ -100,7 +100,10 @@ void setExtRegister(int index, uint32_t val) {
 }
 
 void triggerTrap(uint32_t type, uint32_t addr) {
-    fprintf(stderr, "TRAP 0x%x TRIGGERED: 0x%08x\n", type, PC-4);
+    fprintf(stderr, "TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, PC-4, addr);
+    for(int i=0; i < 32; i++) {
+        fprintf(stderr, "r%i: 0x%08x ", i, getRegister(i));
+    }
     exit(1);
 }
 
@@ -135,10 +138,10 @@ uint64_t calculateParity(uint64_t line) {
 uint32_t readICacheLine(uint32_t addr) {
     int index = (addr >> 2) & 0xFFF;
     uint64_t parity = calculateParity(((uint64_t*)&iCacheTags)[index]);
-    if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && iCacheTags[index].cacheParity == parity) {
+    if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && iCacheTags[index].cacheParity == parity && false) {
         return iCacheTags[index].cacheWord;
     } else {
-        //stallTicks = 4; // Cache Miss Stall
+        stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(8,addr); // Fetch Exception
             return 0;
@@ -154,10 +157,10 @@ uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
     uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
     uint32_t val;
-    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity) {
+    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity && false) {
         val = dCacheTags[index].cacheWord;
     } else {
-        //stallTicks = 4; // Cache Miss Stall
+        stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return 0;
@@ -182,7 +185,7 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
         triggerTrap(9,addr); // Data Exception
         return;
     }
-    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity) {
+    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC) && dCacheTags[index].cacheParity == parity && false) {
         if(size == 1) {
             uint32_t shift = (addr & 3)*8;
             dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
@@ -194,7 +197,7 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
         }
         dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
     } else {
-        //stallTicks = 4; // Cache Miss Stall
+        stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return;
@@ -259,7 +262,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             }
         }
     } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
-        //stallTicks = 3; // Uncached Stall
+        stallTicks = 3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {

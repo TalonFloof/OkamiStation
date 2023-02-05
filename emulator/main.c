@@ -25,7 +25,6 @@ int main() {
     srandom(timeVal.tv_sec);
     reset();
     RAMInit();
-    KarasuInit();
     OkamiBoardInit();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -61,6 +60,7 @@ int main() {
         .w = 1024,
         .h = 768,
     };
+    KarasuInit();
     title_update = SDL_GetTicks()+1000;
     while (!done) {
         int dt = SDL_GetTicks() - tick_start;
@@ -81,7 +81,11 @@ int main() {
         }
         KarasuUploadFrame();
         SDL_RenderClear(ScreenRenderer);
-        SDL_RenderCopy(ScreenRenderer, FBTexture, &screenrect, &winrect);
+        if(SDL_RenderCopy(ScreenRenderer, FBTexture, &screenrect, &winrect) != 0) {
+            fprintf(stderr, SDL_GetError());
+            fprintf(stderr, "\n");
+            abort();
+        }
         SDL_RenderPresent(ScreenRenderer);
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
