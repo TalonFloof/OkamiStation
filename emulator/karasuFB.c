@@ -110,7 +110,6 @@ void KarasuInit() {
 void KarasuUploadFrame() {
     if (!Dirty)
         return;
-    fprintf(stderr, "DRAW!\n");
     uint64_t dirty_index = (DirtyY1*1024)+DirtyX1;
     uint64_t pixbuf_index = 0;
     int w = DirtyX2-DirtyX1+1;

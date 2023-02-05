@@ -1,1 +1,3 @@
 (include "Framebuffer.vos")
+(include "Serial.vos")
+(include "String.vos")

@@ -1,0 +1,6 @@
+(fn strlen (str)
+    (int i)
+    (= i 0)
+    (while (!= (b@ (+ str i)) 0) (= i (+ i 1)))
+    (return i)
+)

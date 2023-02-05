@@ -1,0 +1,3 @@
+FramebufferClear:
+    
+    blr zero, ra
