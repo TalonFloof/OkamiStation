@@ -1,10 +1,15 @@
 (include_asm "Framebuffer.s")
 
-(fn FramebufferDrawCenteredRect (x y w h)
-    (int finalX finalY)
-    (= finalX (- 512 (u/ w 2)))
-    (= finalY (- 384 (u/ h 2)))
-    (FramebufferDrawRect finalX finalY w h)
+(fn FramebufferDrawCenteredRect (x y w h color) (FramebufferDrawRect (- x (u/ w 2)) (- y (u/ h 2)) w h color))
+
+(fn FramebufferDrawRect (x y w h color)
+    (int i y2)
+    (= y2 (+ y h))
+    (= i y)
+    (while (u< i y2)
+        (memset (+ 0xb0001000 (u* i 1024) x) w color)
+        (= i (+ i 1))
+    )
 )
 
 (fn FramebufferRenderMonochromeBitmap (x y w h scale color line_size ptr)

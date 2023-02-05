@@ -1,4 +1,4 @@
-FramebufferClear: /* (color: a0) */
+.global FramebufferClear: /* (color: a0) */
     la t0, 0xb0001000
     la t1, 0xb00c1000
 .loop:
@@ -7,7 +7,8 @@ FramebufferClear: /* (color: a0) */
     bltu t0, t1, .loop
     blr zero, ra
 
-FramebufferDrawRect: /* (x: a0, y: a1, w: a2, h: a3, color: a4) */
+/* (x: a0, y: a1, w: a2, h: a3, color: a4) */
+/*FramebufferDrawRect:
     li t0, 1024
     mulu t0, zero, a1, t0
     add t0, t0, a0
@@ -25,4 +26,4 @@ FramebufferDrawRect: /* (x: a0, y: a1, w: a2, h: a3, color: a4) */
     sub t0, t0, a2
     addi t2, t2, 1
     bltu t2, a3, .loop
-    blr zero, ra
+    blr zero, ra*/

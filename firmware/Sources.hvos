@@ -1,3 +1,4 @@
 (include "Framebuffer.vos")
-(include "Serial.vos")
 (include "String.vos")
+
+(include_asm "Memory.s")

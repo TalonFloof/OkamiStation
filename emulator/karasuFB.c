@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-uint8_t framebuffer[1024*768];
+uint8_t* framebuffer;
 uint32_t outputTexture[1024*768];
 SDL_Texture *FBTexture;
 extern SDL_Renderer *ScreenRenderer;
@@ -17,50 +17,34 @@ uint64_t DirtyX2 = 0;
 uint64_t DirtyY1 = 0;
 uint64_t DirtyY2 = 0;
 
-void MarkDirty(uint64_t x1, uint64_t y1, uint64_t x2, uint64_t y2) {
-    if(!Dirty) {
+static inline void MarkDirty(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
+	Dirty = true;
+
+	if (x1 < DirtyX1)
 		DirtyX1 = x1;
+	if (y1 < DirtyY1)
 		DirtyY1 = y1;
+	if (x2 > DirtyX2)
 		DirtyX2 = x2;
+	if (y2 > DirtyY2)
 		DirtyY2 = y2;
-		Dirty = true;
-		return;
-	}
-    if(x1 < DirtyX1)
-		DirtyX1 = x1;
-    if(y1 < DirtyY1)
-        DirtyY1 = y1;
-    if (x2 > DirtyX2) {
-		if (x2 < 1024) {
-			DirtyX2 = x2;
-		} else {
-			DirtyX2 = 1024-1;
-		}
-	}
-    if (y2 > DirtyY2) {
-		if (y2 < 768) {
-			DirtyY2 = y2;
-		} else {
-			DirtyY2 = 768-1;
-		}
-	}
 }
 
 int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            //KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
+            KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
         }
         return 1;
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
 			return 0;
-		uint64_t x = addr%1024;
-		uint64_t y = addr/1024;
-        uint64_t x1 = (addr+len-1)%1024;
-		uint64_t y1 = (addr+len-1)/1024;
-        memcpy(&framebuffer[addr], (uint8_t*)buf, len);
+		uint32_t x = addr%1024;
+		uint32_t y = addr/1024;
+        uint32_t x1 = (addr+len-1)%1024;
+		uint32_t y1 = (addr+len-1)/1024;
+        memcpy(framebuffer+addr, (uint8_t*)buf, len);
         MarkDirty(x,y,x1,y1);
         return 1;
     }
@@ -70,26 +54,25 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
 int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            //*(uint32_t*)buf = KarasuPalette[addr-0xC00];
+            *(uint32_t*)buf = KarasuPalette[addr-0xC00];
         }
         return 1;
     } else {
         addr -= 0x1000;
         if (addr+len > 1024*768)
-			return 1;
-        memcpy(buf, &framebuffer[addr], len);
+			return 0;
+        memcpy(buf, framebuffer+addr, len);
         return 1;
     }
     return 0;
 }
 
 void KarasuInit() {
-    //memset((void*)&framebuffer,0,sizeof(framebuffer));
-    //memset((void*)&outputTexture,0,sizeof(outputTexture));
+    framebuffer = malloc(1024*768);
+    memset((void*)framebuffer,0,1024*768);
     KoriBusBanks[8].Used = true;
     KoriBusBanks[8].Read = KarasuRead;
     KoriBusBanks[8].Write = KarasuWrite;
-    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
     FBTexture = SDL_CreateTexture(
         ScreenRenderer,
         SDL_PIXELFORMAT_ARGB8888,
@@ -97,12 +80,13 @@ void KarasuInit() {
         1024,
         768
     );
+    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
     if(FBTexture == 0) {
         fprintf(stderr, SDL_GetError());
         fprintf(stderr, "\n");
-        abort();
+        exit(1);
     }
-    DirtyX2 = 1024;
+    DirtyX2 = 1023;
 	DirtyY2 = 767;
     Dirty = true;
 }
@@ -116,7 +100,7 @@ void KarasuUploadFrame() {
 	int h = DirtyY2-DirtyY1+1;
     for (int y = 0; y < h; y++) {
 		for (int x = 0; x < w; x++) {
-            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]&0xFF];
+            outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]];
         }
         dirty_index += 1024;
     }
@@ -126,10 +110,13 @@ void KarasuUploadFrame() {
 		.w = w,
 		.h = h,
 	};
-    if(SDL_UpdateTexture(FBTexture, &rect, (uint32_t*)&outputTexture, 1024 * 4) != 0) {
-        fprintf(stderr, SDL_GetError());
-        fprintf(stderr, "\n");
+    if(SDL_UpdateTexture(FBTexture, &rect, outputTexture, rect.w * 4) != 0) {
+        fprintf(stderr, "Texture Upload Error: %s\n", SDL_GetError());
         abort();
     }
-    Dirty = false;
+    DirtyX1 = -1;
+	DirtyX2 = 0;
+	DirtyY1 = -1;
+	DirtyY2 = 0;
+	Dirty = false;
 }

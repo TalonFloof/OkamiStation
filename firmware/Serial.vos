@@ -1,8 +1,0 @@
-(fn puts (str)
-    (int len)
-    (= len (strlen str))
-    (while (u> len 0)
-        
-        (= len (- len 1))
-    )
-)

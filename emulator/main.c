@@ -18,6 +18,11 @@ int title_update = 0;
 uint64_t cycle_count = 0;
 bool done = false;
 
+SDL_Rect winrect = {
+    .w = 1024,
+    .h = 768,
+};
+
 int main() {
     struct timeval timeVal;
     char title[96];
@@ -40,26 +45,22 @@ int main() {
         SDL_WINDOW_HIDDEN
     );
     if (!ScreenWindow) {
-        fprintf(stderr, "failed to create window\n");
-        return -1;
-    }
-    ScreenRenderer = SDL_CreateRenderer(ScreenWindow, -1, 0);
-    if (!ScreenRenderer) {
-        fprintf(stderr, "failed to create renderer\n");
+        fprintf(stderr, "Failed to create window\n");
         return -1;
     }
     reset();
+    ScreenRenderer = SDL_CreateRenderer(ScreenWindow, -1, 0);
+    if (ScreenRenderer == 0) {
+        fprintf(stderr, "Failed to create renderer\n");
+        return -1;
+    }
+    if(SDL_RenderClear(ScreenRenderer) != 0) {
+        fprintf(stderr, "Clear Error: %s\n", SDL_GetError());
+        abort();
+    }
+    SDL_RenderPresent(ScreenRenderer);
     SDL_ShowWindow(ScreenWindow);
     SDL_Event event;
-    SDL_Rect screenrect = {
-        .w = 1024,
-        .h = 768,
-    };
-
-    SDL_Rect winrect = {
-        .w = 1024,
-        .h = 768,
-    };
     KarasuInit();
     title_update = SDL_GetTicks()+1000;
     while (!done) {
@@ -80,9 +81,8 @@ int main() {
         }
         KarasuUploadFrame();
         SDL_RenderClear(ScreenRenderer);
-        if(SDL_RenderCopy(ScreenRenderer, FBTexture, &screenrect, &winrect) != 0) {
-            fprintf(stderr, SDL_GetError());
-            fprintf(stderr, "\n");
+        if(SDL_RenderCopy(ScreenRenderer, FBTexture, NULL, NULL) != 0) {
+            fprintf(stderr, "Render Copy Error: %s\n", SDL_GetError());
             abort();
         }
         SDL_RenderPresent(ScreenRenderer);
@@ -99,7 +99,7 @@ int main() {
 			SDL_Delay(delay);
 		}
         if(SDL_GetTicks() >= title_update) {
-            sprintf((char*)&title, "OkamiStation - %.2f MIPS", __TIMESTAMP__, (double)cycle_count/1000000.0);
+            sprintf((char*)&title, "OkamiStation - %.2f MIPS", (double)cycle_count/1000000.0);
             SDL_SetWindowTitle(ScreenWindow, (char*)&title);
             cycle_count = 0;
             title_update = SDL_GetTicks()+1000;
