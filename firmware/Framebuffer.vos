@@ -55,7 +55,7 @@
     )
 )
 
-(fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color (+ (Unifont) (u* rune 16))))
+(fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color 1 (+ (Unifont) (u* rune 16))))
 (fn FramebufferRenderString (x y scale color str)
     (int i len)
     (= len (strlen str))
