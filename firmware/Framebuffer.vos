@@ -1,5 +1,7 @@
 (include_asm "Framebuffer.s")
 
+(extern Unifont)
+
 (fn FramebufferDrawCenteredRect (x y w h color) (FramebufferDrawRect (- x (u/ w 2)) (- y (u/ h 2)) w h color))
 
 (fn FramebufferDrawRect (x y w h color)
@@ -29,7 +31,7 @@
     )
 )*/
 
-(fn FramebufferRenderMonochromeBitmap (x y w h scale color ptr)
+(fn FramebufferRenderMonochromeBitmap (x y w h scale color invert ptr)
     /* thx ry, ur the best :3 */
     (int i j bit pixel)
     (= i 0)
@@ -40,12 +42,25 @@
             (while (u< bit 8)
                 (= pixel (& (>> (b@ (+ ptr (u* i (u/ w 8)) (u/ j 8))) (- 7 bit)) 1))
                 (if (!= pixel 0)
-                    (FramebufferDrawRect (+ x (u* (+ j bit) scale)) (+ y (u* (- h i) scale)) scale scale color)
+                    (if (+ invert)
+                        (FramebufferDrawRect (+ x (u* (+ j bit) scale)) (+ y (u* i scale)) scale scale color)
+                        (FramebufferDrawRect (+ x (u* (+ j bit) scale)) (+ y (u* (- h i) scale)) scale scale color)
+                    )
                 )
                 (= bit (+ bit 1))
             )
             (= j (+ j 8))
         )
+        (= i (+ i 1))
+    )
+)
+
+(fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color (+ (Unifont) (u* rune 16))))
+(fn FramebufferRenderString (x y scale color str)
+    (int i len)
+    (= len (strlen str))
+    (while (u< i len)
+        (FramebufferRenderRune (+ x (u* i (u* 8 scale))) y scale color (b@ (+ str i)))
         (= i (+ i 1))
     )
 )

@@ -6,8 +6,17 @@
 (fn main ()
     (FramebufferClear 12)
     /* Preform System Diagnostics */
-    (FramebufferDrawCenteredRect 514 386 385 513 248)
+    (FramebufferDrawCenteredRect 510 382 384 512 255)
+    (FramebufferDrawCenteredRect 514 386 384 512 248)
     (FramebufferDrawCenteredRect 512 384 384 512 252)
-    (FramebufferRenderMonochromeBitmap 384 150 128 128 2 0 (OkamiLogo))
+
+    /*(FramebufferDrawCenteredRect 512 384 335 463 249)*/
+    (FramebufferDrawCenteredRect 512 384 336 464 250)
+    (FramebufferDrawCenteredRect 345 384 2 464 249)
+    (FramebufferDrawCenteredRect 512 152 336 2 249)
+    (FramebufferDrawCenteredRect 679 383 2 464 255)
+    (FramebufferDrawCenteredRect 512 615 336 2 255)
+    (FramebufferRenderMonochromeBitmap 384 150 128 128 2 0 0 (OkamiLogo))
+    (FramebufferRenderString 0 0 1 0 "OkamiStation")
     (while 1 (do))
 )

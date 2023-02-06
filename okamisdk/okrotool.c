@@ -51,7 +51,7 @@ const char* segToString(SegmentType type) {
 }
 
 uint32_t getSize(uint32_t num) {
-    return num + ((num % 4 > 0) ? 4-num : 0);
+    return num + ((num % 4 > 0) ? 4-(num % 4) : 0);
 }
 
 uint8_t* readImage(const char* path, size_t* imgSize) {

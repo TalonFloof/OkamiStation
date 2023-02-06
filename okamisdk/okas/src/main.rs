@@ -1125,6 +1125,7 @@ fn main() {
     }
     data.extend_from_slice(segments.rodata.as_slice());
     if segments.rodata.len() % 4 != 0 {
+        println!("PADDING! {}", 4 - (segments.rodata.len() % 4));
         data.append(&mut vec![0u8; 4 - (segments.rodata.len() % 4)]);
     }
     data.extend_from_slice(segments.data.as_slice());

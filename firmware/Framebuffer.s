@@ -31,4 +31,5 @@
 
 .rodata
 OkamiLogo: .include_bin "OkamiLogo.dat"
+Unifont: .include_bin "Unifont.dat"
 .text
