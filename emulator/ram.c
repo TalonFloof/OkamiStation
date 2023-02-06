@@ -18,6 +18,7 @@ int RAMWrite(uint32_t addr, uint32_t len, void *buf) {
 }
 
 void RAMInit() {
+    memset((void*)&RAM,0,4*1024*1024);
     KoriBusBanks[0].Used = true;
     KoriBusBanks[0].Write = RAMWrite;
 	KoriBusBanks[0].Read = RAMRead;

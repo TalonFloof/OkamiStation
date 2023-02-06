@@ -1,9 +1,13 @@
 (include_asm "Startup.s")
 (include "Sources.hvos")
 
+(extern OkamiLogo)
+
 (fn main ()
     (FramebufferClear 12)
     /* Preform System Diagnostics */
+    (FramebufferDrawCenteredRect 514 386 385 513 248)
     (FramebufferDrawCenteredRect 512 384 384 512 252)
+    (FramebufferRenderMonochromeBitmap 384 150 128 128 2 0 (OkamiLogo))
     (while 1 (do))
 )

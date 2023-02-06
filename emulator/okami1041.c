@@ -225,7 +225,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             return false;
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
-        if(fetch) {
+        /*if(fetch) {
             if(extRegisters[0] & 0x8) {
                 triggerTrap(8,addr); // Fetch Exception
                 return false;
@@ -260,6 +260,23 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                     return true;
                 }
             }
+        }*/
+        if(write) {
+            bool result = KoriBusWrite(addr-0x80000000,len,buf);
+            if(!result) {
+                triggerTrap(7,addr); // Data Exception
+            }
+            return result;
+        } else {
+            bool result = KoriBusRead(addr-0x80000000,len,buf);
+            if(!result) {
+                if(fetch) {
+                    triggerTrap(8,addr); // Fetch Exception
+                } else {
+                    triggerTrap(7,addr); // Data Exception
+                }
+            }
+            return result;
         }
     } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
         stallTicks = 3; // Uncached Stall
@@ -379,9 +396,10 @@ void next() {
                     uint32_t lowRd = (instr & 0x7C0) >> 6;
                     if(instr & 0x8) {
                         setRegister(lowRd, getRegister(rs1)/getRegister(rs2));
-                    } else {
-                        setRegister(lowRd, getRegister(rs1)/getRegister(rs2));
                         setRegister(rd, getRegister(rs1)%getRegister(rs2));
+                    } else {
+                        setRegister(lowRd, (uint32_t)((int32_t)getRegister(rs1)/(int32_t)getRegister(rs2)));
+                        setRegister(rd, (uint32_t)((int32_t)getRegister(rs1)%(int32_t)getRegister(rs2)));
                     }
                     break;
                 }
@@ -525,7 +543,7 @@ void next() {
                         break;
                     }
                     case 0b110: { // KCALL
-                        triggerTrap(2,0);
+                        triggerTrap(2,instr & 0x3FFFFFF);
                         break;
                     }
                     case 0b111: { // RFT

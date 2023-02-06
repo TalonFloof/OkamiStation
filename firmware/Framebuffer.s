@@ -1,3 +1,4 @@
+.text
 .global FramebufferClear: /* (color: a0) */
     la t0, 0xb0001000
     la t1, 0xb00c1000
@@ -27,3 +28,7 @@
     addi t2, t2, 1
     bltu t2, a3, .loop
     blr zero, ra*/
+
+.rodata
+OkamiLogo: .include_bin "OkamiLogo.dat"
+.text
