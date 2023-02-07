@@ -173,7 +173,7 @@ uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
     if(size == 1) {
         val >>= (addr & 3)*8;
     } else if(size == 2) {
-        val >>= (addr & 2)*16;
+        val >>= ((addr & 2) >> 1)*16;
     }
     return val;
 }
@@ -206,7 +206,7 @@ void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
             uint32_t shift = (addr & 3)*8;
             dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
         } else if(size == 2) {
-            uint32_t shift = (addr & 2)*16;
+            uint32_t shift = ((addr & 2) >> 1)*16;
             dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFFFF << shift)) | (value << shift);
         } else {
             dCacheTags[index].cacheWord = value;
@@ -225,7 +225,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             return false;
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
-        /*if(fetch) {
+        if(fetch) {
             if(extRegisters[0] & 0x8) {
                 triggerTrap(8,addr); // Fetch Exception
                 return false;
@@ -237,31 +237,48 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             if(extRegisters[0] & 0x8) {
                 if(extRegisters[0] & 0x10) {
                     if(write) {
-                        ((uint32_t*)&iCacheTags)[(addr-0x80000000) >> 2] = *((uint32_t*)buf);
+                        ((uint32_t*)&iCacheTags)[(addr >> 2) & 0xFFF] = *((uint32_t*)buf);
                     } else {
-                        uint32_t val = ((uint32_t*)&iCacheTags)[(addr-0x80000000) >> 2];
+                        uint32_t val = ((uint32_t*)&iCacheTags)[(addr >> 2) & 0xFFF];
                         memcpy(buf,(uint8_t*)&val,len);
                     }
                 } else {
                     if(write) {
-                        ((uint32_t*)&dCacheTags)[(addr-0x80000000) >> 2] = *((uint32_t*)buf);
+                        ((uint32_t*)&dCacheTags)[(addr >> 2) & 0xFFF] = *((uint32_t*)buf);
                     } else {
-                        uint32_t val = ((uint32_t*)&dCacheTags)[(addr-0x80000000) >> 2];
+                        uint32_t val = ((uint32_t*)&dCacheTags)[(addr >> 2) & 0xFFF];
                         memcpy(buf,(uint8_t*)&val,len);
                     }
                 }
             } else {
-                if(write) {
+                /*if(write) {
                     writeDCacheLine(addr-0x80000000,*((uint32_t*)buf),len);
                     return true;
                 } else {
                     uint32_t val = readDCacheLine(addr-0x80000000,len);
                     memcpy(buf,(uint8_t*)&val,len);
                     return true;
+                }*/
+                if(write) {
+                    bool result = KoriBusWrite(addr-0x80000000,len,buf);
+                    if(!result) {
+                        triggerTrap(7,addr); // Data Exception
+                    }
+                    return result;
+                } else {
+                    bool result = KoriBusRead(addr-0x80000000,len,buf);
+                    if(!result) {
+                        if(fetch) {
+                            triggerTrap(8,addr); // Fetch Exception
+                        } else {
+                            triggerTrap(7,addr); // Data Exception
+                        }
+                    }
+                    return result;
                 }
             }
-        }*/
-        if(write) {
+        }
+        /*if(write) {
             bool result = KoriBusWrite(addr-0x80000000,len,buf);
             if(!result) {
                 triggerTrap(7,addr); // Data Exception
@@ -277,7 +294,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 }
             }
             return result;
-        }
+        }*/
     } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
         stallTicks = 3; // Uncached Stall
         if(write) {
