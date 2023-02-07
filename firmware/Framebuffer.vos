@@ -59,6 +59,7 @@
 (fn FramebufferRenderString (x y scale color str)
     (int i len)
     (= len (strlen str))
+    (= i 0)
     (while (u< i len)
         (FramebufferRenderRune (+ x (u* i (u* 8 scale))) y scale color (b@ (+ str i)))
         (= i (+ i 1))
