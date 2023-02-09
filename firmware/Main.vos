@@ -2,6 +2,7 @@
 (include "Sources.hvos")
 
 (extern OkamiLogo)
+(extern RAMIcon)
 
 (fn main ()
     (FramebufferClear 12)
@@ -16,6 +17,6 @@
     (FramebufferDrawCenteredRect 512 615 336 2 255)
     (FramebufferRenderMonochromeBitmap 384 150 128 128 2 0 0 (OkamiLogo))
     (FramebufferRenderString 416 408 2 0 "OkamiStation")
-    (UpdateSelfTestStatus "Testing RAM..." 0)
+    (UpdateSelfTestStatus "Testing RAM..." (RAMIcon))
     (while 1 (do))
 )

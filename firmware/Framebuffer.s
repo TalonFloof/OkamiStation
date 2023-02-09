@@ -30,6 +30,9 @@
     blr zero, ra*/
 
 .rodata
-OkamiLogo: .include_bin "OkamiLogo.dat"
-Unifont: .include_bin "Unifont.dat"
+OkamiLogo: .include_bin "Images/OkamiLogo.dat"
+
+RAMIcon: .include_bin "Images/RAMIcon.dat"
+
+Unifont: .include_bin "Images/Unifont.dat"
 .text

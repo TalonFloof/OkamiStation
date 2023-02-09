@@ -2,6 +2,6 @@
     (int len)
     (= len (strlen str))
     (FramebufferDrawCenteredRect 512 550 332 128 250)
-    (FramebufferRenderString (- 512 (u/ (u* len 8) 2)) 598 1 0 str)
-    (if icon (FramebufferRenderMonochromeBitmap 480 0 32 32 2 0 0 icon))
+    (FramebufferRenderString (- 512 (u/ (u* len 8) 2)) 590 1 0 str)
+    (if icon (FramebufferRenderMonochromeBitmap 480 520 32 32 2 0 0 icon))
 )
