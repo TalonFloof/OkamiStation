@@ -259,6 +259,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                     memcpy(buf,(uint8_t*)&val,len);
                     return true;
                 }*/
+                
                 if(write) {
                     bool result = KoriBusWrite(addr-0x80000000,len,buf);
                     if(!result) {
