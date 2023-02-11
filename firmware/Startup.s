@@ -1,7 +1,8 @@
 .text
 .global OkamiStationFirmwareStartup:
     /* We must first clear the caches */
-    la t0, ClearCaches /* Assembler will relocate to 0x8000_0000 as base, we need to fix that. */
+    /* Assembler will relocate to 0x8000_0000 as base, we need to fix that. */
+    la t0, ClearCaches
     lui t1, 0x3ff0
     add t0, t0, t1
     blr ra, t0
@@ -26,8 +27,8 @@
     la sp, 0x803ffffc
     la t0, main
     blr zero, t0
-.halt:
-    beq zero, zero, .halt
+halt:
+    beq zero, zero, halt
 
 .global ClearCaches:
     /* Clear Instruction Cache */

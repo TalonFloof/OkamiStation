@@ -5,3 +5,21 @@
     (FramebufferRenderString (- 512 (u/ (u* len 8) 2)) 590 1 0 str)
     (if icon (FramebufferRenderMonochromeBitmap 480 520 32 32 2 0 0 icon))
 )
+
+(fn TestRAM ()
+    (int addr)
+    (= addr 0xa0020000)
+    (while (u< addr 0xa03fffff)
+        (w! addr 0x55aa55aa)
+        (if (!= (w@ addr) 0x55aa55aa) (do
+            (UpdateSelfTestStatus "RAM Test Failed!" 0)
+            (halt)
+        ))
+        (w! addr 0xaa55aa55)
+        (if (!= (w@ addr) 0xaa55aa55) (do
+            (UpdateSelfTestStatus "RAM Test Failed!" 0)
+            (halt)
+        ))
+        (= addr (+ addr 4))
+    )
+)

@@ -9,27 +9,10 @@
     (= y2 (+ y h))
     (= i y)
     (while (u< i y2)
-        (memset (+ 0xb0001000 (u* i 1024) x) w color)
+        (memset (+ 0x90001000 (u* i 1024) x) w color)
         (= i (+ i 1))
     )
 )
-
-
-/*(fn FramebufferRenderMonochromeBitmap (x y w h scale color ptr)
-    (int i j byte_offset line_size)
-    (= i 0)
-    (while (u< i h)
-        (= j 0)
-        (while (u< j w)
-            (= byte_offset (+ (u* i line_size) (u/ j 8)))
-            (if (& (b@ (+ ptr byte_offset)) (<< 1 (- 7 (u% j 8))))
-                (FramebufferDrawRect (+ x (u* j scale)) (+ y (u* (- h i) scale)) scale scale color)
-            )
-            (= j (+ j 1))
-        )
-        (= i (+ i 1))
-    )
-)*/
 
 (fn FramebufferRenderMonochromeBitmap (x y w h scale color invert ptr)
     /* thx ry, ur the best :3 */

@@ -100,11 +100,15 @@ void setExtRegister(int index, uint32_t val) {
 }
 
 void triggerTrap(uint32_t type, uint32_t addr) {
-    fprintf(stderr, "TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, PC-4, addr);
-    for(int i=0; i < 32; i++) {
-        fprintf(stderr, "r%i: 0x%08x ", i, getRegister(i));
+    if(extRegisters[0x05] == 0) {
+        fprintf(stderr, "UNCAUGHT TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, PC-4, addr);
+        for(int i=0; i < 32; i++) {
+            fprintf(stderr, "r%i: 0x%08x ", i, getRegister(i));
+        }
+        exit(1);
+    } else {
+        
     }
-    exit(1);
 }
 
 int TLBLookup(uint32_t addr) {
@@ -125,19 +129,8 @@ int TLBLookup(uint32_t addr) {
     return -1; /* TLB Miss */
 }
 
-uint64_t calculateParity(uint64_t line) {
-    uint64_t result = 0;
-    int i;
-    for(i=0; i < 20; i++) {
-        uint64_t digit = (line & (0x7 << (i*3))) >> (i*3);
-        result ^= digit;
-    }
-    return result;
-}
-
 uint32_t readICacheLine(uint32_t addr) {
     int index = (addr >> 2) & 0xFFF;
-    //uint64_t parity = calculateParity(((uint64_t*)&iCacheTags)[index]);
     if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC)) {
         return iCacheTags[index].cacheWord;
     } else {
@@ -148,76 +141,50 @@ uint32_t readICacheLine(uint32_t addr) {
         }
         iCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
         iCacheTags[index].isValid = 1;
-        //iCacheTags[index].cacheParity = calculateParity(((uint64_t*)&iCacheTags)[index]);
         return iCacheTags[index].cacheWord;
     }
 }
 
-uint32_t readDCacheLine(uint32_t addr, uint32_t size) {
+void readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
-    //uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
-    uint32_t val;
-    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC)) {
-        val = dCacheTags[index].cacheWord;
-    } else {
+    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC))) {
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
-            triggerTrap(9,addr); // Data Exception
-            return 0;
-        }
-        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
-        dCacheTags[index].isValid = 1;
-        //dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
-        val = dCacheTags[index].cacheWord;
-    }
-    if(size == 1) {
-        val >>= (addr & 3)*8;
-    } else if(size == 2) {
-        val >>= ((addr & 2) >> 1)*16;
-    }
-    return val;
-}
-
-void writeDCacheLine(uint32_t addr, uint32_t value, uint32_t size) {
-    int index = (addr >> 2) & 0xFFF;
-    //uint64_t parity = calculateParity(((uint64_t*)&dCacheTags)[index]);
-    if(!KoriBusWrite(addr & 0x3FFFFFFC,4,(uint8_t*)&value)) {
-        triggerTrap(9,addr); // Data Exception
-        return;
-    }
-    if(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC)) {
-        if(size == 1) {
-            uint32_t shift = (addr & 3)*8;
-            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
-        } else if(size == 2) {
-            uint32_t shift = (addr & 2)*16;
-            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFFFF << shift)) | (value << shift);
-        } else {
-            dCacheTags[index].cacheWord = value;
-        }
-        //dCacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
-    } else {
-        stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
             return;
         }
-        if(size == 1) {
-            uint32_t shift = (addr & 3)*8;
-            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFF << shift)) | (value << shift);
-        } else if(size == 2) {
-            uint32_t shift = ((addr & 2) >> 1)*16;
-            dCacheTags[index].cacheWord = (dCacheTags[index].cacheWord & ~(0xFFFF << shift)) | (value << shift);
-        } else {
-            dCacheTags[index].cacheWord = value;
+        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        dCacheTags[index].isValid = 1;
+    }
+    memcpy(buf,((uint8_t*)&dCacheTags)+(index*8)+(addr & 0x3),size);
+}
+
+void writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
+    int index = (addr >> 2) & 0xFFF;
+    if(!KoriBusWrite(addr & 0x3FFFFFFF,size,value)) {
+        triggerTrap(9,addr); // Data Exception
+        return;
+    }
+    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC))) {
+        stallTicks = 4; // Cache Miss Stall
+        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
+            triggerTrap(9,addr); // Data Exception
+            return;
         }
         dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
         dCacheTags[index].isValid = 1;
-        //CacheTags[index].cacheParity = calculateParity(((uint64_t*)&dCacheTags)[index]);
     }
+    memcpy(((uint8_t*)&dCacheTags)+(index*8),value,size);
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
+    if(addr & (len - 1) != 0) {
+        if(write) {
+            triggerTrap(7,addr); // Unaligned Write
+        } else {
+            triggerTrap(6,addr); // Unaligned Read
+        }
+    }
     if(addr < 0x80000000) { // user segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
@@ -237,30 +204,31 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             if(extRegisters[0] & 0x8) {
                 if(extRegisters[0] & 0x10) {
                     if(write) {
-                        ((uint32_t*)&iCacheTags)[(addr >> 2) & 0xFFF] = *((uint32_t*)buf);
+                        memcpy(((uint8_t*)&iCacheTags)+(addr-0x80000000),buf,len);
+                        return true;
                     } else {
-                        uint32_t val = ((uint32_t*)&iCacheTags)[(addr >> 2) & 0xFFF];
-                        memcpy(buf,(uint8_t*)&val,len);
+                        memcpy(buf,((uint8_t*)&iCacheTags)+(addr-0x80000000),len);
+                        return true;
                     }
                 } else {
                     if(write) {
-                        ((uint32_t*)&dCacheTags)[(addr >> 2) & 0xFFF] = *((uint32_t*)buf);
+                        memcpy(((uint8_t*)&dCacheTags)+(addr-0x80000000),buf,len);
+                        return true;
                     } else {
-                        uint32_t val = ((uint32_t*)&dCacheTags)[(addr >> 2) & 0xFFF];
-                        memcpy(buf,(uint8_t*)&val,len);
+                        memcpy(buf,((uint8_t*)&dCacheTags)+(addr-0x80000000),len);
+                        return true;
                     }
                 }
             } else {
-                /*if(write) {
-                    writeDCacheLine(addr-0x80000000,*((uint32_t*)buf),len);
+                if(write) {
+                    writeDCacheLine(addr-0x80000000,buf,len);
                     return true;
                 } else {
-                    uint32_t val = readDCacheLine(addr-0x80000000,len);
-                    memcpy(buf,(uint8_t*)&val,len);
+                    readDCacheLine(addr-0x80000000,buf,len);
                     return true;
-                }*/
+                }
                 
-                if(write) {
+                /*if(write) {
                     bool result = KoriBusWrite(addr-0x80000000,len,buf);
                     if(!result) {
                         triggerTrap(7,addr); // Data Exception
@@ -276,7 +244,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                         }
                     }
                     return result;
-                }
+                }*/
             }
         }
         /*if(write) {
