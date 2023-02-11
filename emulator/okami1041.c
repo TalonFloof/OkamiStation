@@ -220,15 +220,15 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                     }
                 }
             } else {
-                if(write) {
+                /*if(write) {
                     writeDCacheLine(addr-0x80000000,buf,len);
                     return true;
                 } else {
                     readDCacheLine(addr-0x80000000,buf,len);
                     return true;
-                }
+                }*/
                 
-                /*if(write) {
+                if(write) {
                     bool result = KoriBusWrite(addr-0x80000000,len,buf);
                     if(!result) {
                         triggerTrap(7,addr); // Data Exception
@@ -244,7 +244,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                         }
                     }
                     return result;
-                }*/
+                }
             }
         }
         /*if(write) {

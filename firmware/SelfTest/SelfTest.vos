@@ -1,3 +1,5 @@
+(extern RAMIcon)
+
 (fn UpdateSelfTestStatus (str icon)
     (int len)
     (= len (strlen str))
@@ -6,18 +8,25 @@
     (if icon (FramebufferRenderMonochromeBitmap 480 520 32 32 2 0 0 icon))
 )
 
+(var buffer 32)
+
 (fn TestRAM ()
     (int addr)
     (= addr 0xa0020000)
-    (while (u< addr 0xa03fffff)
+    (memcpy (buffer) "Testing RAM (" 14)
+    (while (u< addr 0xa03fefff)
+        (if (== (u% addr 131072) 0) (do
+
+            (UpdateSelfTestStatus (buffer) (RAMIcon))
+        ))
         (w! addr 0x55aa55aa)
         (if (!= (w@ addr) 0x55aa55aa) (do
-            (UpdateSelfTestStatus "RAM Test Failed!" 0)
+            (UpdateSelfTestStatus "RAM Test Failed!" (RAMIcon))
             (halt)
         ))
         (w! addr 0xaa55aa55)
         (if (!= (w@ addr) 0xaa55aa55) (do
-            (UpdateSelfTestStatus "RAM Test Failed!" 0)
+            (UpdateSelfTestStatus "RAM Test Failed!" (RAMIcon))
             (halt)
         ))
         (= addr (+ addr 4))
