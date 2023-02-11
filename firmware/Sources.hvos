@@ -3,3 +3,4 @@
 (include "SelfTest/SelfTest.vos")
 
 (include_asm "Memory.s")
+(externFn memset memcpy)

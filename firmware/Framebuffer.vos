@@ -1,6 +1,7 @@
 (include_asm "Framebuffer.s")
-
+(externFn FramebufferClear)
 (extern Unifont)
+(extern OkamiLogo)
 
 (fn FramebufferDrawCenteredRect (x y w h color) (FramebufferDrawRect (- x (u/ w 2)) (- y (u/ h 2)) w h color))
 

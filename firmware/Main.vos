@@ -1,7 +1,7 @@
 (include_asm "Startup.s")
-(include "Sources.hvos")
+(externFn halt)
 
-(extern OkamiLogo)
+(include "Sources.hvos")
 
 (fn main ()
     (FramebufferClear 12)

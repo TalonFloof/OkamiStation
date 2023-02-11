@@ -8,16 +8,15 @@
     (if icon (FramebufferRenderMonochromeBitmap 480 520 32 32 2 0 0 icon))
 )
 
-(var buffer 32)
-
 (fn TestRAM ()
     (int addr)
     (= addr 0xa0020000)
-    (memcpy (buffer) "Testing RAM (" 14)
+    (memcpy (stringBuffer) "Testing RAM (" 14)
     (while (u< addr 0xa03fefff)
         (if (== (u% addr 131072) 0) (do
-
-            (UpdateSelfTestStatus (buffer) (RAMIcon))
+            (itoa (<< (>> (& addr 0x1ffe0000) 17) 7) (+ (stringBuffer) 13))
+            (memcpy (+ (stringBuffer) (strlen (stringBuffer))) "K OK)" 1)
+            (UpdateSelfTestStatus (stringBuffer) (RAMIcon))
         ))
         (w! addr 0x55aa55aa)
         (if (!= (w@ addr) 0x55aa55aa) (do

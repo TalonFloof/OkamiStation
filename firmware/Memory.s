@@ -6,16 +6,20 @@
     blr zero, ra
 
 .global memcpy: /* (dest: a0, src: a1, len: a2) */
-/*    li t1, 4
+    li t1, 4
 .loopword:
     lw t0, 0(a1)
+    addi a1, a1, 4
     sw t0, 0(a0)
+    addi a0, a0, 4
     addi a2, a2, -4
     bltu t1, a2, .loopword
-    beq a2, zero, .ret*/
+    beq a2, zero, .ret
 .loopbyte:
     lb t0, 0(a1)
+    addi a1, a1, 1
     sb t0, 0(a0)
+    addi a0, a0, 1
     addi a2, a2, -1
     bne a2, zero, .loopbyte
 .ret:
