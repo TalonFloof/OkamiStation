@@ -9,13 +9,14 @@
 )
 
 (fn TestRAM ()
-    (int addr)
+    (int addr ptr)
     (= addr 0xa0020000)
     (memcpy (stringBuffer) "Testing RAM (" 14)
     (while (u< addr 0xa03fefff)
         (if (== (u% addr 131072) 0) (do
             (itoa (<< (>> (& addr 0x1ffe0000) 17) 7) (+ (stringBuffer) 13))
-            (memcpy (+ (stringBuffer) (strlen (stringBuffer))) "K OK)" 1)
+            (= ptr (+ (stringBuffer) (strlen (stringBuffer))))
+            (memcpy ptr "K OK)" 6)
             (UpdateSelfTestStatus (stringBuffer) (RAMIcon))
         ))
         (w! addr 0x55aa55aa)

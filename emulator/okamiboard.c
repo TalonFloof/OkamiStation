@@ -4,10 +4,13 @@
 #include <stdlib.h>
 
 uint8_t ROM[128*1024];
+OkamiPort OkamiPorts[256];
 
 int OkamiBoardRead(uint32_t addr, uint32_t len, void *buf) {
-    if(addr < 0x1000) { // I/O Ports
-        return 1;
+    if(addr < 0x400) { // I/O Ports
+        if(OkamiPorts[addr >> 2].isPresent) {
+            return OkamiPorts[addr >> 2].read(addr >> 2, len, (uint32_t*)buf);
+        }
     } else if(addr >= 0x1F00000) { // Firmware
         memcpy(buf,((uint8_t*)&ROM)+(addr-0x1F00000),len);
         return 1;
@@ -16,8 +19,10 @@ int OkamiBoardRead(uint32_t addr, uint32_t len, void *buf) {
 }
 
 int OkamiBoardWrite(uint32_t addr, uint32_t len, void *buf) {
-    if(addr < 0x1000) { // I/O Ports
-        return 1;
+    if(addr < 0x400) { // I/O Ports
+        if(OkamiPorts[addr >> 2].isPresent) {
+            return OkamiPorts[addr >> 2].write(addr >> 2, len, *((uint32_t*)buf));
+        }
     } else if(addr >= 0x1F00000) { // Firmware
         return 1;
     }
