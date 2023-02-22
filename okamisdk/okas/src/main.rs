@@ -71,6 +71,7 @@ enum ASTNode {
     BinaryInclude(Vec<u8>),
     DataNum(u8, Box<ASTNode>),
     DataString(String),
+    DataFill(u32, u8),
     ExtendBSS(u32),
     Section(SectionType),
 }
@@ -332,6 +333,9 @@ fn main() {
             }
             ASTNode::DataString(str) => {
                 segments.push(current_section, str.as_bytes());
+            }
+            ASTNode::DataFill(size, dat) => {
+                segments.push_vec(current_section, &mut vec![dat; size as usize]);
             }
             ASTNode::InstructionZero { op } => match op {
                 InstructionZero::Nop => segments.push32(current_section, 0), // add zero, zero, zero
@@ -1496,6 +1500,20 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                         4,
                         Box::new(to_ast_symbol(val.into_inner().next().unwrap())),
                     );
+                }
+                Rule::data_fill => {
+                    let mut inner = val.into_inner();
+                    let sym1 = to_ast_symbol(inner.next().unwrap());
+                    let sym2 = to_ast_symbol(inner.next().unwrap());
+                    if let ASTNode::Immediate(size) = sym1 {
+                        if let ASTNode::Immediate(dat) = sym2 {
+                            return ASTNode::DataFill(size, dat as u8);
+                        } else {
+                            panic!(".fill with non-integer immediate.");
+                        }
+                    } else {
+                        panic!(".fill with non-integer immediate.");
+                    }
                 }
                 Rule::data_str => {
                     let s = val

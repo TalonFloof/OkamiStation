@@ -22,6 +22,14 @@
     (UpdateSelfTestStatus "Testing OkamiPorts" 0)
     (UpdateSelfTestStatus "Diagnostics were successful!" 0)
     (FramebufferClear 12)
+    (FramebufferDrawCenteredRect 510 382 384 256 255)
+    (FramebufferDrawCenteredRect 514 386 384 256 248)
+    (FramebufferDrawCenteredRect 512 384 384 256 252)
 
+    (FramebufferDrawCenteredRect 512 384 256 192 250)
+    /*(FramebufferDrawCenteredRect 345 384 2 464 249)
+    (FramebufferDrawCenteredRect 512 152 336 2 249)
+    (FramebufferDrawCenteredRect 679 383 2 464 255)
+    (FramebufferDrawCenteredRect 512 615 336 2 255)*/
     (halt)
 )

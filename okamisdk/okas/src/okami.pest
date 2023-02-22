@@ -185,6 +185,7 @@ data = {
 data_byte = { ".byte" ~ operand }
 data_half = { ".half" ~ operand }
 data_word = { ".word" ~ operand }
+data_fill = { ".fill " ~ operand ~ "," ~ operand }
 data_str  = { ".string" ~ imm_str }
 data_resb = { ".resb" ~ operand }
 data_resh = { ".resh" ~ operand }
