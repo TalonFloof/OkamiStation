@@ -33,6 +33,9 @@ void OkamiBoardInit() {
     KoriBusBanks[15].Used = true;
     KoriBusBanks[15].Read = OkamiBoardRead;
     KoriBusBanks[15].Write = OkamiBoardWrite;
+    for(int i=0; i < 256; i++) {
+        OkamiPorts[i].isPresent = false;
+    }
     FILE *firmware = fopen("Firmware.bin", "r");
     if(firmware == NULL) {
         fprintf(stderr, "Couldn't open the Boot ROM\n");

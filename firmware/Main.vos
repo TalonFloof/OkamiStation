@@ -1,7 +1,5 @@
-(include_asm "Startup.s")
-(externFn halt)
-
 (include "Sources.hvos")
+(externFn halt)
 
 (fn main ()
     (FramebufferClear 12)
