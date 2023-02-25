@@ -14,4 +14,6 @@ OkamiLogo: .include_bin "Images/OkamiLogo.dat"
 RAMIcon: .include_bin "Images/RAMIcon.dat"
 
 Unifont: .include_bin "Images/Unifont.dat"
+
+Dither: .include_bin "Images/Dither.dat"
 .text

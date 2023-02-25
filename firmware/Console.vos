@@ -1,0 +1,10 @@
+(fn ConsoleInit ()
+    /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
+    (w! 0x90000fc0 0x1e1e2e)
+    (FramebufferDrawRect 182 124 659 509 255)
+    (FramebufferDrawRect 183 125 659 509 248)
+    (FramebufferDrawRect 183 125 658 508 252)
+    (FramebufferDrawCenteredRect 512 384 640 480 240)
+    /* Text Color: 253 */
+    (FramebufferRenderString 464 125 1 0 "OkamiStation")
+)

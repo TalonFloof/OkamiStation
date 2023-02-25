@@ -33,7 +33,7 @@ static inline void MarkDirty(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2)
 int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            KarasuPalette[addr-0xC00] = *(uint32_t*)buf;
+            KarasuPalette[(addr-0xC00)/4] = *(uint32_t*)buf;
         }
         return 1;
     } else {
@@ -54,7 +54,7 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
 int KarasuRead(uint32_t addr, uint32_t len, void *buf) {
     if (addr < 0x1000) { // Registers
         if(addr >= 0xC00) { // Palette
-            *(uint32_t*)buf = KarasuPalette[addr-0xC00];
+            *(uint32_t*)buf = KarasuPalette[(addr-0xC00)/4];
         }
         return 1;
     } else {

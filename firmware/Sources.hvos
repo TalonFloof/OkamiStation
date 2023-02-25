@@ -2,6 +2,7 @@
 (include "Framebuffer.vos")
 (include "String.vos")
 (include "SelfTest/SelfTest.vos")
+(include "Console.vos")
 
 (include_asm "Memory.s")
 (externFn memset memcpy)

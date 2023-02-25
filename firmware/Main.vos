@@ -2,7 +2,7 @@
 (externFn halt)
 
 (fn main ()
-    (FramebufferClear 12)
+    (FramebufferRenderBackground)
     (FramebufferDrawCenteredRect 510 382 384 512 255)
     (FramebufferDrawCenteredRect 514 386 384 512 248)
     (FramebufferDrawCenteredRect 512 384 384 512 252)
@@ -19,15 +19,21 @@
     (UpdateSelfTestStatus "Initializing Hardware Trap Controller" 0)
     (UpdateSelfTestStatus "Testing OkamiPorts" 0)
     (UpdateSelfTestStatus "Diagnostics were successful!" 0)
-    (FramebufferClear 12)
+    
+    (FramebufferDrawCenteredRect 512 255 388 258 46)
+    (FramebufferDrawCenteredRect 512 513 388 258 92)
+
     (FramebufferDrawCenteredRect 510 382 384 256 255)
     (FramebufferDrawCenteredRect 514 386 384 256 248)
     (FramebufferDrawCenteredRect 512 384 384 256 252)
 
-    (FramebufferDrawCenteredRect 512 384 256 192 250)
-    /*(FramebufferDrawCenteredRect 345 384 2 464 249)
-    (FramebufferDrawCenteredRect 512 152 336 2 249)
-    (FramebufferDrawCenteredRect 679 383 2 464 255)
-    (FramebufferDrawCenteredRect 512 615 336 2 255)*/
+    (FramebufferDrawCenteredRect 512 384 340 220 250)
+    (FramebufferDrawCenteredRect 344 384 2 220 249)
+    (FramebufferDrawCenteredRect 512 274 340 2 249)
+    (FramebufferDrawCenteredRect 681 383 2 220 255)
+    (FramebufferDrawCenteredRect 512 494 340 2 255)
+
+    (ConsoleInit)
+
     (halt)
 )
