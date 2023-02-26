@@ -1,32 +1,20 @@
 .text
 .global OkamiStationFirmwareStartup:
     /* We must first clear the caches */
-    /* Assembler will relocate to 0x8000_0000 as base, we need to fix that. */
+    /* Assembler will relocate to 0x9ff0_0000 as base, we need to fix that. */
     la t0, ClearCaches
-    lui t1, 0x3ff0
+    lui t1, 0x2000
     add t0, t0, t1
     blr ra, t0
     /* Caches are now cleared, clear the TLB next */
     la t0, ClearTLB
-    lui t1, 0x3ff0
+    lui t1, 0x2000
     add t0, t0, t1
     blr ra, t0
-    /* Reset the KoriBus */
-
-    /* Copy to RAM */
-    lui t0, 0xa000
-    lui t1, 0xbff0
-    lui t2, 0xbff2
-.memcpy:
-    lw t3, 0(t1)
-    addi t1, t1, 4
-    sw t3, 0(t0)
-    addi t0, t0, 4
-    bltu t1, t2, .memcpy
     /* Setup Stack */
-    la sp, 0x803ffffc
+    la sp, FWbss_end
     la t0, main
-    blr zero, t0
+    br t0
 halt:
     beq zero, zero, halt
 

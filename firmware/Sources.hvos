@@ -7,3 +7,7 @@
 
 (include_asm "Memory.s")
 (externFn memset memset16 memcpy memcpy32)
+
+(include_asm "Traps.s")
+(externFn SetupTrap)
+(extern TrapHandler)

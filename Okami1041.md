@@ -392,8 +392,8 @@ r31 - ra: Return Address
 0x01: OKAMI_TRAP_CAUSE
     0: N/A
     1: External Trap
-    2: KCall
-    3: Reserved
+    2: KCall/MCall
+    3: TLB Miss
     4: Unknown Opcode
     6: Misaligned Read
     7: Misaligned Write

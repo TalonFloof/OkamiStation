@@ -3,6 +3,7 @@
 
 (fn main ()
     (TestFB)
+    (SetupTrap (TrapHandler) 0)
     (FramebufferRenderBackground)
     (FramebufferDrawCenteredRect 510 382 384 512 255)
     (FramebufferDrawCenteredRect 514 386 384 512 248)
@@ -18,7 +19,6 @@
     (UpdateSelfTestStatus "Testing RAM" (RAMIcon))
     (TestRAM)
     (UpdateSelfTestStatus "Initializing Hardware Trap Controller" 0)
-    (UpdateSelfTestStatus "Testing OkamiPorts" 0)
     (UpdateSelfTestStatus "Diagnostics were successful!" 0)
 
     (BootMenuInit)
@@ -27,3 +27,11 @@
 
     (halt)
 )
+
+(fn Exception (context cause pc vaddr)
+    (ConsoleInit)
+    (halt)
+)
+
+(var FWstack 4096)
+(var FWbss_end 0)

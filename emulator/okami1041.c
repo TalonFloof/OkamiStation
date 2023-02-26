@@ -107,15 +107,49 @@ void setExtRegister(int index, uint32_t val) {
     }
 }
 
-void triggerTrap(uint32_t type, uint32_t addr) {
-    if(extRegisters[0x05] == 0) {
-        fprintf(stderr, "UNCAUGHT TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, PC-4, addr);
-        for(int i=0; i < 32; i++) {
-            fprintf(stderr, "r%i: 0x%08x ", i, getRegister(i));
+uint32_t readICacheLine(uint32_t addr);
+
+void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
+    switch(type) {
+        case 3: { // TLB Miss
+            extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[1] = type;
+            extRegisters[2] = afterInc ? PC-4 : PC;
+            extRegisters[3] = addr;
+            PC = extRegisters[6];
+            break;
         }
-        exit(1);
-    } else {
-        
+        case 2: { // MCall/KCall
+            extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[1] = type;
+            extRegisters[2] = afterInc ? PC-4 : PC;
+            extRegisters[3] = addr;
+            uint32_t op = readICacheLine(afterInc ? PC-4 : PC);
+            if(op & 0x2000000) {
+                // This is a MCALL
+                PC = extRegisters[7];
+            } else {
+                // This is a KCALL
+                PC = extRegisters[5];
+            }
+            break;
+        }
+        default: {
+            if(extRegisters[0x05] == 0) {
+                fprintf(stderr, "UNCAUGHT TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, afterInc ? PC-4 : PC, addr);
+                for(int i=0; i < 32; i++) {
+                    fprintf(stderr, "r%i: 0x%08x ", i, getRegister(i));
+                }
+                exit(1);
+            } else {
+                extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+                extRegisters[1] = type;
+                extRegisters[2] = afterInc ? PC-4 : PC;
+                extRegisters[3] = addr;
+                PC = extRegisters[5];
+            }
+            break;
+        }
     }
 }
 
@@ -146,7 +180,7 @@ uint32_t readICacheLine(uint32_t addr) {
         iMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
-            triggerTrap(8,addr); // Fetch Exception
+            triggerTrap(8,addr,false); // Fetch Exception
             return 0;
         }
         iCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
@@ -161,6 +195,7 @@ bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
         dMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
+            triggerTrap(9,addr,false); // Data Exception
             return false;
         }
         dCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
@@ -175,14 +210,14 @@ bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
 bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
     if(!KoriBusWrite(addr & 0x1FFFFFFF,size,value)) {
-        triggerTrap(9,addr); // Data Exception
+        triggerTrap(9,addr,false); // Data Exception
         return false;
     }
     if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
         dMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
-            triggerTrap(9,addr); // Data Exception
+            triggerTrap(9,addr,false); // Data Exception
             return false;
         }
         dCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
@@ -197,21 +232,21 @@ bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
     if(addr & (len - 1) != 0) {
         if(write) {
-            triggerTrap(7,addr); // Unaligned Write
+            triggerTrap(7,addr,false); // Unaligned Write
         } else {
-            triggerTrap(6,addr); // Unaligned Read
+            triggerTrap(6,addr,false); // Unaligned Read
         }
     }
     if(addr < 0x80000000) { // user segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
-            triggerTrap(3,addr); // TLB Miss
+            triggerTrap(3,addr,false); // TLB Miss
             return false;
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
         if(fetch) {
             if(extRegisters[0] & 0x8) {
-                triggerTrap(8,addr); // Fetch Exception
+                triggerTrap(8,addr,false); // Fetch Exception
                 return false;
             }
             uint32_t val = readICacheLine(addr-0x80000000);
@@ -254,16 +289,16 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {
-                triggerTrap(7,addr); // Data Exception
+                triggerTrap(7,addr,false); // Data Exception
             }
             return result;
         } else {
             bool result = KoriBusRead(addr-0xa0000000,len,buf);
             if(!result) {
                 if(fetch) {
-                    triggerTrap(8,addr); // Fetch Exception
+                    triggerTrap(8,addr,false); // Fetch Exception
                 } else {
-                    triggerTrap(7,addr); // Data Exception
+                    triggerTrap(7,addr,false); // Data Exception
                 }
             }
             return result;
@@ -271,7 +306,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
     } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel3 segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
-            triggerTrap(3,addr); // TLB Miss
+            triggerTrap(3,addr,false); // TLB Miss
             return false;
         }
     }
@@ -375,7 +410,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(4,0);
+                    triggerTrap(4,0,true);
                     break;
                 }
             }
@@ -428,7 +463,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(4,0);
+                    triggerTrap(4,0,true);
                     break;
                 }
             }
@@ -493,7 +528,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(4,0);
+                    triggerTrap(4,0,true);
                     break;
                 }
             }
@@ -513,8 +548,8 @@ void next() {
                         setExtRegister(offset,getRegister(rs));
                         break;
                     }
-                    case 0b110: { // KCALL
-                        triggerTrap(2,instr & 0x3FFFFFF);
+                    case 0b110: { // KCALL/MCALL
+                        triggerTrap(2,instr & 0x1FFFFFF,true);
                         break;
                     }
                     case 0b111: { // RFT

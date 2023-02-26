@@ -15,11 +15,14 @@
     (memset16 0xb0001000 0xC0000 0x00ff)
 )
 
+(var RAMTestFaulted 1)
+
 (fn TestRAM ()
     (int addr ptr)
-    (= addr 0xa0020000)
+    (= addr (+ (FWbss_end) 0x20000000))
+    (b! (RAMTestFaulted) 1)
     (memcpy (stringBuffer) "Testing RAM (" 14)
-    (while (u< addr 0xa03fefff)
+    (while (!= (b@ (RAMTestFaulted)) 2)
         (if (== (u% addr 131072) 0) (do
             (itoa (<< (>> (& addr 0x1ffe0000) 17) 7) (+ (stringBuffer) 13))
             (= ptr (+ (stringBuffer) (strlen (stringBuffer))))
@@ -28,7 +31,7 @@
         ))
         (w! addr 0x55aa55aa)
         (if (!= (w@ addr) 0x55aa55aa) (do
-            (UpdateSelfTestStatus "RAM Test Failed!" (RAMIcon))
+            (UpdateSelfTestStatus "RAM Test Failed!"  (RAMIcon))
             (halt)
         ))
         (w! addr 0xaa55aa55)

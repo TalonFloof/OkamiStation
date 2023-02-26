@@ -7,6 +7,7 @@
 )
 
 (fn BootMenuInit ()
+    (memset (bootMenuOptions) 128 0)
     (memcpy (bootMenuOptions) "Monitor" 7)
     (w! (+ (bootMenuOptions) (BootEntry.image)) (OkamiLogo))
     (memcpy (+ (bootMenuOptions) 16) "Test Icon" 9)

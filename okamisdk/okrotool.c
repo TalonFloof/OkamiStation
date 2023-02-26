@@ -84,12 +84,12 @@ void writeImage(const char* path, uint8_t* base, size_t len) {
     fclose(file);
 }
 
-void preformRelocation(uint8_t* image, uint32_t base) {
+void preformRelocation(uint8_t* image, uint32_t base, uint32_t dataBase) {
     OkROHeader* header = (OkROHeader*)image;
     RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
     uint32_t textAddr = base;
     uint32_t rodataAddr = textAddr+getSize(header->text);
-    uint32_t dataAddr = rodataAddr+getSize(header->rodata);
+    uint32_t dataAddr = (dataBase != 0) ? dataBase : (rodataAddr+getSize(header->rodata));
     uint32_t bssAddr = dataAddr+getSize(header->data);
     uint32_t entries = header->reloc/sizeof(RelocationEntry);
     for(int i=0; i < entries; i++) {
@@ -109,9 +109,17 @@ void preformRelocation(uint8_t* image, uint32_t base) {
         } else if(relocation[i].srcSegment == RODATA) {
             dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((rodataAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
         } else if(relocation[i].srcSegment == DATA) {
-            dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((dataAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            if(dataBase != 0) {
+                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((dataAddr-dataBase+sizeof(OkROHeader))+relocation[i].srcOffset));
+            } else {
+                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((dataAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            }
         } else if(relocation[i].srcSegment == BSS) {
-            dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((bssAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            if(dataBase != 0) {
+                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((bssAddr-dataBase+sizeof(OkROHeader))+relocation[i].srcOffset));
+            } else {
+                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((bssAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            }
         }
         switch(relocation[i].type) {
             case BRANCH28:
@@ -139,6 +147,7 @@ int main(int argc, const char* argv[]) {
         printf("Commands:\n");
         printf("info [object]: Get Info about a Object.\n");
         printf("dump [base] [object] [binary]: Convert an object into a raw binary.\n");
+        printf("fwdump [base] [dataBase] [object] [binary]: Convert an object into an OkamiStation firmware binary.\n");
     } else if(strcmp(argv[1],"info") == 0) {
         uint8_t* image = readImage(argv[2],NULL);
         if(!image) {
@@ -169,6 +178,22 @@ int main(int argc, const char* argv[]) {
             printf("|- Source: <%s+0x%x>\n", segToString(relocation[i].srcSegment), relocation[i].srcOffset);
             printf("|- Destination: <%s+0x%x>\n", segToString(relocation[i].dstSegment), relocation[i].dstOffset);
         }
+    } else if(strcmp(argv[1],"fwdump") == 0) {
+        size_t imgSize;
+        uint8_t* image = readImage(argv[4],&imgSize);
+        if(!image) {
+            fprintf(stderr, "Unable to read image!\n");
+            return 1;
+        }
+        OkROHeader* header = (OkROHeader*)image;
+        if(memcmp(image,"\x89OkamiRO",8) != 0) {
+            fprintf(stderr, "Magic number is invalid\n");
+            return 2;
+        }
+        uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
+        uint32_t num2 = (uint32_t)strtol(argv[3],NULL,0);
+        preformRelocation(image,num,num2);
+        writeImage(argv[5],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
     } else if(strcmp(argv[1],"dump") == 0) {
         size_t imgSize;
         uint8_t* image = readImage(argv[3],&imgSize);
@@ -182,7 +207,7 @@ int main(int argc, const char* argv[]) {
             return 2;
         }
         uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
-        preformRelocation(image,num);
+        preformRelocation(image,num,0);
         writeImage(argv[4],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
     }
     return 0;
