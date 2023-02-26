@@ -6,6 +6,10 @@
 #include "koribus.h"
 
 extern uint64_t cycle_count;
+extern uint64_t iHitCount;
+extern uint64_t iMissCount;
+extern uint64_t dHitCount;
+extern uint64_t dMissCount;
 
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
@@ -26,9 +30,9 @@ TLBLine TLB[64];
 
 typedef struct {
     uint64_t cacheWord : 32;
-    uint64_t cacheAddr : 28;
+    uint64_t cacheAddr : 30;
+    uint64_t unused : 1;
     uint64_t isValid : 1;
-    uint64_t cacheParity : 3;
 } CacheLine;
 
 CacheLine iCacheTags[4096];
@@ -131,50 +135,59 @@ int TLBLookup(uint32_t addr) {
 
 uint32_t readICacheLine(uint32_t addr) {
     int index = (addr >> 2) & 0xFFF;
-    if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC)) {
+    if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC)) {
+        iHitCount += 1;
         return iCacheTags[index].cacheWord;
     } else {
+        iMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
+        if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(8,addr); // Fetch Exception
             return 0;
         }
-        iCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        iCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
         iCacheTags[index].isValid = 1;
         return iCacheTags[index].cacheWord;
     }
 }
 
-void readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
+bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
-    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC))) {
+    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
+        dMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
-            triggerTrap(9,addr); // Data Exception
-            return;
+        if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
+            return false;
         }
-        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        dCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
         dCacheTags[index].isValid = 1;
+    } else {
+        dHitCount += 1;
     }
     memcpy(buf,((uint8_t*)&dCacheTags)+(index*8)+(addr & 0x3),size);
+    return true;
 }
 
-void writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
+bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
     int index = (addr >> 2) & 0xFFF;
-    if(!KoriBusWrite(addr & 0x3FFFFFFF,size,value)) {
+    if(!KoriBusWrite(addr & 0x1FFFFFFF,size,value)) {
         triggerTrap(9,addr); // Data Exception
-        return;
+        return false;
     }
-    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x3FFFFFFC))) {
+    if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
+        dMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
-        if(!KoriBusRead(addr & 0x3FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
+        if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
             triggerTrap(9,addr); // Data Exception
-            return;
+            return false;
         }
-        dCacheTags[index].cacheAddr = ((addr & 0x3FFFFFFC) >> 2);
+        dCacheTags[index].cacheAddr = ((addr & 0x1FFFFFFC) >> 2);
         dCacheTags[index].isValid = 1;
+    } else {
+        dHitCount += 1;
     }
-    memcpy(((uint8_t*)&dCacheTags)+(index*8),value,size);
+    memcpy(((uint8_t*)&dCacheTags)+(index*8)+(addr & 3),value,size);
+    return true;
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
@@ -220,51 +233,19 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                     }
                 }
             } else {
-                /*if(write) {
-                    writeDCacheLine(addr-0x80000000,buf,len);
-                    return true;
-                } else {
-                    readDCacheLine(addr-0x80000000,buf,len);
-                    return true;
-                }*/
-                
                 if(write) {
-                    bool result = KoriBusWrite(addr-0x80000000,len,buf);
-                    if(!result) {
-                        triggerTrap(7,addr); // Data Exception
-                    }
-                    return result;
+                    return writeDCacheLine(addr-0x80000000,buf,len);
                 } else {
-                    bool result = KoriBusRead(addr-0x80000000,len,buf);
-                    if(!result) {
-                        if(fetch) {
-                            triggerTrap(8,addr); // Fetch Exception
-                        } else {
-                            triggerTrap(7,addr); // Data Exception
-                        }
-                    }
-                    return result;
+                    return readDCacheLine(addr-0x80000000,buf,len);
                 }
             }
         }
-        /*if(write) {
-            bool result = KoriBusWrite(addr-0x80000000,len,buf);
-            if(!result) {
-                triggerTrap(7,addr); // Data Exception
-            }
-            return result;
-        } else {
-            bool result = KoriBusRead(addr-0x80000000,len,buf);
-            if(!result) {
-                if(fetch) {
-                    triggerTrap(8,addr); // Fetch Exception
-                } else {
-                    triggerTrap(7,addr); // Data Exception
-                }
-            }
-            return result;
-        }*/
     } else if(addr >= 0xa0000000 && addr <= 0xbfffffff) { // kernel2 segment
+        if(fetch) {
+            iMissCount += 1;
+        } else {
+            dMissCount += 1;
+        }
         stallTicks = 3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);

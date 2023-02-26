@@ -18,6 +18,11 @@ int title_update = 0;
 uint64_t cycle_count = 0;
 bool done = false;
 
+uint64_t iHitCount = 0;
+uint64_t iMissCount = 0;
+uint64_t dHitCount = 0;
+uint64_t dMissCount = 0;
+
 SDL_Rect winrect = {
     .w = 1024,
     .h = 768,
@@ -101,6 +106,13 @@ int main() {
         if(SDL_GetTicks() >= title_update) {
             sprintf((char*)&title, "OkamiStation - %.2f MIPS", (double)cycle_count/1000000.0);
             SDL_SetWindowTitle(ScreenWindow, (char*)&title);
+            //double iPercent = (((double)iHitCount)/(((double)iHitCount)+((double)iMissCount)))*100.0;
+            //double dPercent = (((double)dHitCount)+((double)dMissCount)) == 0 ? 100.0 : ((((double)dHitCount)/(((double)dHitCount)+((double)dMissCount)))*100.0);
+            //fprintf(stderr, "ICache Hits: %i, ICache Misses: %i (%.2f%% hit/miss)\nDCache Hits: %i, DCache Misses: %i (%.2f%% hit/miss)\n", iHitCount, iMissCount, iPercent, dHitCount, dMissCount, dPercent);
+            iHitCount = 0;
+            iMissCount = 0;
+            dHitCount = 0;
+            dMissCount = 0;
             cycle_count = 0;
             title_update = SDL_GetTicks()+1000;
         }

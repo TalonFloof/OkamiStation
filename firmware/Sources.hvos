@@ -5,4 +5,4 @@
 (include "Console.vos")
 
 (include_asm "Memory.s")
-(externFn memset memcpy)
+(externFn memset memset16 memcpy)

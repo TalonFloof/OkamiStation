@@ -5,6 +5,13 @@
     bltu zero, a1, memset /* a1 > zero */
     blr zero, ra
 
+.global memset16: /* (base: a0, size: a1, value: a2) */
+    sh a2, 0(a0)
+    addi a0, a0, 2
+    addi a1, a1, -2
+    bltu zero, a1, memset16 /* a1 > zero */
+    blr zero, ra
+
 .global memcpy: /* (dest: a0, src: a1, len: a2) */
     lb t0, 0(a1)
     addi a1, a1, 1

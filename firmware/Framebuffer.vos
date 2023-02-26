@@ -1,5 +1,5 @@
 (include_asm "Framebuffer.s")
-(externFn FramebufferClear)
+(externFn FramebufferClear FramebufferRenderMonochromeBitmap)
 (extern Unifont)
 (extern OkamiLogo)
 (extern Dither)
@@ -35,26 +35,6 @@
         (= i (+ i 1))
         (= j 0)
     )
-    /*(int i j bit pixel)
-    (= i 0)
-    (while (u< i h)
-        (= j 0)
-        (while (u< j w)
-            (= bit 0)
-            (while (u< bit 8)
-                (= pixel (& (>> (b@ (+ ptr (u* i (u/ w 8)) (u/ j 8))) (- 7 bit)) 1))
-                (if (!= pixel 0)
-                    (if invert
-                        (FramebufferDrawRect (+ x (u* (+ j bit) scale)) (+ y (u* i scale)) scale scale color)
-                        (FramebufferDrawRect (+ x (u* (+ j bit) scale)) (+ y (u* (- h i) scale)) scale scale color)
-                    )
-                )
-                (= bit (+ bit 1))
-            )
-            (= j (+ j 8))
-        )
-        (= i (+ i 1))
-    )*/
 )
 
 (fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color 1 (+ (Unifont) (u* rune 16))))
@@ -70,9 +50,9 @@
 
 (fn FramebufferRenderBackground ()
     (int i)
-    /* 82 */
-    (FramebufferClear 92)
-    (FramebufferDrawRect 0 0 1024 528 46)
+    /* 46 92 */
+    (FramebufferClear 46)
+    (FramebufferDrawRect 0 528 1024 240 92)
     (= i 0)
     (while (u< i 1024)
         (FramebufferRenderMonochromeBitmap i 240 8 288 1 92 0 (Dither))

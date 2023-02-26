@@ -2,6 +2,7 @@
 (externFn halt)
 
 (fn main ()
+    (TestFB)
     (FramebufferRenderBackground)
     (FramebufferDrawCenteredRect 510 382 384 512 255)
     (FramebufferDrawCenteredRect 514 386 384 512 248)
@@ -33,7 +34,7 @@
     (FramebufferDrawCenteredRect 681 383 2 220 255)
     (FramebufferDrawCenteredRect 512 494 340 2 255)
 
-    (ConsoleInit)
+    /*(ConsoleInit)*/
 
     (halt)
 )

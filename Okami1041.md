@@ -406,7 +406,7 @@ r31 - ra: Return Address
 ```
 
 # Cache Line Layout
-| <sub>63-61</sub><br>Parity | <sub>60</sub><br>Valid | <sub>59-32</sub><br>HighAddress | <sub>0-31</sub><br>Word |
+| <sub>63</sub><br>Valid | <sub>62</sub><br>Reserved | <sub>61-32</sub><br>Address | <sub>0-31</sub><br>Word |
 |-|-|-|-|
 > Note: Parity is computed by Exclusive ORing (XORing) every octal digit (3-bits) before the last nibble of the cache line.
 # TLB Line Layout
