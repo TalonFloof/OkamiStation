@@ -62,6 +62,8 @@ uint32_t getExtRegister(int index) {
         case 0x03:
         case 0x04:
         case 0x05:
+        case 0x06:
+        case 0x07:
         case 0x10:
         case 0x14: {
             return extRegisters[index];
@@ -87,6 +89,8 @@ void setExtRegister(int index, uint32_t val) {
         case 0x03:
         case 0x04:
         case 0x05:
+        case 0x06:
+        case 0x07:
         case 0x10:
         case 0x14: {
             extRegisters[index] = val;

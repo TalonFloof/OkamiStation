@@ -73,6 +73,7 @@ enum ASTNode {
     DataString(String),
     DataFill(u32, u8),
     ExtendBSS(u32),
+    Align(u32),
     Section(SectionType),
 }
 
@@ -96,6 +97,7 @@ enum InstructionZero {
 #[allow(dead_code)]
 enum InstructionOne {
     KCall,
+    MCall,
     B,
     Bl,
     Br, /* PSEUDO-MNEMONIC */
@@ -320,6 +322,16 @@ fn main() {
             ASTNode::ExtendBSS(size) => {
                 segments.extend_bss(size);
             }
+            ASTNode::Align(alignment) => {
+                if (segments.get_size(current_section) % alignment) != 0 {
+                    let bytes = alignment - (segments.get_size(current_section) % alignment);
+                    if current_section == SectionType::Bss {
+                        segments.extend_bss(bytes);
+                    } else {
+                        segments.push_vec(current_section, &mut vec![0u8; bytes as usize]);
+                    }
+                }
+            }
             ASTNode::DataNum(size, num) => {
                 if let ASTNode::Immediate(val) = *num {
                     if size == 1 {
@@ -344,9 +356,16 @@ fn main() {
             ASTNode::InstructionOne { op, operand: arg1 } => match op {
                 InstructionOne::KCall => {
                     if let ASTNode::Immediate(num) = *arg1 {
-                        segments.push32(current_section, 0xF8000000 | (num & 0x3FFFFFF));
+                        segments.push32(current_section, 0xF8000000 | (num & 0x1FFFFFF));
                     } else {
                         panic!("KCall with non integer operand.");
+                    }
+                }
+                InstructionOne::MCall => {
+                    if let ASTNode::Immediate(num) = *arg1 {
+                        segments.push32(current_section, 0xFA000000 | (num & 0x1FFFFFF));
+                    } else {
+                        panic!("MCall with non integer operand.");
                     }
                 }
                 InstructionOne::B => {
@@ -1236,6 +1255,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                     return ASTNode::InstructionOne {
                         op: match val1 {
                             "kcall" => InstructionOne::KCall,
+                            "mcall" => InstructionOne::MCall,
                             "b" => InstructionOne::B,
                             "bl" => InstructionOne::Bl,
                             "br" => InstructionOne::Br,
@@ -1479,6 +1499,14 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                 }),
                 _ => todo!(),
             };
+        }
+        Rule::align => {
+            if let ASTNode::Immediate(alignment) = to_ast_symbol(pair.into_inner().next().unwrap())
+            {
+                return ASTNode::Align(alignment);
+            } else {
+                panic!(".align with non-integer immediate.");
+            }
         }
         Rule::data => {
             let val = pair.into_inner().next().unwrap();

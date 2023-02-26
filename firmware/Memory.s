@@ -21,3 +21,13 @@
     bne a2, zero, memcpy
 .ret:
     blr zero, ra
+
+.global memcpy32: /* (dest: a0, src: a1, len: a2) */
+    lw t0, 0(a1)
+    addi a1, a1, 4
+    sw t0, 0(a0)
+    addi a0, a0, 4
+    addi a2, a2, -4
+    bne a2, zero, memcpy32
+.ret:
+    blr zero, ra

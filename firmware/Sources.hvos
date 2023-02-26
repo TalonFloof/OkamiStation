@@ -3,6 +3,7 @@
 (include "String.vos")
 (include "SelfTest/SelfTest.vos")
 (include "Console.vos")
+(include "BootMenu.vos")
 
 (include_asm "Memory.s")
-(externFn memset memset16 memcpy)
+(externFn memset memset16 memcpy memcpy32)

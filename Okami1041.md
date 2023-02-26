@@ -337,12 +337,20 @@
 ## Traps
 ```
     kcall code
-        [0:25] Code (can be any value)
-        [26:31] 0b111110
+        [0:24]: Code (can be any value)
+        [25]: 0b0
+        [26:31]: 0b111110
         
         Triggers KCALL Trap
+    mcall code
+        [0:24]: Code (can be any value)
+        [25]: 0b1
+        [26:31]: 0b111110
+        
+        Triggers MCALL Trap
+        This can only be used in kernel mode.
     rft
-        [26:31] 0b111111
+        [26:31]: 0b111111
         
         OKAMI_STATUS = ((OKAMI_STATUS & 3) >> 1) | (OKAMI_STATUS & ~3);
         PC = OAMKI_TRAP_PC;
@@ -385,7 +393,7 @@ r31 - ra: Return Address
     0: N/A
     1: External Trap
     2: KCall
-    3: TLB Miss (Triggers separate vector for this)
+    3: Reserved
     4: Unknown Opcode
     6: Misaligned Read
     7: Misaligned Write
@@ -394,8 +402,13 @@ r31 - ra: Return Address
 0x02: OKAMI_TRAP_PC
 0x03: OKAMI_TRAP_BAD_VADDR
 0x04: OAMKI_TRAP_KERNEL_SCRATCH
+    Intended for storing the page table
 0x05: OKAMI_TRAP_VECTOR_OFFSET
     NOTE: DO NOT ENABLE EXTERNAL TRAPS UNTIL THIS HAS BEEN SET!
+0x06: OKAMI_TLB_MISS_VECTOR_OFFSET
+    NOTE: DO NOT USE THE user SEGMENT or the kernel3 SEGMENT UNTIL THIS HAS BEEN SET!
+0x07: OKAMI_MCALL_VECTOR_OFFSET
+    Intended for interacting with the system firmware
 0x10: OKAMI_TLB_INDEX
 0x11: OKAMI_TLB_VALUE_LOW
 0x12: OAMKI_TLB_VALUE_HIGH
