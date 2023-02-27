@@ -168,7 +168,7 @@ register = @{
     "s8" |
     "s9" |
     "gp" |
-    "tp" |
+    "kr" |
     "fp" |
     "sp" |
     "ra"

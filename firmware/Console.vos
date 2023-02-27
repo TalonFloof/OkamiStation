@@ -1,3 +1,5 @@
+(var )
+
 (fn ConsoleInit ()
     /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
     (w! 0xb0000fc0 0x1e1e2e)
@@ -7,4 +9,12 @@
     (FramebufferDrawCenteredRect 512 384 640 480 240)
     /* Text Color: 253 */
     (FramebufferRenderString 464 125 1 0 "OkamiStation")
+)
+
+(fn ConsoleWrite (str n)
+    (int i)
+    (= i 0)
+    (while (u< i n)
+
+    )
 )

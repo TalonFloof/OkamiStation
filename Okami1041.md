@@ -371,7 +371,7 @@ r1-r8 - a0-a7: Arguments/Return Values
 r9-r16 - t0-t7: Temporary/Scratchpad Values
 r17-r26 - s0-s9: Saved Values
 r27 - gp: Global Pointer
-r28 - tp: Thread Pointer (for Local Thread Storage stuff)
+r28 - kr: Kernel Register (For interrupt handlers)
 r29 - fp: Frame Pointer
 r30 - sp: Stack Pointer
 r31 - ra: Return Address
@@ -423,7 +423,7 @@ r31 - ra: Return Address
 |-|-|-|-|
 > Note: Parity is computed by Exclusive ORing (XORing) every octal digit (3-bits) before the last nibble of the cache line.
 # TLB Line Layout
-| <sub>63-40</sub><br>PhysicalAddress | <sub>39-32</sub><br>AddrSpaceID | <sub>8-31</sub><br>VirtualAddress | <sub>3-7</sub><br>Size (1&lt;&lt;n) | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
+| <sub>63-40</sub><br>VirtualAddress | <sub>39-32</sub><br>AddrSpaceID | <sub>8-31</sub><br>PhysicalAddress | <sub>3-7</sub><br>Size (1&lt;&lt;n) | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
 |-|-|-|-|-|-|-|
 > Note 1: Size must be a least 8 (which is a 256 byte page), any value less than that will trigger a TLB miss when accessed.    
 > Note 2: AddrSpaceIDs can only be positive signed 8-bit numbers, if its negative than the CPU will bypass AddrSpaceID checking (Similar to MIPS's Global Bit).    
