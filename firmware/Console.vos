@@ -22,7 +22,6 @@
         (if (== 10 (b@ (+ str i))) (do
             (= cursor (+ (b@ (cursorY)) 1))
             (if (u>= cursor 25) (do
-                (FramebufferRenderBackground)
                 (ConsoleScroll)
             ) (do
                 (b! (cursorX) 0)

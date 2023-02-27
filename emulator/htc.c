@@ -3,14 +3,16 @@
 uint32_t HTCRegisters[2];
 
 int HTCInterrupt(int irq) {
-    if(!( & (1 << (irq&0x1F)))) {
-        // Trigger the interrupt
+    if(!(HTCRegisters[0] & (1 << (irq&0x1F)))) {
+        HTCRegisters[1] = HTCRegisters[1] | (1 << (irq&0x1f));
+        
     }
 }
 
 int HTCRead(uint32_t port, uint32_t length, uint32_t *value) {
     *value = HTCRegisters[port];
-    if(port == 0x2) { // 
+    if(port == 0x2) { // Claim
+
     }
 }
 

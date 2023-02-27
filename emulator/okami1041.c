@@ -563,7 +563,7 @@ void next() {
                 uint32_t rs = (instr & 0x1F0000) >> 16;
                 uint32_t rd = (instr & 0x3E00000) >> 21;
                 uint32_t addr = getRegister(rs)+offset;
-                uint32_t val;
+                uint32_t val = 0;
                 switch(opcode & 0b111) {
                     case 0: { // LB
                         if(memAccess(addr,(uint8_t*)&val,1,false,false)) {

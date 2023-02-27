@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -24,6 +25,10 @@ static inline int KoriBusRead(uint32_t addr, uint32_t len, uint8_t* buf) {
 
 
 static inline int KoriBusWrite(uint32_t addr, uint32_t len, uint8_t* buf) {
+    if(addr == 0x1FFFFFFF) {
+        fprintf(stderr, "0x%x\n",*((uint32_t*)buf));
+        return 1;
+    }
     int bank = addr >> 25;
     if(KoriBusBanks[bank].Used) {
         return KoriBusBanks[bank].Write(addr & 0x1FFFFFF, len, (void*)buf);
