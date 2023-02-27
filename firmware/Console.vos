@@ -1,4 +1,5 @@
-(var )
+(var cursorX 1)
+(var cursorY 1)
 
 (fn ConsoleInit ()
     /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
