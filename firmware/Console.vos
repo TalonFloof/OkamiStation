@@ -4,6 +4,8 @@
 (fn ConsoleInit ()
     /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
     (w! 0xb0000fc0 0x1e1e2e)
+    (b! (cursorX) 0)
+    (b! (cursorY) 0)
     (FramebufferDrawRect 182 124 659 509 255)
     (FramebufferDrawRect 183 125 659 509 248)
     (FramebufferDrawRect 183 125 658 508 252)
@@ -13,9 +15,29 @@
 )
 
 (fn ConsoleWrite (str n)
-    (int i)
+    (int i cursor)
     (= i 0)
+    (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
     (while (u< i n)
-
+        (if (== 10 (b@ (+ str i))) (do
+            (= cursor (+ (b@ (cursorY)) 1))
+            (if (u>= cursor 25) (do
+                (FramebufferRenderBackground)
+                (ConsoleScroll)
+            ) (do
+                (b! (cursorX) 0)
+                (b! (cursorY) cursor)
+            ))
+        ) (do
+            (FramebufferRenderRune (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 1 253 (b@ (+ str i)))
+            (= cursor (+ (b@ (cursorX)) 1))
+            (b! (cursorX) cursor)
+        ))
+        (= i (+ i 1))
     )
+    (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)
+)
+
+(fn ConsoleScroll ()
+
 )

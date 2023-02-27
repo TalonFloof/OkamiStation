@@ -21,9 +21,9 @@ typedef struct {
     uint64_t nonCacheable : 1;
     uint64_t isDirty : 1;
     uint64_t size : 5;
-    uint64_t vaddr : 24;
-    uint64_t addrSpaceID : 8;
     uint64_t paddr : 24;
+    uint64_t addrSpaceID : 8;
+    uint64_t vaddr : 24;
 } TLBLine;
 
 TLBLine TLB[64];

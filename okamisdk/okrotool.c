@@ -122,15 +122,16 @@ void preformRelocation(uint8_t* image, uint32_t base, uint32_t dataBase) {
             }
         }
         switch(relocation[i].type) {
-            case BRANCH28:
+            case BRANCH28: {
                 uint32_t op = (*dstPtr) & 0xFC000000;
                 *dstPtr = (((labelAddr >> 2) & 0x3FFFFFF) | op);
                 break;
+            }
             case PTR32:
                 *dstPtr = labelAddr;
                 break;
             case LA32:
-                ((uint16_t*)dstPtr)[0] = (uint16_t)(labelAddr >> 16);
+                ((uint16_t*)dstPtr)[0] = (uint16_t)(labelAddr >> 16);\
                 ((uint16_t*)dstPtr)[2] = (uint16_t)(labelAddr & 0xFFFF);
                 break;
             default:

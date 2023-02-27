@@ -41,4 +41,24 @@
     mfex a2, 2
     mfex a3, 3
     bl Exception
-    b halt
+    lw ra, 76(sp)
+    lw s9, 72(sp)
+    lw s8, 68(sp)
+    lw s7, 64(sp)
+    lw s6, 60(sp)
+    lw s5, 56(sp)
+    lw s4, 52(sp)
+    lw s3, 48(sp)
+    lw s2, 44(sp)
+    lw s1, 40(sp)
+    lw s0, 36(sp)
+    lw a7, 32(sp)
+    lw a6, 28(sp)
+    lw a5, 24(sp)
+    lw a4, 20(sp)
+    lw a3, 16(sp)
+    lw a2, 12(sp)
+    lw a1, 8(sp)
+    lw a0, 4(sp)
+    addi sp, sp, 76
+    rft

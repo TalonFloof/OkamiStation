@@ -1,4 +1,5 @@
 #include "okamiboard.h"
+#include "htc.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +37,7 @@ void OkamiBoardInit() {
     for(int i=0; i < 256; i++) {
         OkamiPorts[i].isPresent = false;
     }
+    HTCInit();
     FILE *firmware = fopen("Firmware.bin", "r");
     if(firmware == NULL) {
         fprintf(stderr, "Couldn't open the Boot ROM\n");
