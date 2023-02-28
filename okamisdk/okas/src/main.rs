@@ -1491,7 +1491,7 @@ fn to_ast_symbol(pair: pest::iterators::Pair<Rule>) -> ASTNode {
                     "s8" => 25,
                     "s9" => 26,
                     "gp" => 27,
-                    "tp" => 28,
+                    "kr" => 28,
                     "fp" => 29,
                     "sp" => 30,
                     "ra" => 31,

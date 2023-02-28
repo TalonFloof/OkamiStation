@@ -62,3 +62,9 @@
     lw a0, 4(sp)
     addi sp, sp, 76
     rft
+
+.global RAMTestHandler:
+    la kr, RAMTestFaulted
+    li t7, 2
+    sb t7, 0(kr)
+    rft

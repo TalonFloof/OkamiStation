@@ -10,8 +10,8 @@
     (FramebufferDrawRect 183 125 659 509 248)
     (FramebufferDrawRect 183 125 658 508 252)
     (FramebufferDrawCenteredRect 512 384 640 480 240)
-    /* Text Color: 253 */
     (FramebufferRenderString 464 125 1 0 "OkamiStation")
+    (FramebufferDrawRect 192 144 8 16 240)
 )
 
 (fn ConsoleWrite (str n)
@@ -19,24 +19,38 @@
     (= i 0)
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
     (while (u< i n)
-        (if (== 10 (b@ (+ str i))) (do
-            (= cursor (+ (b@ (cursorY)) 1))
-            (if (u>= cursor 25) (do
-                (ConsoleScroll)
-            ) (do
-                (b! (cursorX) 0)
-                (b! (cursorY) cursor)
-            ))
-        ) (do
+        (if (== 10 (b@ (+ str i))) (ConsoleNewline)
+        (do
             (FramebufferRenderRune (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 1 253 (b@ (+ str i)))
             (= cursor (+ (b@ (cursorX)) 1))
-            (b! (cursorX) cursor)
+            (if (u>= cursor 80) (ConsoleNewline) (b! (cursorX) cursor))
         ))
         (= i (+ i 1))
     )
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)
 )
 
-(fn ConsoleScroll ()
+(fn ConsolePrint (str) (ConsoleWrite str (strlen str)))
 
+(fn ConsoleNewline ()
+    (int cursor)
+    (= cursor (+ (b@ (cursorY)) 1))
+    (if (u>= cursor 25) (do
+        (ConsoleScroll)
+    ) (do
+        (b! (cursorX) 0)
+        (b! (cursorY) cursor)
+    ))
+)
+
+(fn ConsoleScroll ()
+    (int y)
+    (= y 160)
+    (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
+    (while (u< y 624)
+        (memcpy32 (u* (- y 16) 1024) (u* y 1024) 640)
+        (= y (+ y 1))
+    )
+    (FramebufferDrawRect 192 608 640 16 240)
+    (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)
 )

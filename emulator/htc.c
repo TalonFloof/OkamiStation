@@ -1,29 +1,46 @@
 #include "okamiboard.h"
+#include "okami1041.h"
 
 uint32_t HTCRegisters[2];
 
 int HTCInterrupt(int irq) {
     if(!(HTCRegisters[0] & (1 << (irq&0x1F)))) {
+        if(HTCRegisters[1] == 0) {
+            triggerTrap(1,0,false);
+        }
         HTCRegisters[1] = HTCRegisters[1] | (1 << (irq&0x1f));
-        
     }
 }
 
 int HTCRead(uint32_t port, uint32_t length, uint32_t *value) {
     *value = HTCRegisters[port];
     if(port == 0x2) { // Claim
+        for(int i=0; i < 32; i++) {
+            if(HTCRegisters[1] & (1 << (i&0x1f))) {
+                *value = i+1;
+                return 1;
+            }
+        }
+        *value = 0;
+        return 1;
+    } else {
 
     }
 }
 
 int HTCWrite(uint32_t port, uint32_t length, uint32_t value) {
     if(port == 0x2) { // Acknowledge
-        
+        HTCRegisters[1] = HTCRegisters[1] & ~(1 << (value&0x1f));
+        return 1;
+    } else if(port == 0x0) {
+        HTCRegisters[port] = value;
+        return 1;
     }
+    return 0;
 }
 
 /* The HTC is the Hardware Trap Controller */
-/* Registers: 0-1 Interrupt Mask 2 Interrupt Source */
+/* Registers: 0 Interrupt Mask 1 Interrupt Source */
 void HTCInit() {
     HTCRegisters[0] = 0xFFFFFFFF;
     HTCRegisters[1] = 0;
