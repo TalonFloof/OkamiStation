@@ -1,5 +1,6 @@
 (var bootMenuOptions 128)
 (var bootSelectedOption 1)
+(extern SCSIDriveIcon)
 
 (struct BootEntry
     12 name
@@ -7,11 +8,12 @@
 )
 
 (fn BootMenuInit ()
+    (int key)
     (memset (bootMenuOptions) 128 0)
-    (memcpy (bootMenuOptions) "Monitor" 7)
+    (memcpy (bootMenuOptions) "Console" 7)
     (w! (+ (bootMenuOptions) (BootEntry.image)) (OkamiLogo))
-    (memcpy (+ (bootMenuOptions) 16) "Test Icon" 9)
-    (w! (+ (bootMenuOptions) 16 (BootEntry.image)) 0x80020000)
+    (memcpy (+ (bootMenuOptions) 16) "scsi0" 5)
+    (w! (+ (bootMenuOptions) 16 (BootEntry.image)) (SCSIDriveIcon))
     (b! (bootSelectedOption) 0)
 
     (FramebufferRenderBackground)
@@ -25,21 +27,29 @@
     (FramebufferDrawCenteredRect 705 384 2 222 255)
     (FramebufferDrawCenteredRect 511 494 386 2 255)
 
+    (FramebufferRenderString 448 256 1 0 "Choose an option")
+
     /* Draw Options */
     (BootMenuDrawOptions 0)
 
-    (while 1 (do))
+    (while 1
+        (= key (w@ 0xbe000040))
+        (if (== key 0x37) (do
+            (b! (bootSelectedOption) (+ (b@ (bootSelectedOption)) 1))
+            (BootMenuDrawOptions 0)
+        ))
+    )
 )
 
 (fn BootMenuDrawOptions (start)
-    /* 29 63 57 */
+    /* 29 63 57 153 */
     (int i base)
     (= i start)
     (FramebufferDrawCenteredRect 512 384 384 218 250)
     (while (u< i (+ start 3))
         (= base (+ (u* i 16) (bootMenuOptions)))
         (if (u> (w@ (+ base (BootEntry.image))) 0) (do
-            (if (== i (b@ (bootSelectedOption))) (FramebufferDrawRect (+ (u* (- i start) 128) 320) 275 128 218 29))
+            (if (== i (b@ (bootSelectedOption))) (FramebufferDrawRect (+ (u* (- i start) 128) 320) 275 128 218 153))
             (if (== (w@ (+ base (BootEntry.image))) (OkamiLogo))
                 (FramebufferRenderMonochromeBitmap (+ (u* (- i start) 128) 320) 308 128 128 1 0 0 (w@ (+ base (BootEntry.image))))
                 (FramebufferRenderMonochromeBitmap (+ (u* (- i start) 128) 320) 308 32 32 4 0 0 (w@ (+ base (BootEntry.image))))

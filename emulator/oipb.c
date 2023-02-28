@@ -90,9 +90,13 @@ uint8_t KbdScancodes[32];
 uint8_t KbdRead = 0;
 uint8_t KbdWrite = 0;
 
-void KbdPush(int sdlCode) {
-	KbdScancodes[KbdWrite] = ScancodeMapping[sdlCode].code;
-	KbdWrite += 1;
+void KbdPush(int sdlCode, int released) {
+	if(released) {
+		KbdScancodes[KbdWrite] = (uint8_t)(-((int8_t)ScancodeMapping[sdlCode].code));
+	} else {
+		KbdScancodes[KbdWrite] = ScancodeMapping[sdlCode].code;
+	}
+	KbdWrite = (KbdWrite + 1) % 32;
 	if(KbdRead == KbdWrite) { // Ring Buffer Error
 		KbdRead = 0;
 		KbdWrite = 0;
@@ -101,13 +105,20 @@ void KbdPush(int sdlCode) {
 
 int OIPBRead(uint32_t port, uint32_t length, uint32_t *value) {
     if(port == 0x10) {
-
+		if(KbdRead != KbdWrite) {
+			*value = KbdScancodes[KbdRead];
+			KbdRead = (KbdRead + 1) % 32;
+		} else {
+			*value = 0;
+		}
+		return 1;
     }
+	return 0;
 }
 
 int OIPBWrite(uint32_t port, uint32_t length, uint32_t value) {
     if(port == 0x10) {
-        
+        return 0;
     }
 }
 

@@ -8,6 +8,7 @@
 #include "ram.h"
 #include "okamiboard.h"
 #include "okami1041.h"
+#include "oipb.h"
 
 SDL_Window *ScreenWindow;
 SDL_Renderer *ScreenRenderer;
@@ -36,6 +37,7 @@ int main() {
     reset();
     RAMInit();
     OkamiBoardInit();
+    OIPBInit();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "unable to initialize SDL: %s", SDL_GetError());
@@ -95,6 +97,14 @@ int main() {
             switch (event.type) {
                 case SDL_QUIT: {
                     return 0;
+                }
+                case SDL_KEYDOWN: {
+                    KbdPush(event.key.keysym.scancode,0);
+                    break;
+                }
+                case SDL_KEYUP: {
+                    KbdPush(event.key.keysym.scancode,1);
+                    break;
                 }
             }
         }
