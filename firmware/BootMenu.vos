@@ -14,6 +14,10 @@
     (w! (+ (bootMenuOptions) (BootEntry.image)) (OkamiLogo))
     (memcpy (+ (bootMenuOptions) 16) "scsi0" 5)
     (w! (+ (bootMenuOptions) 16 (BootEntry.image)) (SCSIDriveIcon))
+    (memcpy (+ (bootMenuOptions) 32) "scsi1" 5)
+    (w! (+ (bootMenuOptions) 32 (BootEntry.image)) (SCSIDriveIcon))
+    /*(memcpy (+ (bootMenuOptions) 48) "scsi2" 5)
+    (w! (+ (bootMenuOptions) 48 (BootEntry.image)) (SCSIDriveIcon))*/
     (b! (bootSelectedOption) 0)
 
     (FramebufferRenderBackground)
@@ -31,12 +35,17 @@
 
     /* Draw Options */
     (BootMenuDrawOptions 0)
-
+    
     (while 1
         (= key (w@ 0xbe000040))
         (if (== key 0x37) (do
-            (b! (bootSelectedOption) (+ (b@ (bootSelectedOption)) 1))
-            (BootMenuDrawOptions 0)
+            (if (!= (w@ (+ (bootMenuOptions) (u* 16 (+ (b@ (bootSelectedOption)) 1)) 12)) 0) (do
+                (b! (bootSelectedOption) (+ (b@ (bootSelectedOption)) 1))
+                (BootMenuDrawOptions (u* (u/ (b@ (bootSelectedOption)) 3) 3))
+            ))
+        ) (& (== key 0x36) (u> (b@ (bootSelectedOption)) 0)) (do
+            (b! (bootSelectedOption) (- (b@ (bootSelectedOption)) 1))
+            (BootMenuDrawOptions (u* (u/ (b@ (bootSelectedOption)) 3) 3))
         ))
     )
 )
