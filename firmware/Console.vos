@@ -1,3 +1,9 @@
+/*
+Keyboard Layout in one string:
+"0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`"
+"!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~"
+*/
+
 (var cursorX 1)
 (var cursorY 1)
 
@@ -11,7 +17,7 @@
     (FramebufferDrawRect 183 125 658 508 252)
     (FramebufferDrawCenteredRect 512 384 640 480 240)
     (FramebufferRenderString 464 125 1 0 "OkamiStation")
-    (FramebufferDrawRect 192 144 8 16 240)
+    (FramebufferDrawRect 192 144 8 16 253)
 )
 
 (fn ConsoleWrite (str n)
@@ -20,6 +26,13 @@
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
     (while (u< i n)
         (if (== 10 (b@ (+ str i))) (ConsoleNewline)
+        (== 8 (b@ (+ str i))) (do
+            (= cursor (- (b@ (cursorX)) 1))
+            (if (< cursor 0) (do
+                (b! (cursorX) 79)
+                (b! (cursorY) (- (b@ (cursorY)) 1))
+            ) (b! (cursorX) cursor))
+        )
         (do
             (FramebufferRenderRune (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 1 253 (b@ (+ str i)))
             (= cursor (+ (b@ (cursorX)) 1))
@@ -53,4 +66,16 @@
     )
     (FramebufferDrawRect 192 608 640 16 240)
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)
+)
+
+(fn ConsoleGetChar ()
+    (int key shift)
+    (= shift 0)
+    (while 1
+        (= key (w@ 0xbe000040))
+        (if (== key 0x3C) (= shift 1) (== key 0xC4) (= shift 0) (break))
+    )
+    (if shift (return (b@ (+ "0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`" key)))
+    (== key 0x33) (return 8)
+    (return (b@ (+ "!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~" key))))
 )

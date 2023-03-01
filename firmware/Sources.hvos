@@ -4,6 +4,7 @@
 (include "SelfTest/SelfTest.vos")
 (include "Console.vos")
 (include "BootMenu.vos")
+(include "Monitor/Monitor.vos")
 
 (include_asm "Memory.s")
 (externFn memset memset16 memcpy memcpy32)

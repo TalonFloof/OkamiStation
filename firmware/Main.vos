@@ -23,8 +23,6 @@
 
     (BootMenuInit)
 
-    /*(ConsoleInit)*/
-
     (halt)
 )
 

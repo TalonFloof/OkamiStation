@@ -10,7 +10,7 @@
 (fn BootMenuInit ()
     (int key)
     (memset (bootMenuOptions) 128 0)
-    (memcpy (bootMenuOptions) "Console" 7)
+    (memcpy (bootMenuOptions) "Monitor" 7)
     (w! (+ (bootMenuOptions) (BootEntry.image)) (OkamiLogo))
     (memcpy (+ (bootMenuOptions) 16) "scsi0" 5)
     (w! (+ (bootMenuOptions) 16 (BootEntry.image)) (SCSIDriveIcon))
@@ -46,8 +46,10 @@
         ) (& (== key 0x36) (u> (b@ (bootSelectedOption)) 0)) (do
             (b! (bootSelectedOption) (- (b@ (bootSelectedOption)) 1))
             (BootMenuDrawOptions (u* (u/ (b@ (bootSelectedOption)) 3) 3))
-        ))
+        ) (== key 0x32) (break))
     )
+    (ConsoleInit)
+    (Monitor)
 )
 
 (fn BootMenuDrawOptions (start)
