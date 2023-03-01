@@ -2,6 +2,9 @@
     (ConsolePrint "OkamiStation Firmware v1.0\nCopyright (C) 2023 TalonFox, Licensed under the MIT License.\n\n")
     (while 1
         (ConsolePrint "> ")
-        (ConsoleGetChar)
+        (while 1
+            (b! (stringBuffer) (ConsoleGetChar))
+            (ConsoleWrite (stringBuffer) 1)
+        )
     )
 )

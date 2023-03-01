@@ -1,11 +1,6 @@
-/*
-Keyboard Layout in one string:
-"0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`"
-"!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~"
-*/
-
 (var cursorX 1)
 (var cursorY 1)
+(var kbdShift 1)
 
 (fn ConsoleInit ()
     /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
@@ -48,7 +43,7 @@ Keyboard Layout in one string:
 (fn ConsoleNewline ()
     (int cursor)
     (= cursor (+ (b@ (cursorY)) 1))
-    (if (u>= cursor 25) (do
+    (if (u>= cursor 30) (do
         (ConsoleScroll)
     ) (do
         (b! (cursorX) 0)
@@ -61,7 +56,7 @@ Keyboard Layout in one string:
     (= y 160)
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
     (while (u< y 624)
-        (memcpy32 (u* (- y 16) 1024) (u* y 1024) 640)
+        (memcpy32 (+ 0x90001000 (u* (- y 16) 1024)) (+ 0x90001000 (u* y 1024) 640))
         (= y (+ y 1))
     )
     (FramebufferDrawRect 192 608 640 16 240)
@@ -70,12 +65,16 @@ Keyboard Layout in one string:
 
 (fn ConsoleGetChar ()
     (int key shift)
-    (= shift 0)
+    (= shift (b@ (kbdShift)))
     (while 1
         (= key (w@ 0xbe000040))
-        (if (== key 0x3C) (= shift 1) (== key 0xC4) (= shift 0) (break))
+        (if (== key 0x3C) (= shift 1) (== key 0xC4) (= shift 0) (& (!= key 0) (u< key 0x80)) (break))
     )
-    (if shift (return (b@ (+ "0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`" key)))
-    (== key 0x33) (return 8)
-    (return (b@ (+ "!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~" key))))
+    (b! (kbdShift) shift)
+    (if
+        (== key 0x33) (return 8)
+        (== key 0x32) (return 10)
+        (! shift) (return (b@ (+ "0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`" (- key 1))))
+        (return (b@ (+ ")!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~" (- key 1))))
+    )
 )
