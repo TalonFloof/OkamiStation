@@ -7,13 +7,13 @@
     (return i)
 )
 
-(fn itoa (n str)
+(fn itoa (n str base)
     (int i)
     (= i 0)
     (while 1
-        (b! (+ str i) (+ (u% n 10) 0x30))
+        (if (u>= (u% n base) 10) (b! (+ str i) (+ (u% n base) 0x57)) (b! (+ str i) (+ (u% n base) 0x30)))
         (= i (+ i 1))
-        (= n (u/ n 10))
+        (= n (u/ n base))
         (if (== n 0) (break))
     )
     (b! (+ str i) 0)

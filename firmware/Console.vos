@@ -45,6 +45,7 @@
     (= cursor (+ (b@ (cursorY)) 1))
     (if (u>= cursor 30) (do
         (ConsoleScroll)
+        (b! (cursorX) 0)
     ) (do
         (b! (cursorX) 0)
         (b! (cursorY) cursor)
@@ -56,11 +57,11 @@
     (= y 160)
     (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 240)
     (while (u< y 624)
-        (memcpy32 (+ 0x90001000 (u* (- y 16) 1024)) (+ 0x90001000 (u* y 1024) 640))
+        (memcpy32 (+ 0x90001000 (u* (- y 16) 1024) 192) (+ 0x90001000 (u* y 1024) 192) 640)
         (= y (+ y 1))
     )
     (FramebufferDrawRect 192 608 640 16 240)
-    (FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)
+    /*(FramebufferDrawRect (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 8 16 253)*/
 )
 
 (fn ConsoleGetChar ()
