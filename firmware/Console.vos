@@ -75,7 +75,7 @@
     (if
         (== key 0x33) (return 8)
         (== key 0x32) (return 10)
-        (! shift) (return (b@ (+ "0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\\\/.',`" (- key 1))))
-        (return (b@ (+ ")!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}||?>\"<~" (- key 1))))
+        (! shift) (return (b@ (+ "0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\/.',`" (- key 1))))
+        (return (b@ (+ ")!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}|?>\"<~" (- key 1))))
     )
 )
