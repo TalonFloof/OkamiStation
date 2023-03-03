@@ -3,6 +3,11 @@
 
 uint32_t HTCRegisters[2];
 
+/*
+Interrupt Layout:
+0 Timer, 1 OIPB #0, 2 OIPB #1, 3 OIPB #2, 4 SCSI
+*/
+
 int HTCInterrupt(int irq) {
     if(!(HTCRegisters[0] & (1 << (irq&0x1F)))) {
         if(HTCRegisters[1] == 0) {
