@@ -1,4 +1,5 @@
 #include "okamiboard.h"
+#include "htc.h"
 #include <SDL2/SDL.h>
 
 typedef struct {
@@ -101,6 +102,7 @@ void KbdPush(int sdlCode, int released) {
 		KbdRead = 0;
 		KbdWrite = 0;
 	}
+	HTCInterrupt(1);
 }
 
 int OIPBRead(uint32_t port, uint32_t length, uint32_t *value) {

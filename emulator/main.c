@@ -9,6 +9,7 @@
 #include "okamiboard.h"
 #include "okami1041.h"
 #include "oipb.h"
+#include "timer.h"
 
 SDL_Window *ScreenWindow;
 SDL_Renderer *ScreenRenderer;
@@ -81,6 +82,7 @@ int main() {
             int cyclesleft = cyclespertick;
             if (i == dt-1)
                 cyclesleft += extracycles;
+            TimerTick();
             while (cyclesleft > 0) {
                 next();
 			    cyclesleft -= 1;

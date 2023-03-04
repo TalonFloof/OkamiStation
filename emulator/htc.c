@@ -29,8 +29,10 @@ int HTCRead(uint32_t port, uint32_t length, uint32_t *value) {
         *value = 0;
         return 1;
     } else {
-
+        *value = HTCRegisters[port];
+        return 1;
     }
+    return 0;
 }
 
 int HTCWrite(uint32_t port, uint32_t length, uint32_t value) {
