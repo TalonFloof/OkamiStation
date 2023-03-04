@@ -1,5 +1,5 @@
 (include_asm "Framebuffer.s")
-(externFn FramebufferClear FramebufferRenderMonochromeBitmap)
+(externFn FramebufferClear)
 (extern Unifont)
 (extern OkamiLogo)
 (extern Dither)

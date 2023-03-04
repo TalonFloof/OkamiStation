@@ -1,13 +1,4 @@
-(extern RAMIcon)
 (extern RAMTestHandler)
-
-(fn UpdateSelfTestStatus (str icon)
-    (int len)
-    (= len (strlen str))
-    (FramebufferDrawCenteredRect 512 550 332 128 250)
-    (FramebufferRenderString (- 512 (u/ (u* len 8) 2)) 590 1 0 str)
-    (if icon (FramebufferRenderMonochromeBitmap 480 520 32 32 2 0 0 icon))
-)
 
 (fn TestFB ()
     (memset16 0xb0001000 0xC0000 0x55aa)
@@ -23,23 +14,14 @@
     (= addr (+ (FWbss_end) 0x20000000))
     (SetupTrap (RAMTestHandler) 0)
     (b! (RAMTestFaulted) 1)
-    (memcpy (stringBuffer) "Testing RAM (" 14)
     (while 1
-        (if (== (u% addr 131072) 0) (do
-            (itoa (<< (>> (& addr 0x1ffe0000) 17) 7) (+ (stringBuffer) 13) 10)
-            (= ptr (+ (stringBuffer) (strlen (stringBuffer))))
-            (memcpy ptr "K OK)" 6)
-            (UpdateSelfTestStatus (stringBuffer) (RAMIcon))
-        ))
         (w! addr 0x55aa55aa)
         (if (== (b@ (RAMTestFaulted)) 2) (break))
         (if (!= (w@ addr) 0x55aa55aa) (do
-            (UpdateSelfTestStatus "RAM Test Failed!"  (RAMIcon))
             (halt)
         ))
         (w! addr 0xaa55aa55)
         (if (!= (w@ addr) 0xaa55aa55) (do
-            (UpdateSelfTestStatus "RAM Test Failed!" (RAMIcon))
             (halt)
         ))
         (= addr (+ addr 4))

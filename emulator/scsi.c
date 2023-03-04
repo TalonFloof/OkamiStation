@@ -25,7 +25,7 @@ void SCSIDoCommand(SCSIDrive* drive, uint8_t cmd) {
     int do_dma = cmd & 0x80;
     switch(cmd & 0x7f) {
         case 0: { // Send Data
-
+            
         }
         case 1: { // Send Message
 

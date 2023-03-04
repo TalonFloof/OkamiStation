@@ -1,0 +1,25 @@
+(int forthPromptLen 0)
+
+(fn FORTH ()
+    (int chr)
+    (while 1
+        (ConsolePrint "> ")
+        (= forthPromptLen 0)
+        (while 1
+            (= chr (ConsoleGetChar))
+            (if (== chr 10) (break) (| (!= chr 8) (& (== chr 8) (u> forthPromptLen 0))) (do
+                (b! (+ (stringBuffer) forthPromptLen) chr)
+                (if (| (== chr 8) (u< forthPromptLen 95)) (ConsoleWrite (+ (stringBuffer) forthPromptLen) 1))
+                (if (== chr 8) (= forthPromptLen (- forthPromptLen 1)) 
+                    (if (u>= forthPromptLen 95) (do) (= forthPromptLen (+ forthPromptLen 1)))
+                )
+            ))
+        )
+        (b! (+ (stringBuffer) forthPromptLen) 0)
+        (ConsolePrint " ")
+        (ConsolePrint "\n")
+    )
+)
+
+(var dataStack 1024)
+(var returnStack 1024)

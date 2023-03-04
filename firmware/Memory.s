@@ -38,12 +38,11 @@
     bltu zero, a1, memset16 /* a1 > zero */
     blr zero, ra
 
-
 .global memcpy: /* (dest: a0, src: a1, len: a2) */
     lb t0, 0(a1)
-    addi a1, a1, 1
     sb t0, 0(a0)
     addi a0, a0, 1
+    addi a1, a1, 1
     addi a2, a2, -1
     bne a2, zero, memcpy
 .ret:
@@ -51,9 +50,9 @@
 
 .global memcpy32: /* (dest: a0, src: a1, len: a2) */
     lw t0, 0(a1)
-    addi a1, a1, 4
     sw t0, 0(a0)
     addi a0, a0, 4
+    addi a1, a1, 4
     addi a2, a2, -4
     bne a2, zero, memcpy32
 .ret:

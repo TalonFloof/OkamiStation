@@ -3,8 +3,9 @@
 
 (fn main ()
     (TestFB)
+    (TestRAM)
     (SetupTrap (TrapHandler) 0)
-    (FramebufferRenderBackground)
+    /*(FramebufferRenderBackground)
     (FramebufferDrawCenteredRect 510 382 384 512 255)
     (FramebufferDrawCenteredRect 514 386 384 512 248)
     (FramebufferDrawCenteredRect 512 384 384 512 252)
@@ -16,15 +17,17 @@
     (FramebufferDrawCenteredRect 512 615 336 2 255)
     (FramebufferRenderMonochromeBitmap 384 150 128 128 2 0 0 (OkamiLogo))
     (FramebufferRenderString 416 408 2 0 "OkamiStation")
-    (UpdateSelfTestStatus "Testing RAM" (RAMIcon))
-    (TestRAM)
-    (UpdateSelfTestStatus "Initializing Hardware Trap Controller" 0)
-    (w! 0xbe000010 250) /* Timer Hit */
+    (w! 0xbe000010 2500)
     (w! 0xbe000000 2)
     (while (== (h@ (bootCurColor)) 0) (do))
-    (UpdateSelfTestStatus "Diagnostics were successful!" 0)
+    (w! 0xbe000010 250)*/
 
-    (BootMenuInit)
+    /*(BootMenuInit)*/
+    (FramebufferRenderBackground)
+    (ConsoleInit)
+    (FramebufferRenderMonochromeBitmap 192 144 128 128 1 255 0 (OkamiLogo))
+    (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), \"OIPBkbd\" Keyboard\n                 OkamiBoot 1.0\n\n\n\n")
+    (FORTH)
 
     (halt)
 )

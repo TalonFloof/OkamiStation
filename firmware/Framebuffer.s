@@ -11,8 +11,6 @@
 .rodata
 OkamiLogo: .include_bin "Images/OkamiLogo.dat"
 
-RAMIcon: .include_bin "Images/RAMIcon.dat"
-
 SCSIDriveIcon: .include_bin "Images/SCSIDrive.dat"
 
 Unifont: .include_bin "Images/Unifont.dat"
