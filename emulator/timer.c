@@ -20,11 +20,18 @@ void TimerTick() {
 }
 
 int TimerRead(uint32_t port, uint32_t length, uint32_t *value) {
-
+    return 0;
 }
 
 int TimerWrite(uint32_t port, uint32_t length, uint32_t value) {
-
+    if(port == 0x3) {
+        timerCounter = value;
+        return 1;
+    } else if(port == 0x4) {
+        timerHit = value;
+        return 1;
+    }
+    return 0;
 }
 
 void TimerInit() {

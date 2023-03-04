@@ -4,7 +4,6 @@
 (fn main ()
     (TestFB)
     (SetupTrap (TrapHandler) 0)
-    (w! 0xbe000000 3)
     (FramebufferRenderBackground)
     (FramebufferDrawCenteredRect 510 382 384 512 255)
     (FramebufferDrawCenteredRect 514 386 384 512 248)
@@ -20,6 +19,9 @@
     (UpdateSelfTestStatus "Testing RAM" (RAMIcon))
     (TestRAM)
     (UpdateSelfTestStatus "Initializing Hardware Trap Controller" 0)
+    (w! 0xbe000010 250) /* Timer Hit */
+    (w! 0xbe000000 2)
+    (while (== (h@ (bootCurColor)) 0) (do))
     (UpdateSelfTestStatus "Diagnostics were successful!" 0)
 
     (BootMenuInit)
@@ -28,8 +30,8 @@
 )
 
 (fn Exception (context cause pc vaddr)
-    (int i strSize)
-    (if (u> cause 0) (do
+    (int i strSize curColor)
+    (if (u> cause 1) (do
         (ConsoleInit)
         (ConsolePrint "EXCEPTION TRAP TRIGGERED - Cause 0x")
         (itoa cause (stringBuffer) 16)
@@ -54,6 +56,17 @@
         (ConsolePrint (stringBuffer))
         (ConsolePrint "\n\nSystem Halted\n")
         (halt)
+    ) (do
+        (= i (w@ 0xbe000008))
+        (while (u> i 0)
+            (if (== i 1) (do
+                (= curColor (u% (+ (b@ (+ (bootCurColor) 1)) 1) 4))
+                (b! (+ (bootCurColor) 1) curColor)
+                (if (== curColor 0) (b! (bootCurColor) 102) (| (== curColor 1) (== curColor 3)) (b! (bootCurColor) 107) (b! (bootCurColor) 153))
+            ))
+            (w! 0xbe000008 (- i 1))
+            (= i (w@ 0xbe000008))
+        )
     ))
 )
 

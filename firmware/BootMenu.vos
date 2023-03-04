@@ -1,5 +1,6 @@
 (var bootMenuOptions 128)
 (var bootSelectedOption 1)
+(var bootCurColor 2)
 (extern SCSIDriveIcon)
 
 (struct BootEntry
@@ -8,7 +9,7 @@
 )
 
 (fn BootMenuInit ()
-    (int key)
+    (int key prevVal)
     (memset (bootMenuOptions) 128 0)
     (memcpy (bootMenuOptions) "Monitor" 7)
     (w! (+ (bootMenuOptions) (BootEntry.image)) (OkamiLogo))
@@ -34,20 +35,33 @@
     (FramebufferRenderString 448 256 1 0 "Choose an option")
 
     /* Draw Options */
+    (FramebufferDrawCenteredRect 512 384 384 218 250)
     (BootMenuDrawOptions 0)
     
+    (= prevVal (h@ (bootCurColor)))
     (while 1
         (= key (w@ 0xbe000040))
-        (if (== key 0x37) (do
+        (if (!= prevVal (h@ (bootCurColor))) (do
+            (BootMenuDrawOptions 0)
+            (= prevVal (h@ (bootCurColor)))
+        )
+          (== key 0x37) (do
             (if (!= (w@ (+ (bootMenuOptions) (u* 16 (+ (b@ (bootSelectedOption)) 1)) 12)) 0) (do
                 (b! (bootSelectedOption) (+ (b@ (bootSelectedOption)) 1))
+                (h! (bootCurColor) 0x299)
+                (w! 0xbe00000c 0)
+                (FramebufferDrawCenteredRect 512 384 384 218 250)
                 (BootMenuDrawOptions (u* (u/ (b@ (bootSelectedOption)) 3) 3))
             ))
         ) (& (== key 0x36) (u> (b@ (bootSelectedOption)) 0)) (do
             (b! (bootSelectedOption) (- (b@ (bootSelectedOption)) 1))
+            (h! (bootCurColor) 0x299)
+            (w! 0xbe00000c 0)
+            (FramebufferDrawCenteredRect 512 384 384 218 250)
             (BootMenuDrawOptions (u* (u/ (b@ (bootSelectedOption)) 3) 3))
         ) (== key 0x32) (break))
     )
+    (w! 0xbe000000 3)
     (ConsoleInit)
     (Monitor)
 )
@@ -56,11 +70,10 @@
     /* 29 63 57 153 */
     (int i base)
     (= i start)
-    (FramebufferDrawCenteredRect 512 384 384 218 250)
     (while (u< i (+ start 3))
         (= base (+ (u* i 16) (bootMenuOptions)))
         (if (u> (w@ (+ base (BootEntry.image))) 0) (do
-            (if (== i (b@ (bootSelectedOption))) (FramebufferDrawRect (+ (u* (- i start) 128) 320) 275 128 218 153))
+            (if (== i (b@ (bootSelectedOption))) (FramebufferDrawRect (+ (u* (- i start) 128) 320) 275 128 218 (b@ (bootCurColor))))
             (if (== (w@ (+ base (BootEntry.image))) (OkamiLogo))
                 (FramebufferRenderMonochromeBitmap (+ (u* (- i start) 128) 320) 308 128 128 1 0 0 (w@ (+ base (BootEntry.image))))
                 (FramebufferRenderMonochromeBitmap (+ (u* (- i start) 128) 320) 308 32 32 4 0 0 (w@ (+ base (BootEntry.image))))

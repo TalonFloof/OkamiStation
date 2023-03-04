@@ -39,6 +39,7 @@ int main() {
     RAMInit();
     OkamiBoardInit();
     OIPBInit();
+    TimerInit();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "unable to initialize SDL: %s", SDL_GetError());
