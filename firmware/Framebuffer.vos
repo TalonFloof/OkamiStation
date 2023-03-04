@@ -1,5 +1,4 @@
 (include_asm "Framebuffer.s")
-(externFn FramebufferClear)
 (extern Unifont)
 (extern OkamiLogo)
 (extern Dither)
@@ -51,7 +50,7 @@
 (fn FramebufferRenderBackground ()
     (int i j)
     /* 46 92 */
-    (FramebufferClear 46)
+    (memset 0x90001000 786432 46)
     (FramebufferDrawRect 0 528 1024 240 92)
     (= i 0)
     (= j 0)

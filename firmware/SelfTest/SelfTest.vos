@@ -8,6 +8,7 @@
 )
 
 (var RAMTestFaulted 1)
+(int RAMSize 0)
 
 (fn TestRAM ()
     (int addr ptr)
@@ -27,4 +28,5 @@
         (= addr (+ addr 4))
     )
     (SetupTrap (TrapHandler) 0)
+    (= RAMSize (- addr 0xa0000000))
 )

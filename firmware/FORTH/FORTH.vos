@@ -1,7 +1,13 @@
+(include "Dictionary.vos")
+(include "Words.vos")
+
 (int forthPromptLen 0)
+(int instOff 0)
 
 (fn FORTH ()
     (int chr)
+    (= dictHead (FWbss_end))
+    (= dictTail (FWbss_end))
     (while 1
         (ConsolePrint "> ")
         (= forthPromptLen 0)

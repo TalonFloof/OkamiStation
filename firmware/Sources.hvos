@@ -3,8 +3,6 @@
 (include "String.vos")
 (include "SelfTest/SelfTest.vos")
 (include "Console.vos")
-(var bootCurColor 2)
-/*(include "BootMenu.vos")*/
 (include "FORTH/FORTH.vos")
 
 (include_asm "Memory.s")

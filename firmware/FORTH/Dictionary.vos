@@ -1,0 +1,27 @@
+(int dictHead 0)
+(int dictFinalWord 0)
+(int dictTail 0)
+
+(struct ForthWord
+    4 prev
+    2 nameLen
+    2 flags
+    16 name
+    0 data
+)
+
+(const FlagNative 1)
+(const FlagVar 2)
+(const FlagConst 4)
+
+(fn NewWord (name flags ptr len)
+    (int len)
+    (= len (strlen name))
+    (w! dictTail dictFinalWord)
+    (w! (+ dictTail (ForthWord.nameLen)) (| len (<< flags 16)))
+    (memset (+ dictTail (ForthWord.name)) 16 0)
+    (memcpy (+ dictTail (ForthWord.name)) name len)
+    (memcpy (+ dictTail (ForthWord.data)) ptr len)
+    (= dictFinalWord dictTail)
+    (= dictTail (+ dictTail (ForthWord.data) len))
+)
