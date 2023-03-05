@@ -30,18 +30,18 @@
         )
         (b! (+ (stringBuffer) forthPromptLen) 0)
         (= tokenOff 0)
+        (ConsolePrint "  ")
         (if forthState (do
             /* COMPILE */
         ) (do
             /* INTERPRET */
             (fun_interpret)
         ))
-        (ConsolePrint " ")
         (ConsolePrint "\n")
     )
 )
 
-(var wordBuf 17)
+(var wordBuf 128)
 (var dataStack 1024)
 (var returnStack 1024)
 

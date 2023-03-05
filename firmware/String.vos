@@ -44,3 +44,40 @@
     )
     (return 0)
 )
+
+/*
+fn atoi10 { str -- res }
+	auto i
+	0 i!
+	0 res!
+
+	while (str@ i@ + gb 0 ~=)
+		auto c
+		str@ i@ + gb c!
+
+		if (c@ '0' >= c@ '9' <= &&)
+			res@ 10 *
+			c@ '0' -
+			+
+			res!
+		end else
+			0 res! return
+		end
+
+		1 i +=
+	end
+end
+*/
+(fn atoi10 (str)
+    (int i res c)
+    (= i 0)
+    (= res 0)
+    (while (!= (b@ (+ str i)) 0)
+        (= c (b@ (+ str i)))
+        (if (& (u>= c 48) (u<= c 57)) (do
+            (= res (+ (u* res 10) (- c 48)))
+        ) (return 0))
+        (= i (+ i 1))
+    )
+    (return res)
+)

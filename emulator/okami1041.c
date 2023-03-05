@@ -400,6 +400,10 @@ void next() {
                 }
                 case 10: { // DIV/DIVU
                     uint32_t lowRd = (instr & 0x7C0) >> 6;
+                    if(getRegister(rs2) == 0) {
+                        triggerTrap(10,0,true);
+                        break;
+                    }
                     if(instr & 0x8) {
                         setRegister(lowRd, getRegister(rs1)/getRegister(rs2));
                         setRegister(rd, getRegister(rs1)%getRegister(rs2));

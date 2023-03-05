@@ -31,6 +31,6 @@
     (= index dictFinalWord)
     (while 1
         (= l (strlen (+ index (ForthWord.name))))
-        (if (strncmp name (+ index (ForthWord.name)) (strlen name)) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
+        (if (strncmp name (+ index (ForthWord.name)) 17) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
     )
 )

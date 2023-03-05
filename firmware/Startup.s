@@ -1,20 +1,27 @@
 .text
 .global OkamiStationFirmwareStartup:
-    /* We must first clear the caches */
-    /* Assembler will relocate to 0x9ff0_0000 as base, we need to fix that. */
     la a0, EarlyHandler
     lui t1, 0x2000
     add a0, a0, t1
     mtex a0, 5
+    /* We must clear the caches */
     bl ClearCaches
+    /* Clear the framebuffer */
     la a0, 0xb0001000
-    li a1, 786432
+    la a1, 786432
     li a2, 0
     bl memset
     /* Caches are now cleared, clear the TLB next */
     bl ClearTLB
     /* Setup Stack */
     la sp, FWbss_end
+    /* Clear the BSS */
+    la a0, 0xa0000000
+    la a1, FWstack
+    lui t0, 0x8000
+    sub a1, a1, t0
+    li a2, 0
+    bl memset
     la t0, main
     br t0
 halt:
