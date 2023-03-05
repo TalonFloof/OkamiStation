@@ -67,8 +67,9 @@
     mtex zero, 5
     mtex zero, 6
     mfex t0, 0
-    ori t0, t0, 0x8
+    ori t0, t0, 0x18
     mtex t0, 0
+    /*la sp, 0xb00c1000*/
     la sp, 0x80004000
     addi sp, sp, -4
     bl EarlyException

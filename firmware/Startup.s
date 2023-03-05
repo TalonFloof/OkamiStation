@@ -6,11 +6,11 @@
     lui t1, 0x2000
     add a0, a0, t1
     mtex a0, 5
+    bl ClearCaches
     la a0, 0xb0001000
     li a1, 786432
     li a2, 0
     bl memset
-    bl ClearCaches
     /* Caches are now cleared, clear the TLB next */
     bl ClearTLB
     /* Setup Stack */
@@ -28,6 +28,7 @@ halt:
     ori t0, t0, 0x18
     mtex t0, 0x00 /* OKAMI_STATUS */
 .icache_loop:
+    sw zero, 0(t1)
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .icache_loop
@@ -36,6 +37,7 @@ halt:
     andi t0, t0, 0xffef
     mtex t0, 0x00 /* OKAMI_STATUS */
 .dcache_loop:
+    sw zero, 0(t1)
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .dcache_loop
