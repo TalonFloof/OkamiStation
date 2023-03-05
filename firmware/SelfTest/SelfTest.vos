@@ -26,7 +26,13 @@
     (= RAMSize (- addr 0xa0000000))
 )
 
-(fn RAMErr (addr cacheMode)
+(fn EarlyException ()
+    (FramebufferRenderMonochromeBitmap (- 512 64) 624 128 128 1 255 0 (+ (OkamiLogo) 0x20000000))
+    (FramebufferRenderString (- 512 (u* 15 8)) 368 2 255 (+ "BankZero is Bad" 0x20000000))
+    (FramebufferRenderString 412 (+ 368 32) 1 255 (+ "Contact Technical Support"))
+)
+
+(fn RAMErr (addr)
     (itoa addr (stringBuffer) 16)
     (FramebufferRenderMonochromeBitmap (- 512 64) 624 128 128 1 255 0 (OkamiLogo))
     (FramebufferRenderString (- 512 (u* (strlen (stringBuffer)) 8)) 368 2 255 (stringBuffer))

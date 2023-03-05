@@ -1,13 +1,11 @@
 .text
 .global OkamiStationFirmwareStartup:
+    /* We must first clear the caches */
+    /* Assembler will relocate to 0x9ff0_0000 as base, we need to fix that. */
     la a0, EarlyHandler
     lui t1, 0x2000
     add a0, a0, t1
     mtex a0, 5
-    mtex a0, 6
-    lw zero, 1(zero)
-    /* We must first clear the caches */
-    /* Assembler will relocate to 0x9ff0_0000 as base, we need to fix that. */
     la t0, ClearCaches
     lui t1, 0x2000
     add t0, t0, t1

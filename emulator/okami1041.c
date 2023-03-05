@@ -253,7 +253,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             memcpy(buf,(uint8_t*)&val,len);
             return true;
         } else {
-            if(extRegisters[0] & 0x8) {
+            if((extRegisters[0] & 0x8) && addr <= 0x90000000) {
                 if(extRegisters[0] & 0x10) {
                     if(write) {
                         memcpy(((uint8_t*)&iCacheTags)+(addr-0x80000000),buf,len);
@@ -317,7 +317,7 @@ void reset() {
     memset((void*)registers,0,sizeof(registers));
     memset((void*)extRegisters,0,sizeof(extRegisters));
     extRegisters[0] = 1;
-    for(int i=0; i < 4096; i++) {
+    for(int i=0; i < 2048; i++) {
         ((uint64_t*)&iCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         ((uint64_t*)&dCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         if(i < 64) {
