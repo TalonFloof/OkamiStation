@@ -63,8 +63,35 @@
     addi sp, sp, 76
     rft
 
+.global EarlyHandler:
+    mtex zero, 5
+    mtex zero, 6
+    /* 504, 376 = 0xb005f1f8 */
+    mfex t0, 0
+    or t0, t0, 0x8
+    mtex t0, 0
+    la sp, 0x80004000
+    li a0, 448
+    li a1, 624
+    li a2, 128
+    li a3, 128
+    li a4, 1
+    li a5, 255
+    li a6, 0
+    la a7, OkamiLogo
+    lui t0, 0x2000
+    add a7, a7, t0
+    la t0, FramebufferRenderMonochromeBitmap
+    blr ra, t0
+.halt:
+    beq zero, zero, .halt
+
 .global RAMTestHandler:
     la kr, RAMTestFaulted
     li t7, 2
     sb t7, 0(kr)
     rft
+
+.rodata
+
+.text

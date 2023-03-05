@@ -16,17 +16,20 @@
     (SetupTrap (RAMTestHandler) 0)
     (b! (RAMTestFaulted) 1)
     (while 1
-        (w! addr 0x55aa55aa)
-        (if (== (b@ (RAMTestFaulted)) 2) (break))
-        (if (!= (w@ addr) 0x55aa55aa) (do
-            (halt)
-        ))
-        (w! addr 0xaa55aa55)
-        (if (!= (w@ addr) 0xaa55aa55) (do
-            (halt)
-        ))
+        /*(w! addr 0x55555555)*/
+        (if (== (b@ (RAMTestFaulted)) 2) (break) (!= (w@ addr) 0x55555555) (RAMErr addr))
+        (w! addr 0xaaaaaaaa)
+        (if (!= (w@ addr) 0xaaaaaaaa) (RAMErr addr))
         (= addr (+ addr 4))
     )
     (SetupTrap (TrapHandler) 0)
     (= RAMSize (- addr 0xa0000000))
+)
+
+(fn RAMErr (addr cacheMode)
+    (itoa addr (stringBuffer) 16)
+    (FramebufferRenderMonochromeBitmap (- 512 64) 624 128 128 1 255 0 (OkamiLogo))
+    (FramebufferRenderString (- 512 (u* (strlen (stringBuffer)) 8)) 368 2 255 (stringBuffer))
+    (FramebufferRenderString 412 (+ 368 32) 1 255 "Contact Technical Support")
+    (halt)
 )

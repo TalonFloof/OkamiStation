@@ -3,11 +3,18 @@
 
 (int forthPromptLen 0)
 (int instOff 0)
+(int tokenOff 0)
+(int forthState 0)
+(int dTop 0)
+(int rTop 0)
 
 (fn FORTH ()
     (int chr)
     (= dictHead (FWbss_end))
     (= dictTail (FWbss_end))
+    (= dTop 255)
+    (= rTop 255)
+    (DefineWords)
     (while 1
         (ConsolePrint "> ")
         (= forthPromptLen 0)
@@ -22,10 +29,23 @@
             ))
         )
         (b! (+ (stringBuffer) forthPromptLen) 0)
+        (= tokenOff 0)
+        (if forthState (do
+            /* COMPILE */
+        ) (do
+            /* INTERPRET */
+            (fun_interpret)
+        ))
         (ConsolePrint " ")
         (ConsolePrint "\n")
     )
 )
 
+(var wordBuf 17)
 (var dataStack 1024)
 (var returnStack 1024)
+
+(fn dPush (val) (w! (+ (dataStack) (u* dTop 4)) val) (= dTop (- dTop 1)))
+(fn dPop () (= dTop (+ dTop 1)) (return (w@ (+ (dataStack) (u* dTop 4)))))
+(fn rPush (val) (w! (+ (returnStack) (u* rTop 4)) val) (= rTop (- rTop 1)))
+(fn rPop () (= rTop (+ rTop 1)) (return (w@ (+ (returnStack) (u* rTop 4)))))

@@ -35,8 +35,8 @@ typedef struct {
     uint64_t isValid : 1;
 } CacheLine;
 
-CacheLine iCacheTags[4096];
-CacheLine dCacheTags[4096];
+CacheLine iCacheTags[2048];
+CacheLine dCacheTags[2048];
 
 int stallTicks = 0;
 
@@ -172,7 +172,7 @@ int TLBLookup(uint32_t addr) {
 }
 
 uint32_t readICacheLine(uint32_t addr) {
-    int index = (addr >> 2) & 0xFFF;
+    int index = (addr >> 2) & 0x7FF;
     if(iCacheTags[index].isValid && (iCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC)) {
         iHitCount += 1;
         return iCacheTags[index].cacheWord;
@@ -190,7 +190,7 @@ uint32_t readICacheLine(uint32_t addr) {
 }
 
 bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
-    int index = (addr >> 2) & 0xFFF;
+    int index = (addr >> 2) & 0x7FF;
     if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
         dMissCount += 1;
         stallTicks = 4; // Cache Miss Stall
@@ -208,7 +208,7 @@ bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
 }
 
 bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
-    int index = (addr >> 2) & 0xFFF;
+    int index = (addr >> 2) & 0x7FF;
     if(!KoriBusWrite(addr & 0x1FFFFFFF,size,value)) {
         triggerTrap(9,addr,false); // Data Exception
         return false;

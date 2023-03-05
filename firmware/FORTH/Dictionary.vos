@@ -4,9 +4,9 @@
 
 (struct ForthWord
     4 prev
-    2 nameLen
-    2 flags
+    1 flags
     16 name
+    3 reserved
     0 data
 )
 
@@ -15,13 +15,22 @@
 (const FlagConst 4)
 
 (fn NewWord (name flags ptr len)
-    (int len)
-    (= len (strlen name))
     (w! dictTail dictFinalWord)
-    (w! (+ dictTail (ForthWord.nameLen)) (| len (<< flags 16)))
-    (memset (+ dictTail (ForthWord.name)) 16 0)
-    (memcpy (+ dictTail (ForthWord.name)) name len)
+    (b! (+ dictTail (ForthWord.flags)) flags)
+    (memset (+ dictTail (ForthWord.name)) 19 0)
+    (memcpy (+ dictTail (ForthWord.name)) name (strlen name))
     (memcpy (+ dictTail (ForthWord.data)) ptr len)
     (= dictFinalWord dictTail)
     (= dictTail (+ dictTail (ForthWord.data) len))
+)
+
+(fn NewNative (name ptr) (w! (stringBuffer) ptr) (NewWord name (FlagNative) (stringBuffer) 4))
+
+(fn FindWord (name)
+    (int index l)
+    (= index dictFinalWord)
+    (while 1
+        (= l (strlen (+ index (ForthWord.name))))
+        (if (strncmp name (+ index (ForthWord.name)) (strlen name)) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
+    )
 )

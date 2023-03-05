@@ -24,6 +24,7 @@ uint64_t iHitCount = 0;
 uint64_t iMissCount = 0;
 uint64_t dHitCount = 0;
 uint64_t dMissCount = 0;
+extern int stallTicks;
 
 SDL_Rect winrect = {
     .w = 1024,

@@ -2,8 +2,8 @@
 (externFn halt)
 
 (fn main ()
-    (TestFB)
     (TestRAM)
+    (TestFB)
     (SetupTrap (TrapHandler) 0)
 
     (FramebufferRenderBackground)

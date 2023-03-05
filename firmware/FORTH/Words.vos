@@ -1,2 +1,13 @@
+(fn DefineWords ()
+    (NewNative "word" (ptrOf fun_word))
+    (NewNative "interpret" (ptrOf fun_interpret))
+)
 
+(fn fun_word ()
+    (int delimitor)
+    (= delimitor (dPop))
+)
 
+(fn fun_interpret ()
+    
+)
