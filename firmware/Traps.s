@@ -66,7 +66,6 @@
 .global EarlyHandler:
     mtex zero, 5
     mtex zero, 6
-    /* 504, 376 = 0xb005f1f8 */
     mfex t0, 0
     ori t0, t0, 0x8
     mtex t0, 0

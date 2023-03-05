@@ -16,7 +16,7 @@
     (SetupTrap (RAMTestHandler) 0)
     (b! (RAMTestFaulted) 1)
     (while 1
-        /*(w! addr 0x55555555)*/
+        (w! addr 0x55555555)
         (if (== (b@ (RAMTestFaulted)) 2) (break) (!= (w@ addr) 0x55555555) (RAMErr addr))
         (w! addr 0xaaaaaaaa)
         (if (!= (w@ addr) 0xaaaaaaaa) (RAMErr addr))

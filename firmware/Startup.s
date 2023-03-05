@@ -6,15 +6,13 @@
     lui t1, 0x2000
     add a0, a0, t1
     mtex a0, 5
-    la t0, ClearCaches
-    lui t1, 0x2000
-    add t0, t0, t1
-    blr ra, t0
+    la a0, 0xb0001000
+    li a1, 786432
+    li a2, 0
+    bl memset
+    bl ClearCaches
     /* Caches are now cleared, clear the TLB next */
-    la t0, ClearTLB
-    lui t1, 0x2000
-    add t0, t0, t1
-    blr ra, t0
+    bl ClearTLB
     /* Setup Stack */
     la sp, FWbss_end
     la t0, main
