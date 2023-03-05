@@ -273,9 +273,9 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 }
             } else {
                 if(write) {
-                    return writeDCacheLine(addr-0x80000000,buf,len);
+                    return writeDCacheLine(addr,buf,len);
                 } else {
-                    return readDCacheLine(addr-0x80000000,buf,len);
+                    return readDCacheLine(addr,buf,len);
                 }
             }
         }

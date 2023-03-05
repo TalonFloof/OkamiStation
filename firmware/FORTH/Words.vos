@@ -4,10 +4,12 @@
 )
 
 (fn fun_word ()
-    (int delimitor)
+    (int delimitor i)
+    (= i 0)
     (= delimitor (dPop))
+    
 )
 
 (fn fun_interpret ()
-    
+
 )

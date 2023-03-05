@@ -9,7 +9,7 @@
     (FramebufferRenderBackground)
     (ConsoleInit)
     (FramebufferRenderMonochromeBitmap 192 144 128 128 1 255 0 (OkamiLogo))
-    (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), \"OIPBkbd\" Keyboard\n                 OkamiBoot 1.0, ")
+    (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 1.0, ")
     (itoa (u/ RAMSize 1048576) (stringBuffer) 10)
     (ConsolePrint (stringBuffer))
     (ConsolePrint " MB memory installed\n\n\n\n")

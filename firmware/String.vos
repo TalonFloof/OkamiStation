@@ -1,4 +1,4 @@
-(var stringBuffer 96) /* This is a general purpose buffer that can be freely used for string manipulation */
+(var stringBuffer 128) /* This is a general purpose buffer that can be freely used for string manipulation */
 
 (fn strlen (str)
     (int i)

@@ -22,9 +22,9 @@
             (= chr (ConsoleGetChar))
             (if (== chr 10) (break) (| (!= chr 8) (& (== chr 8) (u> forthPromptLen 0))) (do
                 (b! (+ (stringBuffer) forthPromptLen) chr)
-                (if (| (== chr 8) (u< forthPromptLen 95)) (ConsoleWrite (+ (stringBuffer) forthPromptLen) 1))
+                (if (| (== chr 8) (u< forthPromptLen 127)) (ConsoleWrite (+ (stringBuffer) forthPromptLen) 1))
                 (if (== chr 8) (= forthPromptLen (- forthPromptLen 1)) 
-                    (if (u>= forthPromptLen 95) (do) (= forthPromptLen (+ forthPromptLen 1)))
+                    (if (u>= forthPromptLen 127) (do) (= forthPromptLen (+ forthPromptLen 1)))
                 )
             ))
         )

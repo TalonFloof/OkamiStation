@@ -72,6 +72,7 @@
     /*la sp, 0xb00c1000*/
     la sp, 0x80004000
     addi sp, sp, -4
+    mfex a0, 3
     bl EarlyException
 .halt:
     beq zero, zero, .halt
