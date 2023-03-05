@@ -11,18 +11,35 @@
 
     /* Stack */
     (NewNative "swap" (ptrOf fun_swap))
+    (NewNative "rot" (ptrOf fun_rot))
     (NewNative "dup" (ptrOf fun_dup))
+    (NewNative "drop" (ptrOf fun_drop))
+
+    /* Memory */
+    (NewNative "@" (ptrOf fun_peek))
+    (NewNative "!" (ptrOf fun_poke))
+    (NewNative "," (ptrOf fun_comma))
+    (NewNative "c@" (ptrOf fun_peekC))
+    (NewNative "c!" (ptrOf fun_pokeC))
+    (NewNative "c," (ptrOf fun_commaC))
 
     /* CRT */
     (NewNative "." (ptrOf fun_print))
     (NewNative ".s" (ptrOf fun_printS))
+    (NewImmed ".\"" (ptrOf fun_printStr))
+    (NewNative "(.\")" (ptrOf fun_printStrInternal))
+    (NewNative ".(" (ptrOf fun_printStrInterp))
     (NewNative "cr" (ptrOf fun_cr))
-    (NewNative "page" (ptrOf fun_page))
+    (NewNative "page" (ptrOf ConsoleInit))
 
     /* Interpreter */
     (NewNative "word" (ptrOf fun_word))
     (NewNative "interpret" (ptrOf fun_interpret))
     (NewNative "execute" (ptrOf fun_execute))
+
+    /* Compiler */
+    (NewNative ":" (ptrOf fun_colon))
+    (NewImmed ";" (ptrOf fun_semicolon))
     
     /* Special */
     (NewNative "reset" 0xbff00000)
@@ -39,6 +56,47 @@
 (fn fun_udiv () (int b) (= b (dPop)) (dPush (u/ (dPop) b)))
 (fn fun_urem () (int b) (= b (dPop)) (dPush (u% (dPop) b)))
 
+(fn fun_peek ()
+    (int addr)
+    (= addr (dPop))
+    (dPush (w@ addr))
+)
+
+(fn fun_poke ()
+    (int addr dat)
+    (= addr (dPop))
+    (= dat (dPop))
+    (w! addr dat)
+)
+
+(fn fun_comma ()
+    (int dat)
+    (= dat (dPop))
+    (if (u% dictTail 4) (= dictTail (+ (- 4 (u% dictTail 4)) dictTail)))
+    (w! dictTail dat)
+    (= dictTail (+ dictTail 4))
+)
+
+(fn fun_peekC ()
+    (int addr)
+    (= addr (dPop))
+    (dPush (b@ addr))
+)
+
+(fn fun_pokeC ()
+    (int addr dat)
+    (= addr (dPop))
+    (= dat (dPop))
+    (b! addr dat)
+)
+
+(fn fun_commaC ()
+    (int dat)
+    (= dat (dPop))
+    (b! dictTail dat)
+    (= dictTail (+ dictTail 1))
+)
+
 (fn fun_swap ()
     (int a b)
     (= a (dPop))
@@ -47,12 +105,22 @@
     (dPush b)
 )
 
+(fn fun_rot ()
+    (int a)
+    (= a (dPop))
+    (fun_swap)
+    (dPush a)
+    (fun_swap)
+)
+
 (fn fun_dup ()
     (int a)
     (= a (dPop))
     (dPush a)
     (dPush a)
 )
+
+(fn fun_drop () (dPop))
 
 (fn fun_print ()
     (int num)
@@ -71,11 +139,25 @@
     (ConsolePrint " ")
 )
 
-(fn fun_cr () (ConsolePrint "\n"))
+(fn fun_printStr ()
+    (int str ptr)
+    (dPush 34) (fun_word) (= str (dPop))
+    (= ptr dictTail)
+    (= dictTail (+ dictTail (strlen str) 1))
 
-(fn fun_page ()
-    (ConsoleInit)
 )
+
+(fn fun_printStrInternal (offset)
+
+)
+
+(fn fun_printStrInterp ()
+    (int str)
+    (dPush 41) (fun_word) (= str (dPop))
+    (ConsolePrint str)
+)
+
+(fn fun_cr () (ConsolePrint "\n"))
 
 (fn fun_word ()
     (int delimitor i val)
@@ -83,6 +165,7 @@
     (= i 0)
     (= delimitor (dPop))
     (= val (b@ (+ (stringBuffer) tokenOff i)))
+    (if (== val 0x20) (do (= tokenOff (+ tokenOff 1)) (= val (b@ (+ (stringBuffer) tokenOff i)))))
     (while (& (!= val 0) (!= val delimitor))
         (b! (+ (wordBuf) i) val)
         (= i (+ i 1))
@@ -96,16 +179,28 @@
     (int nextWord ptr)
     (dPush 0x20) (fun_word) (= nextWord (dPop))
     (while (strlen nextWord)
-        (if (& (u>= (b@ nextWord) 48) (u<= (b@ nextWord) 57)) (do
-            (dPush (atoi10 nextWord))
-        )
+        (if (& (u>= (b@ nextWord) 48) (u<= (b@ nextWord) 57)) (if forthState (do) (dPush (atoi10 nextWord)))
         (do
             (= ptr (FindWord nextWord))
             (if (== ptr 0) (do
                 (ConsolePrint nextWord)
                 (ConsolePrint "?")
                 (return)
-            ) (do (dPush ptr) (fun_execute)))
+            ) (do
+                (if (& (b@ (+ ptr (ForthWord.flags))) (FlagImmed)) (if forthState (do
+                    (dPush ptr) 
+                    (fun_execute)
+                ) (do
+                    (ConsolePrint "Interpreting compile-only word: ")
+                    (ConsolePrint (+ ptr (ForthWord.name)))
+                    (return)
+                )) (if forthState (do
+                    (dPush 0)
+                ) (do
+                    (dPush ptr)
+                    (fun_execute)
+                )))
+            ))
         ))
         (dPush 0x20) (fun_word) (= nextWord (dPop))
     )
@@ -117,6 +212,24 @@
     (= ptr (dPop))
     (= flags (b@ (+ ptr (ForthWord.flags))))
     (if (& flags (FlagNative)) (call (w@ (+ ptr (ForthWord.data)))))
+)
+
+(fn fun_run_list (offset)
+    (while (w@ offset)
+
+    )
+)
+
+(fn fun_colon ()
+    (int name)
+    (= forthState 1)
+    (dPush 0x20) (fun_word) (= name (dPop))
+    (NewWord name 0 0 0)
+)
+
+(fn fun_semicolon ()
+    (dPush 0) (fun_comma)
+    (= forthState 0)
 )
 
 (fn fun_words ()
@@ -131,16 +244,16 @@
 
 (fn fun_q_stack ()
     (if (u> dTop 255) (do
-        (ConsolePrint "Stack underflow")
+        (ConsolePrint " Stack underflow")
         (= dTop 255)
     ) (u> rTop 255) (do
-        (ConsolePrint "Stack underflow")
+        (ConsolePrint " Stack underflow")
         (= rTop 255)
     ) (< dTop 0) (do
-        (ConsolePrint "Stack overflow")
+        (ConsolePrint " Stack overflow")
         (= dTop 0)
     ) (< rTop 0) (do
-        (ConsolePrint "Stack overflow")
+        (ConsolePrint " Stack overflow")
         (= rTop 0)
-    ) (ConsolePrint "ok"))
+    ) (ConsolePrint " ok"))
 )

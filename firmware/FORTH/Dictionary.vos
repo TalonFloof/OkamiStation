@@ -11,20 +11,20 @@
 )
 
 (const FlagNative 1)
-(const FlagVar 2)
-(const FlagConst 4)
+(const FlagImmed 2)
 
 (fn NewWord (name flags ptr len)
     (w! dictTail dictFinalWord)
     (b! (+ dictTail (ForthWord.flags)) flags)
     (memset (+ dictTail (ForthWord.name)) 19 0)
     (memcpy (+ dictTail (ForthWord.name)) name (strlen name))
-    (memcpy (+ dictTail (ForthWord.data)) ptr len)
+    (if ptr (memcpy (+ dictTail (ForthWord.data)) ptr len))
     (= dictFinalWord dictTail)
     (= dictTail (+ dictTail (ForthWord.data) len))
 )
 
 (fn NewNative (name ptr) (w! (stringBuffer) ptr) (NewWord name (FlagNative) (stringBuffer) 4))
+(fn NewImmed (name ptr) (w! (stringBuffer) ptr) (NewWord name (| (FlagNative) (FlagImmed)) (stringBuffer) 4))
 
 (fn FindWord (name)
     (int index l)

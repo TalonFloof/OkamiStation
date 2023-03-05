@@ -2,7 +2,6 @@
 (include "Words.vos")
 
 (int forthPromptLen 0)
-(int instOff 0)
 (int tokenOff 0)
 (int forthState 0)
 (int dTop 0)
@@ -15,8 +14,9 @@
     (= dTop 255)
     (= rTop 255)
     (DefineWords)
+    (ConsolePrint "ok\n")
     (while 1
-        (ConsolePrint "> ")
+        (if forthState (ConsolePrint "compile: ") (ConsolePrint "> "))
         (= forthPromptLen 0)
         (while 1
             (= chr (ConsoleGetChar))
@@ -31,12 +31,7 @@
         (b! (+ (stringBuffer) forthPromptLen) 0)
         (= tokenOff 0)
         (ConsolePrint "  ")
-        (if forthState (do
-            /* COMPILE */
-        ) (do
-            /* INTERPRET */
-            (fun_interpret)
-        ))
+        (fun_interpret)
         (ConsolePrint "\n")
     )
 )
