@@ -20,7 +20,7 @@
 
 (fn Exception (context cause pc vaddr)
     (int i strSize)
-    (ConsoleInit)
+    /*(ConsoleInit)*/
     (ConsolePrint "EXCEPTION TRAP TRIGGERED - Cause 0x")
     (itoa cause (stringBuffer) 16)
     (ConsolePrint (stringBuffer))

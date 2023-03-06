@@ -1,4 +1,15 @@
+(int compStrPtr 0)
+(int branchPtr 0)
+(int branchQPtr 0)
 (fn DefineWords ()
+    (NewNative "(lit)" (ptrOf fun_lit))
+
+    /* Branching */
+    (NewNative "branch" (ptrOf fun_branch))
+    (= branchPtr dictFinalWord)
+    (NewNative "branch?" (ptrOf fun_branch_q))
+    (= branchQPtr dictFinalWord)
+
     /* Math */
     (NewNative "+" (ptrOf fun_add))
     (NewNative "-" (ptrOf fun_sub))
@@ -23,11 +34,17 @@
     (NewNative "c!" (ptrOf fun_pokeC))
     (NewNative "c," (ptrOf fun_commaC))
 
+    /* Conditional */
+    (NewImmed "if" (ptrOf fun_if))
+    (NewImmed "then" (ptrOf fun_then))
+    (NewImmed "else" (ptrOf fun_else))
+
     /* CRT */
     (NewNative "." (ptrOf fun_print))
     (NewNative ".s" (ptrOf fun_printS))
     (NewImmed ".\"" (ptrOf fun_printStr))
     (NewNative "(.\")" (ptrOf fun_printStrInternal))
+    (= compStrPtr dictFinalWord)
     (NewNative ".(" (ptrOf fun_printStrInterp))
     (NewNative "cr" (ptrOf fun_cr))
     (NewNative "page" (ptrOf ConsoleInit))
@@ -40,11 +57,30 @@
     /* Compiler */
     (NewNative ":" (ptrOf fun_colon))
     (NewImmed ";" (ptrOf fun_semicolon))
+
+    (NewNative "forget" (ptrOf fun_forget))
     
     /* Special */
     (NewNative "reset" 0xbff00000)
 
     (NewNative "words" (ptrOf fun_words))
+)
+
+(fn fun_lit ()
+    (dPush (w@ insnOff))
+    (= insnOff (+ insnOff 4))
+)
+
+(fn fun_branch ()
+    (int jump)
+    (= jump (w@ insnOff))
+    (= insnOff (+ insnOff jump))
+)
+
+(fn fun_branch_q ()
+    (int jump)
+    (= jump (w@ insnOff))
+    (if (dPop) (= insnOff (+ insnOff jump)) (= insnOff (+ insnOff 4)))
 )
 
 (fn fun_add () (dPush (+ (dPop) (dPop))))
@@ -72,7 +108,7 @@
 (fn fun_comma ()
     (int dat)
     (= dat (dPop))
-    (if (u% dictTail 4) (= dictTail (+ (- 4 (u% dictTail 4)) dictTail)))
+    (AlignDict)
     (w! dictTail dat)
     (= dictTail (+ dictTail 4))
 )
@@ -122,6 +158,29 @@
 
 (fn fun_drop () (dPop))
 
+(fn fun_if ()
+    (dPush branchQPtr) (fun_comma)
+    (rPush (- dictTail 4) 0)
+    (= dictTail (+ dictTail 4))
+)
+
+(fn fun_then ()
+    (int jump diff)
+    (= jump (rPop))
+    (= diff (- dictTail jump))
+    (w! jump (-(/ diff 4) 1))
+)
+
+(fn fun_else ()
+    (int jump diff)
+    (= jump (rPop))
+    (dPush branchPtr) (fun_comma)
+    (rPush dictTail)
+    (= dictTail (+ dictTail 4))
+    (= diff (- dictTail jump))
+    (w! jump (- (/ diff 4) 1))
+)
+
 (fn fun_print ()
     (int num)
     (= num (dPop))
@@ -142,13 +201,20 @@
 (fn fun_printStr ()
     (int str ptr)
     (dPush 34) (fun_word) (= str (dPop))
+    (dPush compStrPtr) (fun_comma)
     (= ptr dictTail)
     (= dictTail (+ dictTail (strlen str) 1))
-
+    (memset ptr (- dictTail ptr) 0)
+    (memcpy ptr str (strlen str))
+    (AlignDict)
 )
 
-(fn fun_printStrInternal (offset)
-
+(fn fun_printStrInternal ()
+    (int len)
+    (ConsolePrint insnOff)
+    (= len (+ 1 (strlen insnOff)))
+    (if (u% len 4) (= len (+ (- 4 (u% len 4)) len)))
+    (= insnOff (+ insnOff len))
 )
 
 (fn fun_printStrInterp ()
@@ -179,7 +245,9 @@
     (int nextWord ptr)
     (dPush 0x20) (fun_word) (= nextWord (dPop))
     (while (strlen nextWord)
-        (if (& (u>= (b@ nextWord) 48) (u<= (b@ nextWord) 57)) (if forthState (do) (dPush (atoi10 nextWord)))
+        (if (& (u>= (b@ nextWord) 48) (u<= (b@ nextWord) 57)) (if forthState (do
+            (dPush (atoi10 nextWord)) (dPush dictHead) (fun_comma) (fun_comma)
+        ) (dPush (atoi10 nextWord)))
         (do
             (= ptr (FindWord nextWord))
             (if (== ptr 0) (do
@@ -195,7 +263,7 @@
                     (ConsolePrint (+ ptr (ForthWord.name)))
                     (return)
                 )) (if forthState (do
-                    (dPush 0)
+                    (dPush ptr) (fun_comma)
                 ) (do
                     (dPush ptr)
                     (fun_execute)
@@ -211,12 +279,15 @@
     (int ptr flags)
     (= ptr (dPop))
     (= flags (b@ (+ ptr (ForthWord.flags))))
-    (if (& flags (FlagNative)) (call (w@ (+ ptr (ForthWord.data)))))
+    (if (& flags (FlagNative)) (call (w@ (+ ptr (ForthWord.data)))) (fun_run_list (+ ptr (ForthWord.data))))
 )
 
 (fn fun_run_list (offset)
-    (while (w@ offset)
-
+    (int saved)
+    (= saved insnOff)
+    (= insnOff offset)
+    (while (w@ insnOff)
+        (dPush (w@ insnOff)) (= insnOff (+ insnOff 4)) (fun_execute)
     )
 )
 
@@ -230,6 +301,19 @@
 (fn fun_semicolon ()
     (dPush 0) (fun_comma)
     (= forthState 0)
+)
+
+(fn fun_forget ()
+    (int str ptr)
+    (dPush 0x20) (fun_word) (= str (dPop))
+    (= ptr (FindWord str))
+    (if (== ptr 0) (do
+        (ConsolePrint str)
+        (ConsolePrint "?")
+    ) (do
+        (= dictFinalWord (w@ ptr))
+        (= dictTail ptr)
+    ))
 )
 
 (fn fun_words ()

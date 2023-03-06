@@ -34,3 +34,5 @@
         (if (strncmp name (+ index (ForthWord.name)) 17) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
     )
 )
+
+(fn AlignDict () (if (u% dictTail 4) (= dictTail (+ (- 4 (u% dictTail 4)) dictTail))))

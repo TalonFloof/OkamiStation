@@ -3,6 +3,7 @@
 
 (int forthPromptLen 0)
 (int tokenOff 0)
+(int insnOff 0)
 (int forthState 0)
 (int dTop 0)
 (int rTop 0)
