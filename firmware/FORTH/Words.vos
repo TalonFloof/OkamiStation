@@ -15,10 +15,23 @@
     (NewNative "-" (ptrOf fun_sub))
     (NewNative "*" (ptrOf fun_mul))
     (NewNative "/" (ptrOf fun_div))
-    (NewNative "%" (ptrOf fun_rem))
+    (NewNative "mod" (ptrOf fun_rem))
     (NewNative "u*" (ptrOf fun_umul))
     (NewNative "u/" (ptrOf fun_udiv))
-    (NewNative "u%" (ptrOf fun_urem))
+    (NewNative "umod" (ptrOf fun_urem))
+    (NewNative "and" (ptrOf fun_and))
+    (NewNative "or" (ptrOf fun_or))
+    (NewNative "xor" (ptrOf fun_xor))
+    (NewNative "")
+
+    /* Conditional */
+    (NewNative "=" (ptrOf fun_equal))
+    (NewNative "<" (ptrOf fun_less))
+    (NewNative ">" (ptrOf fun_more))
+    (NewNative "u<" (ptrOf fun_uless))
+    (NewNative "0<" (ptrOf fun_zeroless))
+    (NewNative "0=" (ptrOf fun_zeroequal))
+    (NewNative "0>" (ptrOf fun_zeromore))
 
     /* Stack */
     (NewNative "swap" (ptrOf fun_swap))
@@ -38,6 +51,11 @@
     (NewImmed "if" (ptrOf fun_if))
     (NewImmed "then" (ptrOf fun_then))
     (NewImmed "else" (ptrOf fun_else))
+
+    /* Loop */
+    (NewImmed "begin" (ptrOf fun_begin))
+    (NewImmed "until" (ptrOf fun_until))
+    (NewImmed "again" (ptrOf fun_again))
 
     /* CRT */
     (NewNative "." (ptrOf fun_print))
@@ -73,14 +91,13 @@
 
 (fn fun_branch ()
     (int jump)
-    (= jump (w@ insnOff))
-    (= insnOff (+ insnOff jump))
+    (= insnOff (w@ insnOff))
 )
 
 (fn fun_branch_q ()
     (int jump)
     (= jump (w@ insnOff))
-    (if (dPop) (= insnOff (+ insnOff jump)) (= insnOff (+ insnOff 4)))
+    (if (u< (dPop) 1) (= insnOff (w@  insnOff)) (= insnOff (+ insnOff 4)))
 )
 
 (fn fun_add () (dPush (+ (dPop) (dPop))))
@@ -91,6 +108,14 @@
 (fn fun_umul () (dPush (u* (dPop) (dPop))))
 (fn fun_udiv () (int b) (= b (dPop)) (dPush (u/ (dPop) b)))
 (fn fun_urem () (int b) (= b (dPop)) (dPush (u% (dPop) b)))
+
+(fn fun_equal () (dPush (- 0 (== (dPop) (dPop)))))
+(fn fun_less () (int b) (= b (dPop)) (dPush (- 0 (<  (dPop) b))))
+(fn fun_more () (int b) (= b (dPop)) (dPush (- 0 (>  (dPop) b))))
+(fn fun_uless () (int b) (= b (dPop)) (dPush (- 0 (u<  (dPop) b))))
+(fn fun_zeroless () (int a) (= a (dPop)) (dPush (- 0 (< a 0))))
+(fn fun_zeroequal () (int a) (= a (dPop)) (dPush (- 0 (== a 0))))
+(fn fun_zeromore () (int a) (= a (dPop)) (dPush (- 0 (> a 0))))
 
 (fn fun_peek ()
     (int addr)
@@ -160,25 +185,35 @@
 
 (fn fun_if ()
     (dPush branchQPtr) (fun_comma)
-    (rPush (- dictTail 4) 0)
+    (rPush dictTail)
     (= dictTail (+ dictTail 4))
 )
 
 (fn fun_then ()
-    (int jump diff)
+    (int jump)
     (= jump (rPop))
-    (= diff (- dictTail jump))
-    (w! jump (-(/ diff 4) 1))
+    (w! jump dictTail)
 )
 
 (fn fun_else ()
-    (int jump diff)
+    (int jump)
     (= jump (rPop))
     (dPush branchPtr) (fun_comma)
     (rPush dictTail)
     (= dictTail (+ dictTail 4))
-    (= diff (- dictTail jump))
-    (w! jump (- (/ diff 4) 1))
+    (w! jump dictTail)
+)
+
+(fn fun_begin ()
+
+)
+
+(fn fun_until ()
+
+)
+
+(fn fun_again ()
+
 )
 
 (fn fun_print ()
@@ -245,7 +280,7 @@
     (int nextWord ptr)
     (dPush 0x20) (fun_word) (= nextWord (dPop))
     (while (strlen nextWord)
-        (if (& (u>= (b@ nextWord) 48) (u<= (b@ nextWord) 57)) (if forthState (do
+        (if (isnumber nextWord) (if forthState (do
             (dPush (atoi10 nextWord)) (dPush dictHead) (fun_comma) (fun_comma)
         ) (dPush (atoi10 nextWord)))
         (do
@@ -327,17 +362,17 @@
 )
 
 (fn fun_q_stack ()
-    (if (u> dTop 255) (do
+    (if (> dTop 255) (do
         (ConsolePrint " Stack underflow")
         (= dTop 255)
-    ) (u> rTop 255) (do
-        (ConsolePrint " Stack underflow")
+    ) (> rTop 255) (do
+        (ConsolePrint " Return Stack underflow")
         (= rTop 255)
     ) (< dTop 0) (do
         (ConsolePrint " Stack overflow")
         (= dTop 0)
     ) (< rTop 0) (do
-        (ConsolePrint " Stack overflow")
+        (ConsolePrint " Return Stack overflow")
         (= rTop 0)
     ) (ConsolePrint " ok"))
 )
