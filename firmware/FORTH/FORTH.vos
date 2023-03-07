@@ -43,5 +43,6 @@
 
 (fn dPush (val) (w! (+ (dataStack) (u* dTop 4)) val) (= dTop (- dTop 1)))
 (fn dPop () (= dTop (+ dTop 1)) (return (w@ (+ (dataStack) (u* dTop 4)))))
+(fn rPeek () (return (w@ (+ (returnStack) (u* (+ rTop 1) 4)))))
 (fn rPush (val) (w! (+ (returnStack) (u* rTop 4)) val) (= rTop (- rTop 1)))
 (fn rPop () (= rTop (+ rTop 1)) (return (w@ (+ (returnStack) (u* rTop 4)))))

@@ -12,8 +12,8 @@ lazy_static = "1.4.0"
 
 [profile.dev]
 opt-level = 3
-debug = 0
+debug = 2
 
 [profile.dev.package."*"]
 opt-level = 3
-debug = 0
+debug = 2

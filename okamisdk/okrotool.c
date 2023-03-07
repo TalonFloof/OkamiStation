@@ -75,10 +75,12 @@ void writeImage(const char* path, uint8_t* base, size_t len) {
     FILE* file = fopen(path,"wb");
     if(file == NULL) {
         fprintf(stderr, "Couldn't open file for image writing!\n");
+        fclose(file);
         exit(1);
     }
     if(fwrite(base,len,1,file) != 1) {
         fprintf(stderr, "Failed to write to file!\n");
+        fclose(file);
         exit(1);
     }
     fclose(file);
@@ -153,11 +155,13 @@ int main(int argc, const char* argv[]) {
         uint8_t* image = readImage(argv[2],NULL);
         if(!image) {
             fprintf(stderr, "Unable to read image!\n");
+            free(image);
             return 1;
         }
         OkROHeader* header = (OkROHeader*)image;
         if(memcmp(image,"\x89OkamiRO",8) != 0) {
             fprintf(stderr, "Magic number is invalid\n");
+            free(image);
             return 2;
         }
         printf("== %s ==\nVersion: %i\nText Size: %i bytes (~%i instructions)\nRoData Size: %i bytes\nData Size: %i bytes\nBSS Size: %i bytes\nRelocation Entries: %i\n", argv[2], header->version, header->text, header->text/4, header->rodata, header->data, header->bss, header->reloc/20);
@@ -179,37 +183,44 @@ int main(int argc, const char* argv[]) {
             printf("|- Source: <%s+0x%x>\n", segToString(relocation[i].srcSegment), relocation[i].srcOffset);
             printf("|- Destination: <%s+0x%x>\n", segToString(relocation[i].dstSegment), relocation[i].dstOffset);
         }
+        free(image);
     } else if(strcmp(argv[1],"fwdump") == 0) {
         size_t imgSize;
         uint8_t* image = readImage(argv[4],&imgSize);
         if(!image) {
             fprintf(stderr, "Unable to read image!\n");
+            free(image);
             return 1;
         }
         OkROHeader* header = (OkROHeader*)image;
         if(memcmp(image,"\x89OkamiRO",8) != 0) {
             fprintf(stderr, "Magic number is invalid\n");
+            free(image);
             return 2;
         }
         uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
         uint32_t num2 = (uint32_t)strtol(argv[3],NULL,0);
         preformRelocation(image,num,num2);
         writeImage(argv[5],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
+        free(image);
     } else if(strcmp(argv[1],"dump") == 0) {
         size_t imgSize;
         uint8_t* image = readImage(argv[3],&imgSize);
         if(!image) {
             fprintf(stderr, "Unable to read image!\n");
+            free(image);
             return 1;
         }
         OkROHeader* header = (OkROHeader*)image;
         if(memcmp(image,"\x89OkamiRO",8) != 0) {
             fprintf(stderr, "Magic number is invalid\n");
+            free(image);
             return 2;
         }
         uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
         preformRelocation(image,num,0);
         writeImage(argv[4],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
+        free(image);
     }
     return 0;
 }

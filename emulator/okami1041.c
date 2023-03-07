@@ -233,9 +233,15 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
     if(addr & (len - 1) != 0) {
         if(write) {
             triggerTrap(7,addr,false); // Unaligned Write
+            return 0;
         } else {
             triggerTrap(6,addr,false); // Unaligned Read
+            return 0;
         }
+    }
+    if(!(extRegisters[0] & 1) && addr >= 0x80000000) {
+        //triggerTrap()
+        return 0;
     }
     if(addr < 0x80000000) { // user segment
         int tlbEntry = TLBLookup(addr);
