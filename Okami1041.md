@@ -400,6 +400,7 @@ r31 - ra: Return Address
     8: Fetch Exception
     9: Data Exception
     10: Arithmetic Exception (Divide by zero)
+    11: Permission Exception
 0x02: OKAMI_TRAP_PC
 0x03: OKAMI_TRAP_BAD_VADDR
 0x04: OAMKI_TRAP_KERNEL_SCRATCH

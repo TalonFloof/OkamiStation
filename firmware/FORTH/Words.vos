@@ -211,6 +211,8 @@
 (fn fun_begin () (rPush dictTail))
 (fn fun_until () (dPush (rPop)) (dPush branchQPtr) (fun_comma) (fun_comma))
 (fn fun_again () (dPush (rPop)) (dPush branchPtr) (fun_comma) (fun_comma))
+(fn fun_do ())
+(fn fun_loop ())
 
 (fn fun_print ()
     (int num)

@@ -41,6 +41,7 @@ halt:
     bltu t1, t2, .icache_loop
     /* Clear Data Cache */
     lui t1, 0x8000
+    mfex t0, 0x00
     andi t0, t0, 0xffef
     mtex t0, 0x00 /* OKAMI_STATUS */
 .dcache_loop:

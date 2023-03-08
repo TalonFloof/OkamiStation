@@ -239,8 +239,8 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             return 0;
         }
     }
-    if(!(extRegisters[0] & 1) && addr >= 0x80000000) {
-        //triggerTrap()
+    if(((extRegisters[0] & 1) == 0) && addr >= 0x80000000) {
+        triggerTrap(11,addr,false); // Permission Exception
         return 0;
     }
     if(addr < 0x80000000) { // user segment

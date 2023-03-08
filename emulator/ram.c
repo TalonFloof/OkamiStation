@@ -1,7 +1,7 @@
 #include "koribus.h"
 #include <string.h>
 
-#define RAMSIZE (32*1024*1024)
+#define RAMSIZE (4*1024*1024)
 
 uint8_t RAM[RAMSIZE];
 
