@@ -284,16 +284,18 @@
         (do
             (= ptr (FindWord nextWord))
             (if (== ptr 0) (do
+                (ConsolePrint "\n")
                 (ConsolePrint nextWord)
-                (ConsolePrint "?")
+                (ConsolePrint "? ")
                 (return)
             ) (do
                 (if (& (b@ (+ ptr (ForthWord.flags))) (FlagImmed)) (if forthState (do
                     (dPush ptr) 
                     (fun_execute)
                 ) (do
-                    (ConsolePrint "Interpreting compile-only word: ")
+                    (ConsolePrint "\nInterpreting compile-only word: ")
                     (ConsolePrint (+ ptr (ForthWord.name)))
+                    (ConsolePrint " ")
                     (return)
                 )) (if forthState (do
                     (dPush ptr) (fun_comma)
@@ -361,16 +363,16 @@
 
 (fn fun_q_stack ()
     (if (> dTop 255) (do
-        (ConsolePrint " Stack underflow")
+        (ConsolePrint "\nStack underflow ")
         (= dTop 255)
     ) (> rTop 255) (do
-        (ConsolePrint " Stack underflow")
+        (ConsolePrint "\nStack underflow ")
         (= rTop 255)
     ) (< dTop 0) (do
-        (ConsolePrint " Stack overflow")
+        (ConsolePrint "\nStack overflow ")
         (= dTop 0)
     ) (< rTop 0) (do
-        (ConsolePrint " Stack overflow")
+        (ConsolePrint "\nStack overflow ")
         (= rTop 0)
-    ) (ConsolePrint " ok"))
+    ) (ConsolePrint "\nok "))
 )

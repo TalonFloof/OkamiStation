@@ -15,9 +15,8 @@
     (= dTop 255)
     (= rTop 255)
     (DefineWords)
-    (ConsolePrint "ok\n")
+    (ConsolePrint "ok ")
     (while 1
-        (if forthState (ConsolePrint "compile: ") (ConsolePrint "> "))
         (= forthPromptLen 0)
         (while 1
             (= chr (ConsoleGetChar))
@@ -33,7 +32,6 @@
         (= tokenOff 0)
         (ConsolePrint "  ")
         (fun_interpret)
-        (ConsolePrint "\n")
     )
 )
 

@@ -20,10 +20,10 @@ typedef struct {
     uint64_t isValid : 1;
     uint64_t nonCacheable : 1;
     uint64_t isDirty : 1;
-    uint64_t size : 5;
-    uint64_t paddr : 24;
-    uint64_t addrSpaceID : 8;
-    uint64_t vaddr : 24;
+    uint64_t reserved : 9;
+    uint64_t vaddr : 20;
+    uint64_t addrSpaceID : 12;
+    uint64_t paddr : 20;
 } TLBLine;
 
 TLBLine TLB[64];
@@ -112,7 +112,7 @@ uint32_t readICacheLine(uint32_t addr);
 void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
     switch(type) {
         case 3: { // TLB Miss
-            extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
             extRegisters[1] = type;
             extRegisters[2] = afterInc ? PC-4 : PC;
             extRegisters[3] = addr;
@@ -120,12 +120,11 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
             break;
         }
         case 2: { // MCall/KCall
-            extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
             extRegisters[1] = type;
             extRegisters[2] = afterInc ? PC-4 : PC;
-            extRegisters[3] = addr;
-            uint32_t op = readICacheLine(afterInc ? PC-4 : PC);
-            if(op & 0x2000000) {
+            extRegisters[3] = addr & 0x1FFFFFF;
+            if(addr & 0x2000000) {
                 // This is a MCALL
                 PC = extRegisters[7];
             } else {
@@ -142,7 +141,7 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
                 }
                 exit(1);
             } else {
-                extRegisters[0] = ((extRegisters[0] & 1 << 1) | 1) & 0xFFFFFFFB;
+                extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
                 extRegisters[1] = type;
                 extRegisters[2] = afterInc ? PC-4 : PC;
                 extRegisters[3] = addr;
@@ -155,17 +154,10 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
 
 int TLBLookup(uint32_t addr) {
     int i;
-    uint32_t vaddr = addr & 0xFFFFFF00;
+    uint32_t vaddr = addr & 0xFFFFF000;
     for(i=0; i < 64; i++) {
-        if(TLB[i].isValid && (TLB[i].addrSpaceID == extRegisters[0x14] || (TLB[i].addrSpaceID & 0x80))) {
-            /* Check if we're within the size boundary */
-            uint32_t size = 1 << TLB[i].size;
-            if(size < 256)
-                continue;
-            if(vaddr >= (TLB[i].vaddr << 8) && vaddr <= (TLB[i].vaddr << 8)+size) {
-                return i;
-            }
-            continue;
+        if(TLB[i].isValid && (TLB[i].vaddr == (vaddr >> 12)) && (TLB[i].addrSpaceID == extRegisters[0x14] || (TLB[i].addrSpaceID == 0xFFF))) {
+            return i;
         }
     }
     return -1; /* TLB Miss */
@@ -240,6 +232,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         }
     }
     if(((extRegisters[0] & 1) == 0) && addr >= 0x80000000) {
+        fprintf(stderr, "PERMISSION %08x", extRegisters[0]);
         triggerTrap(11,addr,false); // Permission Exception
         return 0;
     }
@@ -559,7 +552,7 @@ void next() {
                         break;
                     }
                     case 0b110: { // KCALL/MCALL
-                        triggerTrap(2,instr & 0x1FFFFFF,true);
+                        triggerTrap(2,instr & 0x3FFFFFF,true);
                         break;
                     }
                     case 0b111: { // RFT
