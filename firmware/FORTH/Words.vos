@@ -245,7 +245,7 @@
         (rPush limit)
         (rPush (+ index 1))
         (= insnOff jump)
-    ))
+    ) (= insnOff (+ insnOff 4)))
 )
 
 (fn fun_print ()
