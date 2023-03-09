@@ -13,6 +13,12 @@ Layout:
 4: Transfer Length
 */
 
+typedef enum {
+    READY,
+    CMD_RECIEVE,
+    
+} SCSIPhase;
+
 typedef struct {
     FILE* image;
     uint32_t busID;

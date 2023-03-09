@@ -5,7 +5,8 @@
     add a0, a0, t1
     mtex a0, 5
     /* We must clear the caches */
-    bl ClearCaches
+    bl ClearICache
+    bl ClearDCache
     /* Clear the framebuffer */
     la a0, 0xb0001000
     la a1, 786432
@@ -27,8 +28,7 @@
 halt:
     beq zero, zero, halt
 
-.global ClearCaches:
-    /* Clear Instruction Cache */
+.global ClearICache:
     lui t1, 0x8000
     la t2, 0x80004000
     mfex t0, 0x00 /* OKAMI_STATUS */
@@ -39,17 +39,22 @@ halt:
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .icache_loop
-    /* Clear Data Cache */
+    andi t0, t0, 0xffe7
+    mtex t0, 0x00 /* OKAMI_STATUS */
+    blr zero, ra
+
+.global ClearDCache:
     lui t1, 0x8000
-    mfex t0, 0x00
-    andi t0, t0, 0xffef
+    la t2, 0x80004000
+    mfex t0, 0x00 /* OKAMI_STATUS */
+    ori t0, t0, 0x8
     mtex t0, 0x00 /* OKAMI_STATUS */
 .dcache_loop:
     sw zero, 0(t1)
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .dcache_loop
-    andi t0, t0, 0xfff7
+    andi t0, t0, 0xffe7
     mtex t0, 0x00 /* OKAMI_STATUS */
     blr zero, ra
 

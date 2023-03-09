@@ -84,6 +84,7 @@
     (NewImmed ";" (ptrOf fun_semicolon))
 
     (NewNative "forget" (ptrOf fun_forget))
+    (NewNative "variable" (ptrOf fun_variable))
     
     /* Special */
     (NewNative "reset" 0xbff00000)
@@ -383,6 +384,11 @@
         (= dictFinalWord (w@ ptr))
         (= dictTail ptr)
     ))
+)
+
+(fn fun_variable ()
+    (NewWord (fun_word) 0 0 0)
+    
 )
 
 (fn fun_words ()

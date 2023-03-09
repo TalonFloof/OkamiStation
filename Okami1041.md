@@ -424,6 +424,6 @@ r31 - ra: Return Address
 | <sub>63</sub><br>Valid | <sub>62</sub><br>Reserved | <sub>61-32</sub><br>Address | <sub>0-31</sub><br>Word |
 |-|-|-|-|
 # TLB Line Layout
-| <sub>63-44</sub><br>PhysicalAddress | <sub>43-32</sub><br>AddrSpaceID | <sub>12-31</sub><br>VirtualAddress | <sub>3-11</sub><br>Reserved | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
+| <sub>63-44</sub><br>VirtualAddress | <sub>43-32</sub><br>AddrSpaceID | <sub>12-31</sub><br>PhysicalAddress | <sub>3-11</sub><br>Reserved | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
 |-|-|-|-|-|-|-|
 > You might notice that TLB Entries don't have a flag for making pages read-only. This is because the behavior of the Dirty Flag acts as a form of write-protection; Okami can't write if the dirty flag is cleared. However, when it is set, write-access is allowed.

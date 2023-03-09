@@ -10,6 +10,7 @@ extern uint64_t iHitCount;
 extern uint64_t iMissCount;
 extern uint64_t dHitCount;
 extern uint64_t dMissCount;
+int shouldCacheStall = 1;
 
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
@@ -21,9 +22,9 @@ typedef struct {
     uint64_t nonCacheable : 1;
     uint64_t isDirty : 1;
     uint64_t reserved : 9;
-    uint64_t vaddr : 20;
-    uint64_t addrSpaceID : 12;
     uint64_t paddr : 20;
+    uint64_t addrSpaceID : 12;
+    uint64_t vaddr : 20;
 } TLBLine;
 
 TLBLine TLB[64];
@@ -170,7 +171,7 @@ uint32_t readICacheLine(uint32_t addr) {
         return iCacheTags[index].cacheWord;
     } else {
         iMissCount += 1;
-        stallTicks = 4; // Cache Miss Stall
+        stallTicks = shouldCacheStall*4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&iCacheTags)+(index*8))) {
             triggerTrap(8,addr,false); // Fetch Exception
             return 0;
@@ -185,7 +186,7 @@ bool readDCacheLine(uint32_t addr, uint8_t* buf, uint32_t size) {
     int index = (addr >> 2) & 0x7FF;
     if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
         dMissCount += 1;
-        stallTicks = 4; // Cache Miss Stall
+        stallTicks = shouldCacheStall*4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
             triggerTrap(9,addr,false); // Data Exception
             return false;
@@ -207,7 +208,7 @@ bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
     }
     if(!(dCacheTags[index].isValid && (dCacheTags[index].cacheAddr << 2) == (addr & 0x1FFFFFFC))) {
         dMissCount += 1;
-        stallTicks = 4; // Cache Miss Stall
+        stallTicks = shouldCacheStall*4; // Cache Miss Stall
         if(!KoriBusRead(addr & 0x1FFFFFFC,4,((uint8_t*)&dCacheTags)+(index*8))) {
             triggerTrap(9,addr,false); // Data Exception
             return false;
@@ -232,15 +233,26 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         }
     }
     if(((extRegisters[0] & 1) == 0) && addr >= 0x80000000) {
-        fprintf(stderr, "PERMISSION %08x", extRegisters[0]);
         triggerTrap(11,addr,false); // Permission Exception
         return 0;
     }
-    if(addr < 0x80000000) { // user segment
+    if(addr < 0x80000000 || (addr >= 0xc0000000 && addr <= 0xffffffff)) { // user segment / kernel3 segment
         int tlbEntry = TLBLookup(addr);
         if(tlbEntry == -1) {
             triggerTrap(3,addr,false); // TLB Miss
             return false;
+        } else if(!TLB[tlbEntry].isDirty && write) {
+            triggerTrap(9,addr,false);
+            return false;
+        }
+        if(write) {
+            return writeDCacheLine((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF),buf,len);
+        } else if(fetch) {
+            uint32_t val = readICacheLine(addr-0x80000000);
+            memcpy(buf,(uint8_t*)&val,len);
+            return true;
+        } else {
+            return readDCacheLine((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF),buf,len);
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
         if(fetch) {
@@ -301,12 +313,6 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 }
             }
             return result;
-        }
-    } else if(addr >= 0xc0000000 && addr <= 0xffffffff) { // kernel3 segment
-        int tlbEntry = TLBLookup(addr);
-        if(tlbEntry == -1) {
-            triggerTrap(3,addr,false); // TLB Miss
-            return false;
         }
     }
 }

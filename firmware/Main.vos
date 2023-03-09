@@ -5,6 +5,7 @@
     (TestRAM)
     (TestFB)
     (SetupTrap (TrapHandler) 0)
+    (SetupTrap (TrapHandler) 1)
 
     (FramebufferRenderBackground)
     (ConsoleInit)

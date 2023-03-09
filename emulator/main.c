@@ -27,11 +27,35 @@ uint64_t dMissCount = 0;
 extern int stallTicks;
 
 SDL_Rect winrect = {
-    .w = 1024,
-    .h = 768,
+    /*.w = 1024,
+    .h = 768,*/
+    .w = 1024 /*1228.8*/,
+    .h = 768 /*921.6*/,
 };
 
-int main() {
+int main(int argc, const char* argv[]) {
+    bool showCacheInfo = false;
+    for (int i = 1; i < argc; i++) {
+        if(strcmp(argv[i],"-help") == 0) {
+            printf("OkamiStation Emulator\nCopyright (C) 2023 TalonFox, Licensed under the MIT License\nOptions:\n");
+            printf("  -nostall\n    Disables Emulated Cache Stalling\n");
+            printf("  -cachestats\n    Displays Statistics relating to the cache every second\n    (prints out to stderr)\n");
+            printf("  -ram [KiBs]\n    Set the amount of RAM to the given amount in KiBs\n");
+            return 0;
+        } else if(strcmp(argv[i],"-nostall") == 0) {
+            shouldCacheStall = 0;
+        } else if(strcmp(argv[i],"-cachestats") == 0) {
+            showCacheInfo = true;
+        } else if(strcmp(argv[i],"-ram") == 0) {
+            if (i+1 < argc) {
+                RAMSize = ((int)strtol(argv[i+1],NULL,0))*1024;
+            } else {
+                printf("No RAM Size specified\n");
+                return 1;
+            }
+        }
+    }
+
     struct timeval timeVal;
     char title[96];
     gettimeofday(&timeVal, 0);
@@ -41,7 +65,9 @@ int main() {
     OkamiBoardInit();
     OIPBInit();
     TimerInit();
-
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "0", SDL_HINT_OVERRIDE);
+	SDL_SetHintWithPriority(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1", SDL_HINT_OVERRIDE);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "unable to initialize SDL: %s", SDL_GetError());
         return -1;
@@ -50,8 +76,8 @@ int main() {
     ScreenWindow = SDL_CreateWindow(
         "OkamiStation",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        1024,
-        768,
+        winrect.w,
+        winrect.h,
         SDL_WINDOW_HIDDEN
     );
     if (!ScreenWindow) {
@@ -120,9 +146,11 @@ int main() {
         if(SDL_GetTicks() >= title_update) {
             sprintf((char*)&title, "OkamiStation - %.2f MIPS", (double)cycle_count/1000000.0);
             SDL_SetWindowTitle(ScreenWindow, (char*)&title);
-            //double iPercent = (((double)iHitCount)/(((double)iHitCount)+((double)iMissCount)))*100.0;
-            //double dPercent = (((double)dHitCount)+((double)dMissCount)) == 0 ? 100.0 : ((((double)dHitCount)/(((double)dHitCount)+((double)dMissCount)))*100.0);
-            //fprintf(stderr, "ICache Hits: %i, ICache Misses: %i (%.2f%% hit/miss)\nDCache Hits: %i, DCache Misses: %i (%.2f%% hit/miss)\n", iHitCount, iMissCount, iPercent, dHitCount, dMissCount, dPercent);
+            if(showCacheInfo) {
+                double iPercent = (((double)iHitCount)/(((double)iHitCount)+((double)iMissCount)))*100.0;
+                double dPercent = (((double)dHitCount)+((double)dMissCount)) == 0 ? 100.0 : ((((double)dHitCount)/(((double)dHitCount)+((double)dMissCount)))*100.0);
+                fprintf(stderr, "ICache Hits: %i, ICache Misses: %i (%.2f%% hit/miss)\nDCache Hits: %i, DCache Misses: %i (%.2f%% hit/miss)\n", iHitCount, iMissCount, iPercent, dHitCount, dMissCount, dPercent);
+            }
             iHitCount = 0;
             iMissCount = 0;
             dHitCount = 0;
