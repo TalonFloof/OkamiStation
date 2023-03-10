@@ -26,7 +26,8 @@ typedef enum {
     TEXT,
     RODATA,
     DATA,
-    BSS
+    BSS,
+    EXTERN
 } SegmentType;
 
 typedef struct {

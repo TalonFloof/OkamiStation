@@ -8,15 +8,14 @@
 Layout:
 0: Drive Select
 1: Controller Command
-2: SCSI FIFO Buffer
-3: Transfer Base
-4: Transfer Length
+2: Transfer Base
+3: Transfer Length
 */
 
 typedef enum {
     READY,
     CMD_RECIEVE,
-    
+    BUSY,
 } SCSIPhase;
 
 typedef struct {
@@ -27,20 +26,36 @@ typedef struct {
     bool isSpinning;
 } SCSIDrive;
 
+uint8_t* SCSIBuffer = NULL;
+
 void SCSIDoCommand(SCSIDrive* drive, uint8_t cmd) {
-    int do_dma = cmd & 0x80;
-    switch(cmd & 0x7f) {
+    switch(cmd) {
         case 0: { // Send Data
-            
+            if(SCSIBuffer != NULL) {
+                free(SCSIBuffer);
+            }
+            SCSIBuffer = malloc()
         }
         case 1: { // Send Message
 
         }
-        case 0x40: { // Recieve Data
+        case 0x80: { // Recieve Data
 
         }
-        case 0x41: { // Recieve Message
+        case 0x81: { // Recieve Message
 
         }
     }
+}
+
+bool SCSIRead() {
+
+}
+
+bool SCSIWrite() {
+    
+}
+
+void SCSIInit() {
+
 }

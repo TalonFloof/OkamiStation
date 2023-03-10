@@ -49,6 +49,7 @@ int main(int argc, const char* argv[]) {
         } else if(strcmp(argv[i],"-ram") == 0) {
             if (i+1 < argc) {
                 RAMSize = ((int)strtol(argv[i+1],NULL,0))*1024;
+                i++;
             } else {
                 printf("No RAM Size specified\n");
                 return 1;
