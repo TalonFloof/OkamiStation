@@ -2,5 +2,5 @@
 
 path=$(dirname $0)
 
-lua ${path}/../../vosLang/src/vos.lua $1 ./a.s && cargo run --manifest-path ${path}/okas/Cargo.toml ./a.s ./a.out
+lua ${path}/../../vosLang/src/vos.lua $1 ./a.s && ${path}/okas ./a.s ./a.out
 # rm -f ./a.s

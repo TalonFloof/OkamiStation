@@ -45,20 +45,12 @@ typedef struct {
     unsigned int dstOffset;
 } RelocationEntry;
 
-typedef enum {
-  LABEL,
-  INSTRUCTION,
-  DATA,
-  BSS_EXPAND,
-  ALIGNMENT,
-  INCLUDE_BIN,
-  SECTION,
-} TokenType;
-
 typedef struct {
-  void* next;
-  TokenType type;
-} TokenHeader;
+  void* prev;
+  SegmentType seg;
+  unsigned int addr;
+  char* name; /* Use &name */
+} Label;
 
 typedef enum {
   ARG_NONE,
@@ -139,8 +131,37 @@ const struct OkamiOpcode OkamiInstructions[] = {
   {-5,"mv",ARG_REG,ARG_REG,ARG_NONE,ARG_NONE}
 };
 
-void Error(long line, long col, char *str) {
-  fprintf(stderr, "\x1b[31m%li:%li - %s\x1b[0m\n", line, col, str);
+/*****VARIABLES*****/
+unsigned int* text = NULL;
+unsigned int textCurrent = 0;
+unsigned int textSize = 0;
+unsigned int textCapacity = 0;
+unsigned char* rodata = NULL;
+unsigned int rodataSize = 0;
+unsigned char* data = NULL;
+unsigned int dataSize = 0;
+unsigned int bss = 0;
+/*******************/
+
+unsigned char* readFile(const char* path, unsigned long* fileSize) {
+    FILE* file = fopen(path,"rb");
+    if(file == NULL)
+        return NULL;
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    if(fileSize != NULL) {
+        *fileSize = fsize;
+    }
+    fseek(file, 0, SEEK_SET);
+    char* content = malloc(fsize);
+    if(fread(content, fsize, 1, file) != 1)
+        return NULL;
+    fclose(file);
+    return content;
+}
+
+void Error(char* name, long line, long col, char *str) {
+  fprintf(stderr, "\x1b[1;31m%s %li:%li - %s\x1b[0m\n", name, line, col, str);
   exit(1);
 }
 
@@ -151,7 +172,7 @@ int iswhitespace(char val) {
 void Assemble(char* name, char* data) {
   unsigned long len = strlen(data);
   unsigned long i = 0;
-  unsigned long line = 0;
+  unsigned long line = 1;
   unsigned long lineStart = 0;
   while(i<len) {
     if(data[i] == '\n') {
@@ -166,14 +187,68 @@ void Assemble(char* name, char* data) {
       unsigned long length = i-start;
       if(data[i-1] == ':') { /*Oh wait, its actually a local label*/
 
+      } else if(strncmp(data+start,".global",length) == 0) {
+      } else if(strncmp(data+start,".extern",length) == 0) {
+      } else if(strncmp(data+start,".align",length) == 0) {
+      } else if(strncmp(data+start,".byte",length) == 0) {
+      } else if(strncmp(data+start,".short",length) == 0) {
+      } else if(strncmp(data+start,".word",length) == 0) {
+      } else if(strncmp(data+start,".fill",length) == 0) {
+      } else if(strncmp(data+start,".string",length) == 0) {
       } else if(strncmp(data+start,".text",length) == 0) {
-
-      } else if(strncmp(data+start,".text",length) == 0) {
+      } else if(strncmp(data+start,".rodata",length) == 0) {
+      } else if(strncmp(data+start,".data",length) == 0) {
+      } else if(strncmp(data+start,".bss",length) == 0) {
+      } else {
+        Error(name,line,start-lineStart,"Unknown Assembler Keyword");
+      }
+    } else if(isalnum(data[i]) || data[i] == '_') {
+      unsigned long start = i;
+      while(isalnum(data[i]) || data[i] == '_') {i++;}
+      unsigned long length = i-start;
+      if(data[i] == ':') {
+        i++;
+      } else {
+        int index;
+        for(index = 0; index < sizeof(OkamiInstructions)/sizeof(struct OkamiOpcode); index++) {
+          if(strncmp(data+start,OkamiInstructions[index].name,length) == 0) {
+            int j;
+            ArgType* argPtr = (ArgType*)(&(OkamiInstructions[index].arg1));
+            for(j=0; j < 4; j++) {
+              switch(argPtr[j]) {
+                case ARG_IMM: {
+                  break;
+                }
+                case ARG_REG: {
+                  break;
+                }
+                case ARG_LOADSTORE: {
+                  break;
+                }
+              }
+            }
+            goto next;
+          }
+        }
+        Error(name,line,i-lineStart,"Unknown Okami Instruction");
+      }
+    } else if(data[i] == '/' && data[i+1] == '*') {
+      i+=2;
+      while(data[i] != '/' && data[i-1] != '*') {i++;}
+      i++;
+    } else {
+      Error(name,line,i-lineStart,"Unknown Token");
     }
+next:
+    while(0);
   }
 }
 
 int main(int argc, char **argv) {
-
+  if(argc < 3) {
+    printf("Usage: okas [infile] [outfile]\n");
+    return 0;
+  }
+  Assemble(argv[1],readFile(argv[1],NULL));
   return 0;
 }
