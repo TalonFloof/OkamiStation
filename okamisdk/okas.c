@@ -10,6 +10,7 @@
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #if UINT_MAX < 4294967295U
 #error "Target doesn't support 32-bit operations!"
@@ -280,9 +281,9 @@ void addLabel(char* labelName) {
 unsigned int parseImm(OpType type, char* data, unsigned long* i) {
   unsigned long start = *i;
   int isNumber = 1;
-  while(isalnum(data[*i]) || data[*i] == '_' || data[*i] == '.') {
+  while(isalnum(data[*i]) || data[*i] == '_' || data[*i] == '.' || data[*i] == '-') {
     if(isNumber) {
-      if((data[*i] < '0' || data[*i] > '9') && (data[*i] < 'a' || data[*i] > 'f') && (data[*i] < 'A' || data[*i] > 'F') && data[*i] != 'x' && data[*i] != 'o') {
+      if((data[*i] < '0' || data[*i] > '9') && (data[*i] < 'a' || data[*i] > 'f') && (data[*i] < 'A' || data[*i] > 'F') && data[*i] != 'x' && data[*i] != 'o' && data[*i] != '-') {
         isNumber = 0;
       }
     }
@@ -314,6 +315,22 @@ unsigned int parseImm(OpType type, char* data, unsigned long* i) {
     }
     return 0;
   }
+}
+
+char* parseString(char* data, unsigned long* i) {
+  if(data[*i] != '"') {
+    return NULL;
+  } else {
+    (*i)++;
+  }
+  unsigned int start = *i;
+  while(data[*i] != '"') {(*i)++;}
+  unsigned length = (*i)-start;
+  (*i)++;
+  char* buf = malloc(length);
+  memset(buf,0,length);
+  memcpy(buf,data+start,length);
+  return buf;
 }
 
 int parseReg(char* data, unsigned long* i) {
@@ -370,16 +387,58 @@ void Assemble(char* name, char* data) {
       } else if(strncmp(data+start,".extern",length) == 0) {
         Error(name,line,start-lineStart,".extern is not implemented yet!");
       } else if(strncmp(data+start,".align",length) == 0) {
-        if(getSegmentSize() % 4 > 0) {
+        i++;
+        unsigned int num = parseImm(OP_NONE,data,&i);
+        if(getSegmentSize() % num > 0) {
           unsigned int zero = 0;
-          
+          addToSegment(&zero,num-(getSegmentSize()%num));
         }
+      } else if(strncmp(data+start,".resb",length) == 0) {
+        i++;
+        unsigned char val = (unsigned char)parseImm(OP_NONE,data,&i);
+        addToSegment(NULL,val);
       } else if(strncmp(data+start,".byte",length) == 0) {
+        i++;
+        unsigned char val = (unsigned char)parseImm(OP_NONE,data,&i);
+        addToSegment(&val,1);
       } else if(strncmp(data+start,".short",length) == 0) {
+        i++;
+        unsigned short val = (unsigned short)parseImm(OP_NONE,data,&i);
+        addToSegment(&val,2);
       } else if(strncmp(data+start,".word",length) == 0) {
+        i++;
+        unsigned int val = parseImm(OP_NONE,data,&i);
+        addToSegment(&val,4);
       } else if(strncmp(data+start,".fill",length) == 0) {
+        i++;
+        unsigned int size = parseImm(OP_NONE,data,&i);
+        unsigned int dat = parseImm(OP_NONE,data,&i);
+        unsigned char* buf = malloc(size);
+        memset(buf,dat,size);
+        addToSegment(&buf,size);
+        free(buf);
       } else if(strncmp(data+start,".string",length) == 0) {
-        Error(name,line,start-lineStart,".string is not implemented yet!");
+        i++;
+        char* str = parseString(data,&i);
+        addToSegment(str,strlen(str)+1);
+        free(str);
+      } else if(strncmp(data+start,".ascii",length) == 0) {
+        i++;
+        char* str = parseString(data,&i);
+        addToSegment(str,strlen(str));
+        free(str);
+      } else if(strncmp(data+start,".include_bin",length) == 0) {
+        i++;
+        char* name = parseString(data,&i);
+        unsigned long size = 0;
+        unsigned char* file = readFile(name,&size);
+        if(file != NULL) {
+          addToSegment(file,size);
+          free(file);
+        } else {
+          Error(name,0,0,"Failed to read file!");
+        }
+        free(name);
       } else if(strncmp(data+start,".text",length) == 0) {
         curSegment = SEG_TEXT;
       } else if(strncmp(data+start,".rodata",length) == 0) {
@@ -584,12 +643,15 @@ void GenObject() {
 }
 
 int main(int argc, char **argv) {
+  struct timeval startTime, endTime;
   if(argc < 3) {
     printf("Usage: okas [infile] [outfile]\n");
     return 0;
   }
+  gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
   GenObject();
+  gettimeofday(&endTime, 0);
   free(text);
   free(rodata);
   free(data);
