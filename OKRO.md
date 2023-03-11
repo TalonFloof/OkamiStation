@@ -9,12 +9,13 @@
 0x0000_0018-0x0000_001b: Size of Data Segment
 0x0000_001c-0x0000_001f: Size of BSS Segment
 0x0000_0020-0x0000_0023: Size of Relocation Table
-0x0000_0024-0x0000_0027: Size of Extended Information Table
+0x0000_0024-0x0000_0027: Size of Symbol Table
 0x0000_0028-0x0000_002f: Reserved
 0x0000_0030: Beginning of Data (Starts with Text Segment)
 ```
 
-> Note: All Segments are 4 byte aligned, however the size of the segment is exclusive of the extra alignment padding added.
+> Note 1: All Segments are 4 byte aligned, however the size of the segment is exclusive of the extra alignment padding added.  
+> Note 2: A non-aligned array of strings, containing each symbol name is present after the symbol table (unlike other segment it is not 4-byte aligned)
 
 ## Relocation Table Entry
 ```c

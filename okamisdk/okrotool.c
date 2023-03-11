@@ -5,15 +5,15 @@
 #include <stdbool.h>
 
 typedef struct {
-    uint64_t magic;
-    uint64_t version;
-    uint32_t text;
-    uint32_t rodata;
-    uint32_t data;
-    uint32_t bss;
-    uint32_t reloc;
-    uint32_t eit;
-    uint64_t reserved;
+    unsigned long long magic;
+    unsigned long long version;
+    unsigned int text;
+    unsigned int rodata;
+    unsigned int data;
+    unsigned int bss;
+    unsigned int reloc;
+    unsigned int sym;
+    unsigned long long reserved;
 } OkROHeader;
 
 typedef enum {
@@ -34,8 +34,8 @@ typedef struct {
     RelocationType type;
     SegmentType srcSegment;
     SegmentType dstSegment;
-    uint32_t srcOffset;
-    uint32_t dstOffset;
+    unsigned int srcOffset;
+    unsigned int dstOffset;
 } RelocationEntry;
 
 const char* segToString(SegmentType type) {
@@ -47,6 +47,8 @@ const char* segToString(SegmentType type) {
         return ".data";
     } else if(type == BSS) {
         return ".bss";
+    } else if(type == EXTERN) {
+        return ".symTable";
     }
     return "???";
 }

@@ -359,6 +359,7 @@
     (while (w@ insnOff)
         (dPush (w@ insnOff)) (= insnOff (+ insnOff 4)) (fun_execute)
     )
+    (= insnOff saved)
 )
 
 (fn fun_colon ()
