@@ -1,3 +1,10 @@
+/* Okami1041 Assembler
+ *
+ * Created by TalonFox for the OkamiStation 1000.
+ * Copyright (C) 2023 TalonFox, Licensed under the MIT License
+ * This is a FOSS project.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -133,7 +140,6 @@ const struct OkamiOpcode OkamiInstructions[] = {
 
 /*****VARIABLES*****/
 unsigned int* text = NULL;
-unsigned int textCurrent = 0;
 unsigned int textSize = 0;
 unsigned int textCapacity = 0;
 unsigned char* rodata = NULL;
@@ -141,7 +147,40 @@ unsigned int rodataSize = 0;
 unsigned char* data = NULL;
 unsigned int dataSize = 0;
 unsigned int bss = 0;
+
+SegmentType curSegment = SEG_TEXT;
 /*******************/
+
+unsigned int addToSegment(void* buf, unsigned int len) {
+  switch(curSegment) {
+    case SEG_TEXT: {
+      if(textSize+len>textCapacity) {
+        textCapacity+=1024;
+        text = (unsigned int*)realloc(text,4*textCapacity);
+      }
+      memcpy(&text[textSize],buf,len);
+      textSize+=(len/4);
+      return textSize-(len/4);
+    }
+    case SEG_RODATA: {
+      rodata = realloc(rodata,rodataSize+len);
+      memcpy(&rodata[rodataSize],buf,len);
+      rodataSize+=len;
+      return rodataSize-len;
+    }
+    case SEG_DATA: {
+      data = realloc(data,dataSize+len);
+      memcpy(&data[dataSize],buf,len);
+      dataSize+=len;
+      return dataSize-len;
+    }
+    case SEG_BSS: {
+      unsigned int ret = bss;
+      bss += len;
+      return ret;
+    }
+  }
+}
 
 unsigned char* readFile(const char* path, unsigned long* fileSize) {
     FILE* file = fopen(path,"rb");
@@ -212,11 +251,30 @@ void Assemble(char* name, char* data) {
         int index;
         for(index = 0; index < sizeof(OkamiInstructions)/sizeof(struct OkamiOpcode); index++) {
           if(strncmp(data+start,OkamiInstructions[index].name,length) == 0) {
+            i+=2;
             int j;
             ArgType* argPtr = (ArgType*)(&(OkamiInstructions[index].arg1));
             for(j=0; j < 4; j++) {
               switch(argPtr[j]) {
                 case ARG_IMM: {
+                  unsigned long start = i;
+                  int isNumber = 1;
+                  while(isalnum(data[i])) {
+                    if((i <= '0' || i >= '9') && (i <= 'a' || i >= 'f') && (i <= 'A' || i >= 'F') && i != "x" && i != "o") {
+                      isNumber = 0;
+                    }
+                    i++;
+                  }
+                  unsigned long length = i-start;
+                  if(isNumber) {
+                    char* buf = malloc(length+1);
+                    memcpy(buf,data+start,length);
+                    unsigned int val = (unsigned int)((int)strtol(buf,NULL,0));
+                    free(buf);
+                  } else {
+                    /* Add Label Relocation */
+
+                  }
                   break;
                 }
                 case ARG_REG: {
@@ -242,6 +300,7 @@ void Assemble(char* name, char* data) {
 next:
     while(0);
   }
+  free(data);
 }
 
 int main(int argc, char **argv) {
@@ -250,5 +309,8 @@ int main(int argc, char **argv) {
     return 0;
   }
   Assemble(argv[1],readFile(argv[1],NULL));
+  free(text);
+  free(rodata);
+  free(data);
   return 0;
 }
