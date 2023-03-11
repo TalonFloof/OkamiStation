@@ -54,9 +54,19 @@ typedef struct {
 
 typedef struct {
   void* prev;
+  void* next;
+  RelocationType type;
+  SegmentType srcSegment;
+  unsigned int offset;
+  char* labelName;
+} IntRelocEntry;
+
+typedef struct {
+  void* prev;
+  void* next;
   SegmentType seg;
-  unsigned int addr;
-  char* name; /* Use &name */
+  unsigned int offset;
+  char* name;
 } Label;
 
 typedef enum {
@@ -75,7 +85,7 @@ typedef enum {
 struct OkamiOpcode {
   int opcode;
   const char* name;
-  OpType arg1;
+  OpType type;
 };
 
 const char* OkamiRegisters[] = {"zero","a0","a1","a2","a3","a4","a5","a6","a7","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","gp","kr","fp","sp","ra"};
@@ -89,13 +99,13 @@ const struct OkamiOpcode OkamiInstructions[] = {
   { 4,"xor",OP_REGREG},
   { 5,"sll",OP_REGREG},
   { 6,"srl",OP_REGREG},
-  { 7,"sra",OP_REGREG},
-  { 8,"slt",OP_REGREG},
-  { 9,"sltu",OP_REGREG},
-  {10,"mul",OP_FOURREG},
-  {11,"mulu",OP_FOURREG},
-  {12,"div",OP_FOURREG},
-  {13,"divu",OP_FOURREG},
+  { 6,"sra",OP_REGREG},
+  { 7,"slt",OP_REGREG},
+  { 8,"sltu",OP_REGREG},
+  { 9,"mul",OP_FOURREG},
+  { 9,"mulu",OP_FOURREG},
+  {10,"div",OP_FOURREG},
+  {10,"divu",OP_FOURREG},
   /* SECTION 2 */
   {16,"addi",OP_REGIMM},
   {17,"andi",OP_REGIMM},
@@ -103,10 +113,10 @@ const struct OkamiOpcode OkamiInstructions[] = {
   {19,"xori",OP_REGIMM},
   {20,"slli",OP_REGIMM},
   {21,"srli",OP_REGIMM},
-  {22,"srai",OP_REGIMM},
-  {23,"slti",OP_REGIMM},
-  {24,"sltiu",OP_REGIMM},
-  {25,"lui",OP_LOADIMM},
+  {21,"srai",OP_REGIMM},
+  {22,"slti",OP_REGIMM},
+  {23,"sltiu",OP_REGIMM},
+  {24,"lui",OP_LOADIMM},
   /* SECTION 3 */
   {32,"b",OP_BRANCH28},
   {33,"bl",OP_BRANCH28},
@@ -134,11 +144,11 @@ const struct OkamiOpcode OkamiInstructions[] = {
   {62,"mcall",OP_KMCALL},
   {63,"rft",OP_NONE},
   /* PSEUDO-INSTRUCTIONS */
-  {0,"nop",OP_NONE},
-  {-2,"li",OP_PSEUDO},
-  {-3,"la",OP_PSEUDO},
-  {-4,"br",OP_PSEUDO},
-  {-5,"mv",OP_PSEUDO}
+  { 0,"nop",OP_NONE},
+  {18,"li",OP_LOADIMM},
+  {-1,"la",OP_PSEUDO},
+  {-2,"br",OP_PSEUDO},
+  { 0,"mv",OP_TWOREG}
 };
 
 /*****VARIABLES*****/
@@ -150,7 +160,12 @@ unsigned int rodataSize = 0;
 unsigned char* data = NULL;
 unsigned int dataSize = 0;
 unsigned int bss = 0;
+Label* labelHead = NULL;
+Label* labelTail = NULL;
+IntRelocEntry* relocHead = NULL;
+IntRelocEntry* relocTail = NULL;
 
+char* curLabel = NULL;
 SegmentType curSegment = SEG_TEXT;
 /*******************/
 
@@ -226,6 +241,108 @@ int iswhitespace(char val) {
   return val == ' ' || val == '\t' || val == '\r' || val == '\n';
 }
 
+void addReloc(RelocationType type, char* labelName) {
+  char* label = labelName;
+  if(labelName[0] == '.') {
+    label = malloc(strlen(labelName)+strlen(curLabel));
+    memset(label,0,strlen(labelName)+strlen(curLabel));
+    memcpy(label,curLabel,strlen(curLabel));
+    memcpy(label+strlen(curLabel),labelName,strlen(labelName));
+    free(labelName);
+  }
+  IntRelocEntry* r = malloc(sizeof(IntRelocEntry));
+  if(relocHead == NULL) {
+    relocHead = r;
+    relocTail = r;
+  } else if(relocTail != NULL) {
+    relocTail->next = r;
+    r->prev = relocTail;
+  }
+  r->labelName = label;
+  r->srcSegment = curSegment;
+  r->offset = getSegmentSize();
+  r->type = type;
+}
+
+void addLabel(char* labelName) {
+  Label* l = malloc(sizeof(Label));
+  if(labelHead == NULL) {
+    labelHead = l;
+    labelTail = l;
+  } else if(labelTail != NULL) {
+    labelTail->next = l;
+    l->prev = labelTail;
+  }
+  l->seg = curSegment;
+  l->offset = getSegmentSize();
+}
+
+unsigned int parseImm(OpType type, char* data, unsigned long* i) {
+  unsigned long start = *i;
+  int isNumber = 1;
+  while(isalnum(data[*i]) || data[*i] == '_' || data[*i] == '.') {
+    if(isNumber) {
+      if((data[*i] < '0' || data[*i] > '9') && (data[*i] < 'a' || data[*i] > 'f') && (data[*i] < 'A' || data[*i] > 'F') && data[*i] != 'x' && data[*i] != 'o') {
+        isNumber = 0;
+      }
+    }
+    (*i)++;
+  }
+  unsigned long length = (*i)-start;
+  if(data[*i] == ',') {
+    if(data[(*i)+1] == ' ') {
+      (*i)+=2;
+    } else {
+      (*i)++;
+    }
+  }
+  char* buf = malloc(length+1);
+  memset(buf,0,length+1);
+  memcpy(buf,data+start,length);
+  if(isNumber) {
+    unsigned int val = (unsigned int)((int)strtol(buf,NULL,0));
+    free(buf);
+    return val;
+  } else {
+    /* Add Label Relocation */
+    if(type == OP_BRANCH28) {
+      addReloc(BRANCH28,buf);
+    } else if(type == OP_LOADIMM) {
+      addReloc(LA32,buf);
+    } else if(type == OP_REGIMM) {
+      addReloc(REL16,buf);
+    }
+    return 0;
+  }
+}
+
+int parseReg(char* data, unsigned long* i) {
+  unsigned long start = *i;
+  while(isalnum(data[*i])) {(*i)++;}
+  unsigned long length = (*i)-start;
+  int reg;
+  for(reg=0; reg < 32; reg++) {
+    if(strncmp(data+start,OkamiRegisters[reg],length) == 0) {
+      if(data[*i] == ',') {
+        if(data[(*i)+1] == ' ') {
+          (*i)+=2;
+        } else {
+          (*i)++;
+        }
+      }
+      return reg;
+    }
+  }
+  if(data[*i] == ',') {
+    if(data[(*i)+1] == ' ') {
+      (*i)+=2;
+    } else {
+      (*i)++;
+    }
+  }
+  return -1;
+}
+
 void Assemble(char* name, char* data) {
   unsigned long len = strlen(data);
   unsigned long i = 0;
@@ -243,19 +360,34 @@ void Assemble(char* name, char* data) {
       while(!iswhitespace(data[i])) {i++;}
       unsigned long length = i-start;
       if(data[i-1] == ':') { /*Oh wait, its actually a local label*/
-
+        int lbLen = strlen(curLabel);
+        char* buf = malloc(length+lbLen);
+        memset(buf,0,length+lbLen);
+        memcpy(buf,curLabel,lbLen);
+        memcpy(buf+lbLen,data+start,length);
+        addLabel(buf);
       } else if(strncmp(data+start,".global",length) == 0) {
       } else if(strncmp(data+start,".extern",length) == 0) {
+        Error(name,line,start-lineStart,".extern is not implemented yet!");
       } else if(strncmp(data+start,".align",length) == 0) {
+        if(getSegmentSize() % 4 > 0) {
+          unsigned int zero = 0;
+          
+        }
       } else if(strncmp(data+start,".byte",length) == 0) {
       } else if(strncmp(data+start,".short",length) == 0) {
       } else if(strncmp(data+start,".word",length) == 0) {
       } else if(strncmp(data+start,".fill",length) == 0) {
       } else if(strncmp(data+start,".string",length) == 0) {
+        Error(name,line,start-lineStart,".string is not implemented yet!");
       } else if(strncmp(data+start,".text",length) == 0) {
+        curSegment = SEG_TEXT;
       } else if(strncmp(data+start,".rodata",length) == 0) {
+        curSegment = SEG_RODATA;
       } else if(strncmp(data+start,".data",length) == 0) {
+        curSegment = SEG_DATA;
       } else if(strncmp(data+start,".bss",length) == 0) {
+        curSegment = SEG_BSS;
       } else {
         Error(name,line,start-lineStart,"Unknown Assembler Keyword");
       }
@@ -265,52 +397,167 @@ void Assemble(char* name, char* data) {
       unsigned long length = i-start;
       if(data[i] == ':') {
         i++;
+        char* buf = malloc(length);
+        memset(buf,0,length);
+        memcpy(buf,data+start,length);
+        curLabel = buf;
+        addLabel(buf);
       } else {
         int index;
         for(index = 0; index < sizeof(OkamiInstructions)/sizeof(struct OkamiOpcode); index++) {
           if(strncmp(data+start,OkamiInstructions[index].name,length) == 0) {
-            i+=2;
-            int j;
-            ArgType* argPtr = (ArgType*)(&(OkamiInstructions[index].arg1));
-            for(j=0; j < 4; j++) {
-              switch(argPtr[j]) {
-                case ARG_IMM: {
-                  unsigned long start = i;
-                  int isNumber = 1;
-                  while(isalnum(data[i])) {
-                    if((i <= '0' || i >= '9') && (i <= 'a' || i >= 'f') && (i <= 'A' || i >= 'F') && i != "x" && i != "o") {
-                      isNumber = 0;
-                    }
-                    i++;
+            i++;
+            switch(OkamiInstructions[index].type) {
+              case OP_NONE: {
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26);
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_REGREG: {
+                int reg1 = parseReg(data,&i);
+                int reg2 = parseReg(data,&i);
+                int reg3 = parseReg(data,&i);
+                if(reg1 == -1 || reg2 == -1 || reg3 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26) 
+                                      | (((unsigned int)reg3) << 21)
+                                      | (((unsigned int)reg2) << 16)
+                                      | (((unsigned int)reg1) << 11)
+                                      | (index == 7 ? 0x400 : 0);
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_REGIMM: {
+                int reg1 = parseReg(data,&i);
+                int reg2 = parseReg(data,&i);
+                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                if(reg1 == -1 || reg2 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = 0;
+                if(OkamiInstructions[index].opcode == 16) {
+                  opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26) 
+                           | (((unsigned int)reg2) << 21)
+                           | (((unsigned int)reg1) << 16)
+                           | (unsigned int)((unsigned short)((short)((int)imm)));
+                } else {
+                  opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26) 
+                           | (((unsigned int)reg2) << 21)
+                           | (((unsigned int)reg1) << 16)
+                           | ((index == 20) ? 0x8000 : 0)
+                           | imm;
+                }
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_TWOREG: {
+                int reg1 = parseReg(data,&i);
+                int reg2 = parseReg(data,&i);
+                if(reg1 == -1 || reg2 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                      | (((unsigned int)reg2) << 16)
+                                      | (((unsigned int)reg1) << 11);
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_FOURREG: {
+                int reg1 = parseReg(data,&i);
+                int reg2 = parseReg(data,&i);
+                int reg3 = parseReg(data,&i);
+                int reg4 = parseReg(data,&i);
+                if(reg1 == -1 || reg2 == -1 || reg3 == -1 || reg4 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26) 
+                                      | (((unsigned int)reg4) << 21)
+                                      | (((unsigned int)reg3) << 16)
+                                      | (((unsigned int)reg2) << 11)
+                                      | (((unsigned int)reg1) << 6)
+                                      | (((index % 2) == 1) ? 1 : 0);
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_LOADIMM: {
+                int reg1 = parseReg(data,&i);
+                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                      | (((unsigned int)reg1) << 16)
+                                      | imm;
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_BRANCH28: {
+                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                      | (imm>>2);
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_KMCALL: {
+                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                      | (index == 44 ? 0x2000000 : 0)
+                                      | imm;
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_LOADSTORE: {
+                unsigned int reg1 = parseReg(data,&i);
+                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                if(data[i] != '(') {
+                  Error(name,line,i-lineStart,"Invalid Load/Store instruction syntax");
+                } else {i++;}
+                unsigned int reg2 = parseReg(data,&i);
+                if(data[i] != ')') {
+                  Error(name,line,i-lineStart,"Invalid Load/Store instruction syntax");
+                } else {i++;}
+                if(reg1 == -1 || reg2 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                      | (((unsigned int)reg1) << 21)
+                                      | (((unsigned int)reg2) << 16)
+                                      | imm;
+                addToSegment(&opcode,4);
+                break;
+              }
+              case OP_PSEUDO: {
+                switch(OkamiInstructions[index].opcode) {
+                  case -1: { /*la*/
+                    int reg1 = parseReg(data,&i);
+                    if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                    unsigned int imm = parseImm(OP_LOADIMM,data,&i);
+                    unsigned int opcode = 0x60000000 | (((unsigned int)reg1) << 16);
+                    addToSegment(&opcode,4);
+                    opcode = 0x48000000 | (((unsigned int)reg1) << 16) | (((unsigned int)reg1) << 21);
+                    addToSegment(&opcode,4);
+                    break;
                   }
-                  unsigned long length = i-start;
-                  if(isNumber) {
-                    char* buf = malloc(length+1);
-                    memcpy(buf,data+start,length);
-                    unsigned int val = (unsigned int)((int)strtol(buf,NULL,0));
-                    free(buf);
-                  } else {
-                    /* Add Label Relocation */
-                    
+                  case -2: { /*br*/
+                    int reg1 = parseReg(data,&i);
+                    if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
+                    unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                                          | (((unsigned int)reg1) << 11);
+                    addToSegment(&opcode,4);
+                    break;                     
                   }
-                  break;
                 }
-                case ARG_REG: {
-                  break;
-                }
-                case ARG_LOADSTORE: {
-                  break;
-                }
+                break;
+              }
+              default: {
+                Error(name,line,i-lineStart,"Unknown Okami Instruction Type");
+                break;
               }
             }
             goto next;
           }
         }
+
         Error(name,line,i-lineStart,"Unknown Okami Instruction");
       }
     } else if(data[i] == '/' && data[i+1] == '*') {
       i+=2;
-      while(data[i] != '/' && data[i-1] != '*') {i++;}
+      while(!(data[i] == '/' && data[i-1] == '*')) {
+        if(data[i] == '\n') {
+          line++;
+          lineStart = i+1;
+        }
+        i++;
+      }
       i++;
     } else {
       Error(name,line,i-lineStart,"Unknown Token");
@@ -321,12 +568,28 @@ next:
   free(data);
 }
 
+void GenObject() {
+  while(relocHead != NULL) {
+    void* next = relocHead->next;
+    free(relocHead->labelName);
+    free(relocHead);
+    relocHead = next;
+  }
+  while(labelHead != NULL) {
+    void* next = labelHead->next;
+    free(labelHead->name);
+    free(labelHead);
+    labelHead = next;
+  }
+}
+
 int main(int argc, char **argv) {
   if(argc < 3) {
     printf("Usage: okas [infile] [outfile]\n");
     return 0;
   }
   Assemble(argv[1],readFile(argv[1],NULL));
+  GenObject();
   free(text);
   free(rodata);
   free(data);

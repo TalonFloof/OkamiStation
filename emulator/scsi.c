@@ -31,10 +31,7 @@ uint8_t* SCSIBuffer = NULL;
 void SCSIDoCommand(SCSIDrive* drive, uint8_t cmd) {
     switch(cmd) {
         case 0: { // Send Data
-            if(SCSIBuffer != NULL) {
-                free(SCSIBuffer);
-            }
-            SCSIBuffer = malloc()
+            
         }
         case 1: { // Send Message
 

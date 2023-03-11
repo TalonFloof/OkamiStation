@@ -1,5 +1,20 @@
 .text
 .global OkamiStationFirmwareStartup:
+    /*
+    At the current CPU State, there are a few things which are in an invalid state.
+    For Instance:
+      - The L1 Instruction and Data Caches are in an unknown state.
+      - The TLB is in an unknown state.
+    Most CPUs would handle this stuff in hardware when the reset pin is high,
+    but the Okami processor does not, it requires software to do this.
+
+    You may be wondering how we are able to execute code if the L1 Caches and the TLB isn't setup yet.
+    The answer is that the address ranges 0xa0000000-0xbfffffff (known as kernel2)
+    doesn't use the L1 Caches or the TLB, it allows you to access the first 512 MiB of physical memory
+    directly (which bypasses the need for the L1 Caches) if you are in kernel mode, which we are at reset.
+    This is why we can execute code, even with this stuff not working.
+    Addresses 0x80000000-0x9fffffff (known as kernel1) is the same as kernel2 but it uses the L1 Caches.
+    */
     la a0, EarlyHandler
     lui t1, 0x2000
     add a0, a0, t1

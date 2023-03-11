@@ -296,7 +296,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         } else {
             dMissCount += 1;
         }
-        stallTicks = 3; // Uncached Stall
+        stallTicks = shouldCacheStall*3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {
@@ -482,7 +482,7 @@ void next() {
             uint32_t rs1 = (instr & 0x1F0000) >> 16;
             uint32_t rs2 = (instr & 0x3E00000) >> 21;
             uint32_t rs = rs1;
-            uint32_t rd = rs2;
+            uint32_t rd = (instr & 0xf800) >> 11;
             int32_t jumpOffset = ((int32_t)((int16_t)(instr & 0xFFFF)))*4;
             uint32_t jumpAddr = (instr & 0x3FFFFFF) << 2;
             switch((opcode & 0b1111)) {
