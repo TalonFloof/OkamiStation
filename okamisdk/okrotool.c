@@ -13,7 +13,8 @@ typedef struct {
     unsigned int bss;
     unsigned int reloc;
     unsigned int sym;
-    unsigned long long reserved;
+    unsigned int str;
+    unsigned int entry;
 } OkROHeader;
 
 typedef enum {
@@ -37,6 +38,15 @@ typedef struct {
     unsigned int srcOffset;
     unsigned int dstOffset;
 } RelocationEntry;
+
+typedef struct {
+    uint32_t nameoff;
+    SegmentType segment;
+    uint32_t offset;
+    uint8_t external : 1;
+    uint8_t libname : 1; /* For dynamic linking */
+    uint8_t reserved : 6;
+} Symbol;
 
 const char* segToString(SegmentType type) {
     if(type == TEXT) {
@@ -151,7 +161,9 @@ int main(int argc, const char* argv[]) {
     if(argc == 1) {
         printf("Usage: okrotool [command]\n");
         printf("Commands:\n");
-        printf("info [object]: Get Info about a Object.\n");
+        printf("info [object]: Get info about an Object.\n");
+        printf("rinfo [object]: Get relocation info from an object.\n");
+        printf("strip [object]: Removes unneeded symbol data from an object.\n");
         printf("dump [base] [object] [binary]: Convert an object into a raw binary.\n");
         printf("fwdump [base] [dataBase] [object] [binary]: Convert an object into an OkamiStation firmware binary.\n");
     } else if(strcmp(argv[1],"info") == 0) {
@@ -167,8 +179,21 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        printf("== %s ==\nVersion: %i\nText Size: %i bytes (~%i instructions)\nRoData Size: %i bytes\nData Size: %i bytes\nBSS Size: %i bytes\nRelocation Entries: %i\n", argv[2], header->version, header->text, header->text/4, header->rodata, header->data, header->bss, header->reloc/20);
-
+        printf("== %s ==\nVersion: %i\nText Size: %i bytes (~%i instructions)\nRoData Size: %i bytes\nData Size: %i bytes\nBSS Size: %i bytes\nRelocation Entries: %i\nSymbols: %i\n", argv[2], header->version, header->text, header->text/4, header->rodata, header->data, header->bss, header->reloc/sizeof(RelocationEntry), header->sym/sizeof(Symbol));
+        free(image);
+    } else if(strcmp(argv[1],"rinfo") == 0) {
+        uint8_t* image = readImage(argv[2],NULL);
+        if(!image) {
+            fprintf(stderr, "Unable to read image!\n");
+            free(image);
+            return 1;
+        }
+        OkROHeader* header = (OkROHeader*)image;
+        if(memcmp(image,"\x89OkamiRO",8) != 0) {
+            fprintf(stderr, "Magic number is invalid\n");
+            free(image);
+            return 2;
+        }
         printf("== RELOCATION ENTRIES ==\n");
         RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
         uint32_t entries = header->reloc/sizeof(RelocationEntry);

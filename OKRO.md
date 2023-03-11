@@ -10,12 +10,12 @@
 0x0000_001c-0x0000_001f: Size of BSS Segment
 0x0000_0020-0x0000_0023: Size of Relocation Table
 0x0000_0024-0x0000_0027: Size of Symbol Table
-0x0000_0028-0x0000_002f: Reserved
+0x0000_0028-0x0000_002b: Size of String Table (Symbol Names)
+0x0000_002c-0x0000_002f: Offset of Entry Point within Text Segment
 0x0000_0030: Beginning of Data (Starts with Text Segment)
 ```
 
-> Note 1: All Segments are 4 byte aligned, however the size of the segment is exclusive of the extra alignment padding added.  
-> Note 2: A non-aligned array of strings, containing each symbol name is present after the symbol table (unlike other segment it is not 4-byte aligned)
+> Note: All Segments are 4 byte aligned, however the size of the segment is exclusive of the extra alignment padding added.  
 
 ## Relocation Table Entry
 ```c
@@ -40,4 +40,24 @@ typedef struct {
     uint32_t srcOffset;
     uint32_t dstOffset;
 } RelocationEntry;
+```
+
+## Symbol Table Entry
+```c
+typedef enum {
+    TEXT,
+    RODATA,
+    DATA,
+    BSS,
+    EXTERN, /* For an external symbol */
+} SegmentType;
+
+typedef struct {
+    uint32_t nameoff;
+    SegmentType segment;
+    uint32_t offset;
+    uint8_t external : 1;
+    uint8_t libname : 1; /* For dynamic linking */
+    uint8_t reserved : 6;
+} Symbol;
 ```

@@ -25,7 +25,8 @@ typedef struct {
     unsigned int bss;
     unsigned int reloc;
     unsigned int sym;
-    unsigned long long reserved;
+    unsigned int str;
+    unsigned int entry;
 } OkROHeader;
 
 typedef enum {
@@ -59,6 +60,8 @@ typedef struct {
   RelocationType type;
   SegmentType srcSegment;
   unsigned int offset;
+  SegmentType dstSegment;
+  unsigned int dstOffset;
   char* labelName;
 } IntRelocEntry;
 
@@ -165,6 +168,7 @@ Label* labelHead = NULL;
 Label* labelTail = NULL;
 IntRelocEntry* relocHead = NULL;
 IntRelocEntry* relocTail = NULL;
+unsigned int relocSize = 0;
 
 char* curLabel = NULL;
 SegmentType curSegment = SEG_TEXT;
@@ -245,8 +249,8 @@ int iswhitespace(char val) {
 void addReloc(RelocationType type, char* labelName) {
   char* label = labelName;
   if(labelName[0] == '.') {
-    label = malloc(strlen(labelName)+strlen(curLabel));
-    memset(label,0,strlen(labelName)+strlen(curLabel));
+    label = malloc(strlen(labelName)+strlen(curLabel)+1);
+    memset(label,0,strlen(labelName)+strlen(curLabel)+1);
     memcpy(label,curLabel,strlen(curLabel));
     memcpy(label+strlen(curLabel),labelName,strlen(labelName));
     free(labelName);
@@ -258,11 +262,14 @@ void addReloc(RelocationType type, char* labelName) {
   } else if(relocTail != NULL) {
     relocTail->next = r;
     r->prev = relocTail;
+    relocTail = r;
   }
   r->labelName = label;
+  fprintf(stderr,"%s\n",r->labelName);
   r->srcSegment = curSegment;
   r->offset = getSegmentSize();
   r->type = type;
+  relocSize++;
 }
 
 void addLabel(char* labelName) {
@@ -273,9 +280,11 @@ void addLabel(char* labelName) {
   } else if(labelTail != NULL) {
     labelTail->next = l;
     l->prev = labelTail;
+    labelTail = l;
   }
   l->seg = curSegment;
   l->offset = getSegmentSize();
+  l->name = labelName;
 }
 
 unsigned int parseImm(OpType type, char* data, unsigned long* i) {
@@ -381,7 +390,7 @@ void Assemble(char* name, char* data) {
         char* buf = malloc(length+lbLen);
         memset(buf,0,length+lbLen);
         memcpy(buf,curLabel,lbLen);
-        memcpy(buf+lbLen,data+start,length);
+        memcpy(buf+lbLen,data+start,length-1);
         addLabel(buf);
       } else if(strncmp(data+start,".global",length) == 0) {
       } else if(strncmp(data+start,".extern",length) == 0) {
@@ -456,8 +465,8 @@ void Assemble(char* name, char* data) {
       unsigned long length = i-start;
       if(data[i] == ':') {
         i++;
-        char* buf = malloc(length);
-        memset(buf,0,length);
+        char* buf = malloc(length+1);
+        memset(buf,0,length+1);
         memcpy(buf,data+start,length);
         curLabel = buf;
         addLabel(buf);
@@ -627,13 +636,76 @@ next:
   free(data);
 }
 
-void GenObject() {
+void GenObject(char* out) {
+  IntRelocEntry* index = relocHead;
+  while(index != NULL) {
+    void* next = index->next;
+    if(index->type == REL16) {
+      relocSize--;
+      Label* lind = labelHead;
+      while(lind != NULL) {
+        if(strcmp(lind->name,index->labelName) == 0) {
+          int jump = ((lind->offset)-(index->offset))/4;
+          *((short*)(((char*)text)+index->offset)) = ((short)jump);
+          break;
+        }
+        lind = lind->next;
+      }
+      if(lind == NULL) {
+        Error(index->labelName,0,0,"Label has no matching definition");
+      }
+    }
+    index = next;
+  }
+  FILE* outfile = fopen(out,"wb");
+  if(outfile == NULL) {
+    Error(out,0,0,"Unable to open!");
+  }
+  OkROHeader header;
+  memcpy((unsigned char*)&header,"\x89OkamiRO\x01\0\0\0\0\0\0\0",16);
+  header.text = textSize*4;
+  header.rodata = rodataSize;
+  header.data = dataSize;
+  header.bss = bss;
+  header.reloc = relocSize*sizeof(RelocationEntry);
+  header.sym = 0;
+  header.str = 0;
+  header.entry = 0;
+  fwrite(&header,sizeof(OkROHeader),1,outfile);
+  unsigned int zero = 0;
+  fwrite(text,textSize*4,1,outfile);
+  fwrite(rodata,rodataSize,1,outfile);
+  if(rodataSize % 4 != 0)
+    fwrite(&zero,4-(rodataSize%4),1,outfile);
+  fwrite(data,dataSize,1,outfile);
+  if(dataSize % 4 != 0)
+    fwrite(&zero,4-(dataSize%4),1,outfile);
   while(relocHead != NULL) {
+    if(relocHead->type != REL16) {
+      Label* lind = labelHead;
+      while(lind != NULL) {
+        if(strcmp(lind->name,relocHead->labelName) == 0) {
+          RelocationEntry entry;
+          entry.type = relocHead->type;
+          entry.srcSegment = relocHead->srcSegment;
+          entry.srcOffset = relocHead->offset;
+          entry.dstSegment = lind->seg;
+          entry.dstOffset = lind->offset;
+          fwrite(&entry,sizeof(RelocationEntry),1,outfile);
+          break;
+        }
+        lind = lind->next;
+      }
+      if(lind == NULL) {
+        Error(index->labelName,0,0,"Label has no matching definition");
+      }
+    }
     void* next = relocHead->next;
     free(relocHead->labelName);
     free(relocHead);
     relocHead = next;
   }
+  fclose(outfile);
   while(labelHead != NULL) {
     void* next = labelHead->next;
     free(labelHead->name);
@@ -650,7 +722,7 @@ int main(int argc, char **argv) {
   }
   gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
-  GenObject();
+  GenObject(argv[2]);
   gettimeofday(&endTime, 0);
   free(text);
   free(rodata);
