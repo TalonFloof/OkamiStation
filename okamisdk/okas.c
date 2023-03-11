@@ -60,82 +60,85 @@ typedef struct {
 } Label;
 
 typedef enum {
-  ARG_NONE,
-  ARG_REG,
-  ARG_IMM,
-  ARG_LOADSTORE,
-} ArgType;
+  OP_NONE,
+  OP_PSEUDO,
+  OP_LOADIMM,
+  OP_TWOREG,
+  OP_REGREG,
+  OP_FOURREG,
+  OP_REGIMM,
+  OP_LOADSTORE,
+  OP_BRANCH28,
+  OP_KMCALL
+} OpType;
 
 struct OkamiOpcode {
   int opcode;
   const char* name;
-  ArgType arg1;
-  ArgType arg2;
-  ArgType arg3;
-  ArgType arg4;
+  OpType arg1;
 };
 
 const char* OkamiRegisters[] = {"zero","a0","a1","a2","a3","a4","a5","a6","a7","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","gp","kr","fp","sp","ra"};
 
 const struct OkamiOpcode OkamiInstructions[] = {
   /* SECTION 1 */
-  { 0,"add",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 1,"sub",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 2,"and",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 3,"or",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 4,"xor",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 5,"sll",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 6,"srl",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 7,"sra",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 8,"slt",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  { 9,"sltu",ARG_REG,ARG_REG,ARG_REG,ARG_NONE},
-  {10,"mul",ARG_REG,ARG_REG,ARG_REG,ARG_REG},
-  {11,"mulu",ARG_REG,ARG_REG,ARG_REG,ARG_REG},
-  {12,"div",ARG_REG,ARG_REG,ARG_REG,ARG_REG},
-  {13,"divu",ARG_REG,ARG_REG,ARG_REG,ARG_REG},
+  { 0,"add",OP_REGREG},
+  { 1,"sub",OP_REGREG},
+  { 2,"and",OP_REGREG},
+  { 3,"or",OP_REGREG},
+  { 4,"xor",OP_REGREG},
+  { 5,"sll",OP_REGREG},
+  { 6,"srl",OP_REGREG},
+  { 7,"sra",OP_REGREG},
+  { 8,"slt",OP_REGREG},
+  { 9,"sltu",OP_REGREG},
+  {10,"mul",OP_FOURREG},
+  {11,"mulu",OP_FOURREG},
+  {12,"div",OP_FOURREG},
+  {13,"divu",OP_FOURREG},
   /* SECTION 2 */
-  {16,"addi",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {17,"andi",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {18,"ori",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {19,"xori",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {20,"slli",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {21,"srli",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {22,"srai",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {23,"slti",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {24,"sltiu",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {25,"lui",ARG_REG,ARG_IMM,ARG_NONE,ARG_NONE},
+  {16,"addi",OP_REGIMM},
+  {17,"andi",OP_REGIMM},
+  {18,"ori",OP_REGIMM},
+  {19,"xori",OP_REGIMM},
+  {20,"slli",OP_REGIMM},
+  {21,"srli",OP_REGIMM},
+  {22,"srai",OP_REGIMM},
+  {23,"slti",OP_REGIMM},
+  {24,"sltiu",OP_REGIMM},
+  {25,"lui",OP_LOADIMM},
   /* SECTION 3 */
-  {32,"b",ARG_IMM,ARG_NONE,ARG_NONE,ARG_NONE},
-  {33,"bl",ARG_IMM,ARG_NONE,ARG_NONE,ARG_NONE},
-  {34,"blr",ARG_REG,ARG_REG,ARG_NONE,ARG_NONE},
-  {35,"beq",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {36,"bne",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {37,"bge",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {38,"blt",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {39,"bgeu",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
-  {40,"bltu",ARG_REG,ARG_REG,ARG_IMM,ARG_NONE},
+  {32,"b",OP_BRANCH28},
+  {33,"bl",OP_BRANCH28},
+  {34,"blr",OP_TWOREG},
+  {35,"beq",OP_REGIMM},
+  {36,"bne",OP_REGIMM},
+  {37,"bge",OP_REGIMM},
+  {38,"blt",OP_REGIMM},
+  {39,"bgeu",OP_REGIMM},
+  {40,"bltu",OP_REGIMM},
   /* SECTION 4 */
-  {48,"lb",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {49,"lbu",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {50,"lh",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {51,"lhu",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {52,"lw",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {53,"sb",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {54,"sh",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
-  {55,"sw",ARG_REG,ARG_LOADSTORE,ARG_NONE,ARG_NONE},
+  {48,"lb",OP_LOADSTORE},
+  {49,"lbu",OP_LOADSTORE},
+  {50,"lh",OP_LOADSTORE},
+  {51,"lhu",OP_LOADSTORE},
+  {52,"lw",OP_LOADSTORE},
+  {53,"sb",OP_LOADSTORE},
+  {54,"sh",OP_LOADSTORE},
+  {55,"sw",OP_LOADSTORE},
   /* EXTENDED REGISTERS */
-  {60,"mfex",ARG_REG,ARG_IMM,ARG_NONE,ARG_NONE},
-  {61,"mtex",ARG_REG,ARG_IMM,ARG_NONE,ARG_NONE},
+  {60,"mfex",OP_LOADIMM},
+  {61,"mtex",OP_LOADIMM},
   /* TRAPS */
-  {62,"kcall",ARG_IMM,ARG_NONE,ARG_NONE,ARG_NONE},
-  {62,"mcall",ARG_IMM,ARG_NONE,ARG_NONE,ARG_NONE},
-  {63,"rft",ARG_NONE,ARG_NONE,ARG_NONE,ARG_NONE},
+  {62,"kcall",OP_KMCALL},
+  {62,"mcall",OP_KMCALL},
+  {63,"rft",OP_NONE},
   /* PSEUDO-INSTRUCTIONS */
-  {-1,"nop",ARG_NONE,ARG_NONE,ARG_NONE,ARG_NONE},
-  {-2,"li",ARG_REG,ARG_IMM,ARG_NONE,ARG_NONE},
-  {-3,"la",ARG_REG,ARG_IMM,ARG_NONE,ARG_NONE},
-  {-4,"br",ARG_REG,ARG_NONE,ARG_NONE,ARG_NONE},
-  {-5,"mv",ARG_REG,ARG_REG,ARG_NONE,ARG_NONE}
+  {0,"nop",OP_NONE},
+  {-2,"li",OP_PSEUDO},
+  {-3,"la",OP_PSEUDO},
+  {-4,"br",OP_PSEUDO},
+  {-5,"mv",OP_PSEUDO}
 };
 
 /*****VARIABLES*****/
@@ -179,6 +182,21 @@ unsigned int addToSegment(void* buf, unsigned int len) {
       bss += len;
       return ret;
     }
+  }
+}
+
+unsigned int getSegmentSize() {
+  switch(curSegment) {
+    case SEG_TEXT:
+      return textSize*4;
+    case SEG_RODATA:
+      return rodataSize;
+    case SEG_DATA:
+      return dataSize;
+    case SEG_BSS:
+      return bss;
+    default:
+      return 0;
   }
 }
 
@@ -273,7 +291,7 @@ void Assemble(char* name, char* data) {
                     free(buf);
                   } else {
                     /* Add Label Relocation */
-
+                    
                   }
                   break;
                 }
