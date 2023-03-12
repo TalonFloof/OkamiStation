@@ -2,7 +2,19 @@
 (extern Unifont)
 (extern OkamiLogo)
 (extern Dither)
-(externFn FramebufferDither)
+
+(fn FramebufferDither (color)
+    (int x row)
+    (= row 0)
+    (while (u< row 768)
+        (= x (u% row 2))
+        (while (u< x 1024)
+            (b! (+ (u* row 1024) x 0x90001000) color)
+            (= x (+ x 2))
+        )
+        (= row (+ row 1))
+    )
+)
 
 (fn FramebufferDrawCenteredRect (x y w h color) (FramebufferDrawRect (- x (u/ w 2)) (- y (u/ h 2)) w h color))
 

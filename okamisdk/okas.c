@@ -161,7 +161,7 @@ unsigned int textSize = 0;
 unsigned int textCapacity = 0;
 unsigned char* rodata = NULL;
 unsigned int rodataSize = 0;
-unsigned char* data = NULL;
+unsigned char* dataSeg = NULL;
 unsigned int dataSize = 0;
 unsigned int bss = 0;
 Label* labelHead = NULL;
@@ -192,8 +192,8 @@ unsigned int addToSegment(void* buf, unsigned int len) {
       return rodataSize-len;
     }
     case SEG_DATA: {
-      data = realloc(data,dataSize+len);
-      memcpy(&data[dataSize],buf,len);
+      dataSeg = realloc(dataSeg,dataSize+len);
+      memcpy(&dataSeg[dataSize],buf,len);
       dataSize+=len;
       return dataSize-len;
     }
@@ -220,7 +220,7 @@ unsigned int getSegmentSize() {
   }
 }
 
-unsigned char* readFile(const char* path, unsigned long* fileSize) {
+unsigned char* readFile(const char* path, unsigned long* fileSize,) {
     FILE* file = fopen(path,"rb");
     if(file == NULL)
         return NULL;
@@ -230,9 +230,10 @@ unsigned char* readFile(const char* path, unsigned long* fileSize) {
         *fileSize = fsize;
     }
     fseek(file, 0, SEEK_SET);
-    char* content = malloc(fsize);
+    char* content = malloc(fsize+1);
     if(fread(content, fsize, 1, file) != 1)
         return NULL;
+    content[fsize] = 0;
     fclose(file);
     return content;
 }
@@ -626,8 +627,10 @@ void Assemble(char* name, char* data) {
         i++;
       }
       i++;
-    } else if(data[i] != '\0') {
-      Error(name,line,i-lineStart,"Unknown Token");
+    } else {
+      char* buf = malloc(4096);
+      sprintf(buf,"Unknown Token %s", (data+i)-32);
+      Error(name,line,i-lineStart,buf);
     }
 next:
     while(0);
@@ -676,7 +679,7 @@ unsigned int GenObject(char* out) {
   fwrite(rodata,rodataSize,1,outfile);
   if(rodataSize % 4 != 0)
     fwrite(&zero,4-(rodataSize%4),1,outfile);
-  fwrite(data,dataSize,1,outfile);
+  fwrite(dataSeg,dataSize,1,outfile);
   if(dataSize % 4 != 0)
     fwrite(&zero,4-(dataSize%4),1,outfile);
   while(relocHead != NULL) {
@@ -700,18 +703,18 @@ unsigned int GenObject(char* out) {
       }
     }
     void* next = relocHead->next;
-    /*free(relocHead->labelName);
-    free(relocHead);*/
+    free(relocHead->labelName);
+    free(relocHead);
     relocHead = next;
   }
   long size = ftell(outfile);
   fclose(outfile);
-  /*while(labelHead != NULL) {
+  while(labelHead != NULL) {
     void* next = labelHead->next;
     free(labelHead->name);
     free(labelHead);
     labelHead = next;
-  }*/
+  }
   return size;
 }
 
@@ -727,7 +730,7 @@ int main(int argc, char **argv) {
   gettimeofday(&endTime, 0);
   free(text);
   free(rodata);
-  free(data);
+  free(dataSeg);
   double startTS = ((double)startTime.tv_sec)+((double)startTime.tv_usec*0.000001);
   double endTS = ((double)endTime.tv_sec)+((double)endTime.tv_usec*0.000001);
   fprintf(stderr,"\x1b[1;32mSucessfully compiled binary with size of %li bytes (%f secs elapsed)\x1b[0m\n",fileSize,endTS-startTS);
