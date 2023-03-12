@@ -177,13 +177,13 @@ SegmentType curSegment = SEG_TEXT;
 unsigned int addToSegment(void* buf, unsigned int len) {
   switch(curSegment) {
     case SEG_TEXT: {
-      if(textSize+len>textCapacity) {
+      if(textSize+(len/4)>textCapacity) {
         textCapacity+=1024;
         text = (unsigned int*)realloc(text,4*textCapacity);
       }
       memcpy(&text[textSize],buf,len);
       textSize+=(len/4);
-      return textSize-(len/4);
+      return (textSize-(len/4))*4;
     }
     case SEG_RODATA: {
       rodata = realloc(rodata,rodataSize+len);
@@ -265,7 +265,6 @@ void addReloc(RelocationType type, char* labelName) {
     relocTail = r;
   }
   r->labelName = label;
-  fprintf(stderr,"%s\n",r->labelName);
   r->srcSegment = curSegment;
   r->offset = getSegmentSize();
   r->type = type;
@@ -404,7 +403,7 @@ void Assemble(char* name, char* data) {
         }
       } else if(strncmp(data+start,".resb",length) == 0) {
         i++;
-        unsigned char val = (unsigned char)parseImm(OP_NONE,data,&i);
+        unsigned int val = (unsigned int)parseImm(OP_NONE,data,&i);
         addToSegment(NULL,val);
       } else if(strncmp(data+start,".byte",length) == 0) {
         i++;
@@ -520,8 +519,8 @@ void Assemble(char* name, char* data) {
                 int reg2 = parseReg(data,&i);
                 if(reg1 == -1 || reg2 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
-                                      | (((unsigned int)reg2) << 16)
-                                      | (((unsigned int)reg1) << 11);
+                                      | (((unsigned int)reg1) << 16)
+                                      | (((unsigned int)reg2) << 11);
                 addToSegment(&opcode,4);
                 break;
               }
@@ -545,7 +544,7 @@ void Assemble(char* name, char* data) {
                 unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
                 if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
-                                      | (((unsigned int)reg1) << 16)
+                                      | (((unsigned int)reg1) << (OkamiInstructions[index].opcode == 60 ? 21 : 16))
                                       | imm;
                 addToSegment(&opcode,4);
                 break;
@@ -567,7 +566,7 @@ void Assemble(char* name, char* data) {
               }
               case OP_LOADSTORE: {
                 unsigned int reg1 = parseReg(data,&i);
-                unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
+                short imm = (short)parseImm(OkamiInstructions[index].type,data,&i);
                 if(data[i] != '(') {
                   Error(name,line,i-lineStart,"Invalid Load/Store instruction syntax");
                 } else {i++;}
@@ -579,7 +578,7 @@ void Assemble(char* name, char* data) {
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
                                       | (((unsigned int)reg1) << 21)
                                       | (((unsigned int)reg2) << 16)
-                                      | imm;
+                                      | (unsigned int)((unsigned short)imm);
                 addToSegment(&opcode,4);
                 break;
               }
@@ -589,16 +588,16 @@ void Assemble(char* name, char* data) {
                     int reg1 = parseReg(data,&i);
                     if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
                     unsigned int imm = parseImm(OP_LOADIMM,data,&i);
-                    unsigned int opcode = 0x60000000 | (((unsigned int)reg1) << 16);
+                    unsigned int opcode = 0x60000000 | (((unsigned int)reg1) << 16) | (imm >> 16);
                     addToSegment(&opcode,4);
-                    opcode = 0x48000000 | (((unsigned int)reg1) << 16) | (((unsigned int)reg1) << 21);
+                    opcode = 0x48000000 | (((unsigned int)reg1) << 16) | (((unsigned int)reg1) << 21) | (imm & 0xFFFF);
                     addToSegment(&opcode,4);
                     break;
                   }
                   case -2: { /*br*/
                     int reg1 = parseReg(data,&i);
                     if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
-                    unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
+                    unsigned int opcode = 0x88000000
                                           | (((unsigned int)reg1) << 11);
                     addToSegment(&opcode,4);
                     break;                     
@@ -636,7 +635,7 @@ next:
   free(data);
 }
 
-void GenObject(char* out) {
+unsigned int GenObject(char* out) {
   IntRelocEntry* index = relocHead;
   while(index != NULL) {
     void* next = index->next;
@@ -645,8 +644,8 @@ void GenObject(char* out) {
       Label* lind = labelHead;
       while(lind != NULL) {
         if(strcmp(lind->name,index->labelName) == 0) {
-          int jump = ((lind->offset)-(index->offset))/4;
-          *((short*)(((char*)text)+index->offset)) = ((short)jump);
+          int jump = ((lind->offset)-((index->offset)+4))/4;
+          *((short*)(&text[index->offset/4])) = ((short)jump);
           break;
         }
         lind = lind->next;
@@ -705,6 +704,7 @@ void GenObject(char* out) {
     free(relocHead);
     relocHead = next;
   }
+  long size = ftell(outfile);
   fclose(outfile);
   while(labelHead != NULL) {
     void* next = labelHead->next;
@@ -712,6 +712,7 @@ void GenObject(char* out) {
     free(labelHead);
     labelHead = next;
   }
+  return size;
 }
 
 int main(int argc, char **argv) {
@@ -722,10 +723,13 @@ int main(int argc, char **argv) {
   }
   gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
-  GenObject(argv[2]);
+  long fileSize = GenObject(argv[2]);
   gettimeofday(&endTime, 0);
   free(text);
   free(rodata);
   free(data);
+  double startTS = ((double)startTime.tv_sec)+((double)startTime.tv_usec*0.000001);
+  double endTS = ((double)endTime.tv_sec)+((double)endTime.tv_usec*0.000001);
+  fprintf(stderr,"\x1b[1;32mSucessfully compiled binary with size of %li bytes (%f secs elapsed)\x1b[0m\n",fileSize,endTS-startTS);
   return 0;
 }
