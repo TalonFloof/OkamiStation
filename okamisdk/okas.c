@@ -535,7 +535,7 @@ void Assemble(char* name, char* data) {
                                       | (((unsigned int)reg3) << 16)
                                       | (((unsigned int)reg2) << 11)
                                       | (((unsigned int)reg1) << 6)
-                                      | (((index % 2) == 1) ? 1 : 0);
+                                      | (((index % 2) == 1) ? 0x8 : 0);
                 addToSegment(&opcode,4);
                 break;
               }
@@ -545,7 +545,7 @@ void Assemble(char* name, char* data) {
                 if(reg1 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
                                       | (((unsigned int)reg1) << (OkamiInstructions[index].opcode == 60 ? 21 : 16))
-                                      | imm;
+                                      | (imm&0xFFFF);
                 addToSegment(&opcode,4);
                 break;
               }
@@ -626,7 +626,7 @@ void Assemble(char* name, char* data) {
         i++;
       }
       i++;
-    } else {
+    } else if(data[i] != '\0') {
       Error(name,line,i-lineStart,"Unknown Token");
     }
 next:
@@ -700,18 +700,18 @@ unsigned int GenObject(char* out) {
       }
     }
     void* next = relocHead->next;
-    free(relocHead->labelName);
-    free(relocHead);
+    /*free(relocHead->labelName);
+    free(relocHead);*/
     relocHead = next;
   }
   long size = ftell(outfile);
   fclose(outfile);
-  while(labelHead != NULL) {
+  /*while(labelHead != NULL) {
     void* next = labelHead->next;
     free(labelHead->name);
     free(labelHead);
     labelHead = next;
-  }
+  }*/
   return size;
 }
 
