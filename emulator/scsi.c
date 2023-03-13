@@ -86,3 +86,19 @@ typedef struct {
 
 SCSIDrive SCSIDrives[8];
 
+int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
+    *value = 0;
+    return 1;
+}
+
+int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
+    return 1;
+}
+
+void SCSIInit() {
+    for(int i=0x20; i<=0x27; i++) {
+        OkamiPorts[i].isPresent = 1;
+        OkamiPorts[i].read = SCSIPortRead;
+        OkamiPorts[i].write = SCSIPortWrite;
+    }
+}

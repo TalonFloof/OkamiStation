@@ -2,6 +2,7 @@
 (externFn halt)
 
 (fn main ()
+    (int code 0)
     (TestRAM)
     (TestFB)
     (SetupTrap (TrapHandler) 0)
@@ -15,14 +16,16 @@
     (FramebufferRenderMonochromeBitmap 352 320 128 128 1 0 0 (OkamiLogo))
     (FramebufferRenderMonochromeBitmap 560 320 32 32 4 0 1 (OkamiStation))
     (FramebufferRenderMonochromeBitmap 490 369 64 31 1 0 0 (SystestText))
-    /*(ConsoleInit)
+    (= code (SCSISelect 0))
+    (if (== code 1) (SelfTestProblem "Arbitration In Progress Bit stuck low on NCR8350"))
+    (ConsoleInit)
     (FramebufferRenderMonochromeBitmap 192 144 128 128 1 255 0 (OkamiLogo))
     (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 1.0, ")
     (itoa (u/ RAMSize 1048576) (stringBuffer) 10)
     (ConsolePrint (stringBuffer))
     (ConsolePrint " MB memory installed\n\n\n\n")
     (ConsolePrint "NVRAM is corrupted!\n")
-    (FORTH)*/
+    (FORTH)
 
     (halt)
 )

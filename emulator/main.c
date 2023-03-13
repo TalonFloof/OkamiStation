@@ -10,6 +10,7 @@
 #include "okami1041.h"
 #include "oipb.h"
 #include "timer.h"
+#include "scsi.h"
 
 SDL_Window *ScreenWindow;
 SDL_Renderer *ScreenRenderer;
@@ -66,6 +67,7 @@ int main(int argc, const char* argv[]) {
     OkamiBoardInit();
     OIPBInit();
     TimerInit();
+    SCSIInit();
     SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "0", SDL_HINT_OVERRIDE);
 	SDL_SetHintWithPriority(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1", SDL_HINT_OVERRIDE);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
