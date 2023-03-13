@@ -70,8 +70,21 @@ typedef struct {
   void* next;
   SegmentType seg;
   unsigned int offset;
+  unsigned char external : 1;
+  unsigned char reserved : 5;
+  unsigned char local : 1;
+  unsigned char global : 1;
   char* name;
 } Label;
+
+typedef struct {
+    unsigned int nameoff;
+    SegmentType segment;
+    unsigned int offset;
+    unsigned char external : 1;
+    unsigned char libname : 1; /* For dynamic linking */
+    unsigned char reserved : 6;
+} Symbol;
 
 typedef enum {
   OP_NONE,
@@ -161,18 +174,35 @@ unsigned int textSize = 0;
 unsigned int textCapacity = 0;
 unsigned char* rodata = NULL;
 unsigned int rodataSize = 0;
+unsigned int rodataCapacity = 0;
 unsigned char* dataSeg = NULL;
 unsigned int dataSize = 0;
+unsigned int dataCapacity = 0;
 unsigned int bss = 0;
 Label* labelHead = NULL;
 Label* labelTail = NULL;
+unsigned int labelSize = 0;
+unsigned int strSize = 0;
 IntRelocEntry* relocHead = NULL;
 IntRelocEntry* relocTail = NULL;
 unsigned int relocSize = 0;
 
 char* curLabel = NULL;
+int curLabelGlobal = 0;
 SegmentType curSegment = SEG_TEXT;
 /*******************/
+
+unsigned int roundUp(unsigned int numToRound) {
+  unsigned int v = numToRound;
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
+}
 
 unsigned int addToSegment(void* buf, unsigned int len) {
   switch(curSegment) {
@@ -186,13 +216,19 @@ unsigned int addToSegment(void* buf, unsigned int len) {
       return (textSize-(len/4))*4;
     }
     case SEG_RODATA: {
-      rodata = realloc(rodata,rodataSize+len);
+      if(rodataSize+len>rodataCapacity) {
+        rodataCapacity+=roundUp(rodataSize+len);
+        rodata = realloc(rodata,rodataCapacity);
+      }
       memcpy(&rodata[rodataSize],buf,len);
       rodataSize+=len;
       return rodataSize-len;
     }
     case SEG_DATA: {
-      dataSeg = realloc(dataSeg,dataSize+len);
+      if(dataSize+len>dataCapacity) {
+        dataCapacity+=roundUp(dataSize+len);
+        dataSeg = realloc(dataSeg,dataCapacity);
+      }
       memcpy(&dataSeg[dataSize],buf,len);
       dataSize+=len;
       return dataSize-len;
@@ -220,7 +256,7 @@ unsigned int getSegmentSize() {
   }
 }
 
-unsigned char* readFile(const char* path, unsigned long* fileSize,) {
+unsigned char* readFile(const char* path, unsigned long* fileSize) {
     FILE* file = fopen(path,"rb");
     if(file == NULL)
         return NULL;
@@ -257,6 +293,8 @@ void addReloc(RelocationType type, char* labelName) {
     free(labelName);
   }
   IntRelocEntry* r = malloc(sizeof(IntRelocEntry));
+  r->prev = NULL;
+  r->next = NULL;
   if(relocHead == NULL) {
     relocHead = r;
     relocTail = r;
@@ -272,8 +310,10 @@ void addReloc(RelocationType type, char* labelName) {
   relocSize++;
 }
 
-void addLabel(char* labelName) {
+void addLabel(char* labelName, int local) {
   Label* l = malloc(sizeof(Label));
+  l->prev = NULL;
+  l->next = NULL;
   if(labelHead == NULL) {
     labelHead = l;
     labelTail = l;
@@ -285,6 +325,13 @@ void addLabel(char* labelName) {
   l->seg = curSegment;
   l->offset = getSegmentSize();
   l->name = labelName;
+  l->reserved = 0;
+  l->external = 0;
+  l->global = curLabelGlobal;
+  if(curLabelGlobal)
+    labelSize++;
+  l->local = local;
+  curLabelGlobal = 0;
 }
 
 unsigned int parseImm(OpType type, char* data, unsigned long* i) {
@@ -391,7 +438,7 @@ void Assemble(char* name, char* data) {
         memset(buf,0,length+lbLen);
         memcpy(buf,curLabel,lbLen);
         memcpy(buf+lbLen,data+start,length-1);
-        addLabel(buf);
+        addLabel(buf,1);
       } else if(strncmp(data+start,".global",length) == 0) {
       } else if(strncmp(data+start,".extern",length) == 0) {
         Error(name,line,start-lineStart,".extern is not implemented yet!");
@@ -468,8 +515,11 @@ void Assemble(char* name, char* data) {
         char* buf = malloc(length+1);
         memset(buf,0,length+1);
         memcpy(buf,data+start,length);
+        if(strncmp(data+start,"foxxo",length) == 0) {
+          Error(name,line,i-lineStart,"Label name \"foxxo\" is not floofy enough, consider using \"🦊\" instead");
+        }
         curLabel = buf;
-        addLabel(buf);
+        addLabel(buf,0);
       } else {
         int index;
         for(index = 0; index < sizeof(OkamiInstructions)/sizeof(struct OkamiOpcode); index++) {
@@ -566,12 +616,12 @@ void Assemble(char* name, char* data) {
                 break;
               }
               case OP_LOADSTORE: {
-                unsigned int reg1 = parseReg(data,&i);
+                int reg1 = parseReg(data,&i);
                 short imm = (short)parseImm(OkamiInstructions[index].type,data,&i);
                 if(data[i] != '(') {
                   Error(name,line,i-lineStart,"Invalid Load/Store instruction syntax");
                 } else {i++;}
-                unsigned int reg2 = parseReg(data,&i);
+                int reg2 = parseReg(data,&i);
                 if(data[i] != ')') {
                   Error(name,line,i-lineStart,"Invalid Load/Store instruction syntax");
                 } else {i++;}
@@ -628,9 +678,7 @@ void Assemble(char* name, char* data) {
       }
       i++;
     } else {
-      char* buf = malloc(4096);
-      sprintf(buf,"Unknown Token %s", (data+i)-32);
-      Error(name,line,i-lineStart,buf);
+      Error(name,line,i-lineStart,"Unknown Token");
     }
 next:
     while(0);
@@ -644,6 +692,12 @@ unsigned int GenObject(char* out) {
     void* next = index->next;
     if(index->type == REL16) {
       relocSize--;
+      if(index->prev != NULL)
+        ((IntRelocEntry*)index->prev)->next = index->next;
+      if(index->next != NULL)
+        ((IntRelocEntry*)index->next)->prev = index->prev;
+      if(index == relocHead)
+        relocHead = index->next;
       Label* lind = labelHead;
       while(lind != NULL) {
         if(strcmp(lind->name,index->labelName) == 0) {
@@ -656,6 +710,8 @@ unsigned int GenObject(char* out) {
       if(lind == NULL) {
         Error(index->labelName,0,0,"Label has no matching definition");
       }
+      free(index->labelName);
+      free(index);
     }
     index = next;
   }
@@ -670,7 +726,7 @@ unsigned int GenObject(char* out) {
   header.data = dataSize;
   header.bss = bss;
   header.reloc = relocSize*sizeof(RelocationEntry);
-  header.sym = 0;
+  header.sym = labelSize*sizeof(Symbol);
   header.str = 0;
   header.entry = 0;
   fwrite(&header,sizeof(OkROHeader),1,outfile);
@@ -701,6 +757,8 @@ unsigned int GenObject(char* out) {
       if(lind == NULL) {
         Error(index->labelName,0,0,"Label has no matching definition");
       }
+    } else {
+      fprintf(stderr, "\x1b[33mWARN - Leftover REL16 found (assembler bug!)\x1b[0m\n");
     }
     void* next = relocHead->next;
     free(relocHead->labelName);
@@ -719,20 +777,22 @@ unsigned int GenObject(char* out) {
 }
 
 int main(int argc, char **argv) {
-  struct timeval startTime, endTime;
+  struct timeval startTime, endAsmTime, endTime;
   if(argc < 3) {
     printf("Usage: okas [infile] [outfile]\n");
     return 0;
   }
   gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
+  gettimeofday(&endAsmTime, 0);
   long fileSize = GenObject(argv[2]);
   gettimeofday(&endTime, 0);
   free(text);
   free(rodata);
   free(dataSeg);
   double startTS = ((double)startTime.tv_sec)+((double)startTime.tv_usec*0.000001);
+  double endAsmTS = ((double)endAsmTime.tv_sec)+((double)endAsmTime.tv_usec*0.000001);
   double endTS = ((double)endTime.tv_sec)+((double)endTime.tv_usec*0.000001);
-  fprintf(stderr,"\x1b[1;32mSucessfully compiled binary with size of %li bytes (%f secs elapsed)\x1b[0m\n",fileSize,endTS-startTS);
+  fprintf(stderr,"\x1b[1;32mSucessfully compiled binary with size of %li bytes (%lf secs asm, %lf secs objgen, %lf secs total)\x1b[0m\n",fileSize,endAsmTS-startTS,endTS-endAsmTS,endTS-startTS);
   return 0;
 }

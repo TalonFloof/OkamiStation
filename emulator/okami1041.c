@@ -404,7 +404,8 @@ void next() {
                     break;
                 }
                 case 10: { // DIV/DIVU
-                    uint32_t lowRd = (instr & 0x7C0) >> 6;
+                    uint32_t lowR
+                    d = (instr & 0x7C0) >> 6;
                     if(getRegister(rs2) == 0) {
                         triggerTrap(10,0,true);
                         break;

@@ -419,5 +419,5 @@
 )
 
 (fn fun_help ()
-    (ConsolePrint "\nConsult the OkamiStation Operation Manual for further information\non using the OkamiBoot shell.\n\nBasic Commands:\n  help - Shows this message\n  boot <drive> - Boots from the given device\n  words - Lists all of the available FORTH words\n")
+    (ConsolePrint "\nConsult the OkamiStation Operation Manual for further information\non using the OkamiBoot shell.\n\nBasic Commands:\n  help - Shows this message\n  boot <drive> - Boots from the given device\n  config - Configures NVRAM\n  words - Lists all of the available FORTH words\n")
 )

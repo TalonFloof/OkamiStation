@@ -8,13 +8,21 @@
     (SetupTrap (TrapHandler) 1)
 
     (FramebufferRenderBackground)
-    (ConsoleInit)
+    /* Run POST */
+    (FramebufferDrawCenteredRect 510 382 320 128 255)
+    (FramebufferDrawCenteredRect 514 386 320 128 248)
+    (FramebufferDrawCenteredRect 512 384 320 128 252)
+    (FramebufferRenderMonochromeBitmap 352 320 128 128 1 0 0 (OkamiLogo))
+    (FramebufferRenderMonochromeBitmap 560 320 32 32 4 0 1 (OkamiStation))
+    (FramebufferRenderMonochromeBitmap 490 369 64 31 1 0 0 (SystestText))
+    /*(ConsoleInit)
     (FramebufferRenderMonochromeBitmap 192 144 128 128 1 255 0 (OkamiLogo))
     (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 1.0, ")
     (itoa (u/ RAMSize 1048576) (stringBuffer) 10)
     (ConsolePrint (stringBuffer))
     (ConsolePrint " MB memory installed\n\n\n\n")
-    (FORTH)
+    (ConsolePrint "NVRAM is corrupted!\n")
+    (FORTH)*/
 
     (halt)
 )

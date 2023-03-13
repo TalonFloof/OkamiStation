@@ -1,6 +1,8 @@
 (include_asm "Framebuffer.s")
 (extern Unifont)
 (extern OkamiLogo)
+(extern OkamiStation)
+(extern SystestText)
 (extern Dither)
 
 (fn FramebufferDither (color)
