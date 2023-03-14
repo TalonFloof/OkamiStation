@@ -2,13 +2,13 @@
 (externFn halt)
 
 (fn main ()
-    (int code 0)
     (TestRAM)
     (TestFB)
     (SetupTrap (TrapHandler) 0)
     (SetupTrap (TrapHandler) 1)
 
     (FramebufferRenderBackground)
+    (FramebufferRenderString 0 752 1 255 "Rev 0.1")
     /* Run POST */
     (FramebufferDrawCenteredRect 510 382 320 128 255)
     (FramebufferDrawCenteredRect 514 386 320 128 248)
@@ -16,8 +16,9 @@
     (FramebufferRenderMonochromeBitmap 352 320 128 128 1 0 0 (OkamiLogo))
     (FramebufferRenderMonochromeBitmap 560 320 32 32 4 0 1 (OkamiStation))
     (FramebufferRenderMonochromeBitmap 490 369 64 31 1 0 0 (SystestText))
-    (= code (SCSISelect 0))
-    (if (== code 1) (SelfTestProblem "Arbitration In Progress Bit stuck low on NCR8350"))
+    (SetTimeout 5000 "NCR5380 Arbitration & Select Timeout (check SCSI Controller!)")
+    (SCSISelect 0)
+    (w! 0xbe000000 0xffffffff)
     (ConsoleInit)
     (FramebufferRenderMonochromeBitmap 192 144 128 128 1 255 0 (OkamiLogo))
     (ConsolePrint "\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 1.0, ")
@@ -32,6 +33,11 @@
 
 (fn Exception (context cause pc vaddr)
     (int i strSize)
+    (w! 0xbe000000 0xffffffff)
+    (if (== cause 1) (do
+        (SelfTestProblem timeoutMsg)
+        (return)
+    ))
     (FramebufferDither 0)
     (ConsoleInit)
     (ConsolePrint "EXCEPTION TRAP TRIGGERED - Cause 0x")

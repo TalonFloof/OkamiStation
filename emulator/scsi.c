@@ -24,6 +24,10 @@ Registers:
 */
 
 typedef struct {
+
+} SCSISignal;
+
+typedef struct {
     FILE* image;
     uint32_t busID;
     uint32_t blocks;
@@ -43,23 +47,24 @@ typedef enum {
 } NCRTransferPhases;
 
 typedef struct {
-    /* Data In/Out is technically the first register */
+    uint8_t data_in;
+    uint8_t data_out;
     union { /* Initiator Command Register */
-        uint8_t icr;
-        struct icrbits {
+        uint8_t raw;
+        struct {
             uint8_t assert_databus : 1;
             uint8_t assert_atn : 1;
             uint8_t assert_sel : 1;
             uint8_t assert_bsy : 1;
             uint8_t assert_ack : 1;
-            uint8_t icr_la : 1;
-            uint8_t icr_aip : 1;
+            uint8_t la : 1;
+            uint8_t aip : 1;
             uint8_t assert_rst : 1;
-        };
-    };
+        } bits;
+    } icr;
     union { /* Mode Register */
-        uint8_t mode;
-        struct modebits {
+        uint8_t raw;
+        struct {
             uint8_t arbitrate : 1;
             uint8_t dma_mode : 1;
             uint8_t monitor_busy : 1;
@@ -68,30 +73,48 @@ typedef struct {
             uint8_t enable_parity_checking : 1;
             uint8_t target_mode : 1;
             uint8_t block_mode_dma : 1;
-        };
-    };
+        } bits;
+    } mode;
     union { /* Target Command Register */
-        uint8_t tcr;
-        struct tcrbits {
+        uint8_t raw;
+        struct {
             uint8_t assert_io : 1;
             uint8_t assert_cd : 1;
             uint8_t assert_msg : 1;
             uint8_t assert_req : 1;
             uint8_t unused : 4;
-        };
-    };
+        } bits;
+    } tcr;
     uint8_t ser; /* Select Enable Register */
-    
 } NCR5380;
 
+NCR5380 SCSIController;
 SCSIDrive SCSIDrives[8];
 
 int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
-    *value = 0;
+    switch(port) {
+        case 0x21: {
+            *value = SCSIController.icr.raw;
+        }
+    }
     return 1;
 }
 
 int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
+    switch(port) {
+        case 0x21: {
+            SCSIController.icr = 
+        }
+        case 0x22: {
+            if(value & 1) {
+                SCSIController.icr.bits.aip = 1;
+                SCSIController.icr.bits.la = 0;
+            } else if(value & 1 == 0) {
+                SCSIController.icr.bits.aip = 0;
+            }
+            break;
+        }
+    }
     return 1;
 }
 

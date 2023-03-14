@@ -5,23 +5,22 @@ SCSISelect: /* (a0: ID) */
     lw t1, 8(t0) /* Enable the Arbitration Bit */
     ori t1, t1, 1
     sw t1, 8(t0)
-    li t2, 0
-    la t3, 16777216
 .arbinloop:
     lw t1, 4(t0)
     andi t1, t1, 0x40
-    addi t2, t2, 1
-    bgeu t2, t3, .err1
     beq t1, zero, .arbinloop
     beq zero, zero, .lostarbloop
-.err1:
-    li a0, 1
-    br ra
 .lostarbloop:
     lw t1, 4(t0)
     andi t1, t1, 0x20
     beq t1, zero, .arbsuccess
     /* Reset the Arbitration Bit and try again */
+    lw t1, 8(t0) /* Enable the Arbitration Bit */
+    andi t1, t1, 0xfe
+    sw t1, 8(t0)
+    ori t1, t1, 1
+    sw t1, 8(t0)
+    beq zero, zero, .arbinloop
 .arbsuccess:
     li a0, 0
     br ra

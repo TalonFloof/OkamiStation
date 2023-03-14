@@ -36,11 +36,21 @@
     (halt)
 )
 
+(int timeoutMsg 0)
+
+(fn SetTimeout (ms msg)
+    (= timeoutMsg msg)
+    (w! 0xbe000010 ms)
+    (w! 0xbe00000c 0)
+    (w! 0xbe000000 0xfffffffe)
+)
+
 (fn SelfTestProblem (msg)
     (ConsoleInit)
-    (ConsolePrint "SelfTest Failure!\n\n")
     (ConsolePrint msg)
-    (ConsolePrint "\n\nStrike any key to continue boot\n")
-    (while (!= (w@ 0xbe000040) 0) (do)) /* Clear the ringbuffer */
-    (while (== (w@ 0xbe000040) 0) (do)) /* Then wait for a key */
+    (ConsolePrint "\n\nOkamiStation SelfTest failed!\nSystem Halted\n")
+    (halt)
+    /*(ConsolePrint "\n\nStrike any key to continue boot\n")
+    (while (!= (w@ 0xbe000040) 0) (do))*/ /* Clear the ringbuffer */
+    /*(while (== (w@ 0xbe000040) 0) (do))*/ /* Then wait for a key */
 )
