@@ -46,20 +46,31 @@ typedef enum {
     PHASE_MESSAGE_IN = 0b111,
 } NCRTransferPhases;
 
+typedef enum {
+    READY,
+    ARBITRATION,
+    SELECT_ID,
+    SELECT_FINISH,
+} NCRControllerPhases;
+
 typedef struct {
+    NCRControllerPhases phase;
+    uint8_t initiator_id;
+    uint8_t target_id;
+
     uint8_t data_in;
     uint8_t data_out;
     union { /* Initiator Command Register */
         uint8_t raw;
         struct {
-            uint8_t assert_databus : 1;
-            uint8_t assert_atn : 1;
-            uint8_t assert_sel : 1;
-            uint8_t assert_bsy : 1;
-            uint8_t assert_ack : 1;
+            uint8_t databus : 1;
+            uint8_t atn : 1;
+            uint8_t select : 1;
+            uint8_t busy : 1;
+            uint8_t ack : 1;
             uint8_t la : 1;
             uint8_t aip : 1;
-            uint8_t assert_rst : 1;
+            uint8_t reset : 1;
         } bits;
     } icr;
     union { /* Mode Register */
@@ -78,10 +89,10 @@ typedef struct {
     union { /* Target Command Register */
         uint8_t raw;
         struct {
-            uint8_t assert_io : 1;
-            uint8_t assert_cd : 1;
-            uint8_t assert_msg : 1;
-            uint8_t assert_req : 1;
+            uint8_t io : 1;
+            uint8_t cd : 1;
+            uint8_t msg : 1;
+            uint8_t req : 1;
             uint8_t unused : 4;
         } bits;
     } tcr;
@@ -91,10 +102,30 @@ typedef struct {
 NCR5380 SCSIController;
 SCSIDrive SCSIDrives[8];
 
+int SCSIGetID(uint8_t id) {
+    int i = 0;
+    for(;id > 0;id >>= 1) {
+        if((id & 0x1) != 0) {
+            return i;
+        }
+        i+=1;
+    }
+    return -1;
+}
+
 int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
     switch(port) {
+        case 0x20: {
+            *value = SCSIController.data_in;
+            break;
+        }
         case 0x21: {
             *value = SCSIController.icr.raw;
+            break;
+        }
+        case 0x22: {
+            *value = SCSIController.mode.raw;
+            break;
         }
     }
     return 1;
@@ -102,16 +133,42 @@ int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
 
 int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
     switch(port) {
+        case 0x20: {
+            if(SCSIController.phase == SELECT_ID) {
+                int i = 0;
+                for(;value > 0;value >>= 1) {
+                    if((value & 0x1) != 0) {
+                        if(i != SCSIController.initiator_id) {
+                            /*SCSIController.*/
+                        }
+                    }
+                    i+=1;
+                }
+            } else {
+                SCSIController.data_out = value;
+            }
+            break;
+        }
         case 0x21: {
-            SCSIController.icr = 
+            SCSIController.icr.raw = value;
+            if(SCSIController.phase == ARBITRATION && SCSIController.icr.bits.select) {
+                SCSIController.phase = SELECT_ID;
+            }
+            break;
         }
         case 0x22: {
             if(value & 1) {
                 SCSIController.icr.bits.aip = 1;
                 SCSIController.icr.bits.la = 0;
-            } else if(value & 1 == 0) {
+                SCSIController.icr.bits.busy = 1;
+                SCSIController.phase = ARBITRATION;
+                SCSIController.initiator_id = SCSIGetID(SCSIController.data_out);
+                SCSIController.data_out = 0;
+            } else if((value & 1) == 0) {
+                SCSIController.phase = READY;
                 SCSIController.icr.bits.aip = 0;
             }
+            SCSIController.mode.raw = value;
             break;
         }
     }
@@ -119,6 +176,7 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
 }
 
 void SCSIInit() {
+    SCSIController.phase = READY;
     for(int i=0x20; i<=0x27; i++) {
         OkamiPorts[i].isPresent = 1;
         OkamiPorts[i].read = SCSIPortRead;

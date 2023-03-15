@@ -223,7 +223,7 @@ bool writeDCacheLine(uint32_t addr, uint8_t* value, uint32_t size) {
 }
 
 bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch) {
-    if(addr & (len - 1) != 0) {
+    if((addr & (len - 1)) != 0) {
         if(write) {
             triggerTrap(7,addr,false); // Unaligned Write
             return 0;
