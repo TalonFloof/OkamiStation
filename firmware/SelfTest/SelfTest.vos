@@ -46,6 +46,7 @@
 )
 
 (fn SelfTestProblem (msg)
+    (w! 0xbe000000 0xffffffff)
     (ConsoleInit)
     (ConsolePrint msg)
     (ConsolePrint "\n\nOkamiStation SelfTest failed!\nSystem Halted\n")
