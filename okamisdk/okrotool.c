@@ -226,8 +226,8 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
-        uint32_t num2 = (uint32_t)strtol(argv[3],NULL,0);
+        uint32_t num = (uint32_t)strtoul(argv[2],NULL,0);
+        uint32_t num2 = (uint32_t)strtoul(argv[3],NULL,0);
         preformRelocation(image,num,num2);
         writeImage(argv[5],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
         free(image);
@@ -245,7 +245,7 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        uint32_t num = (uint32_t)strtol(argv[2],NULL,0);
+        uint32_t num = (uint32_t)strtoul(argv[2],NULL,0);
         preformRelocation(image,num,0);
         writeImage(argv[4],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
         free(image);

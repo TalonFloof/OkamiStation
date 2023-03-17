@@ -48,8 +48,8 @@ SCSISelect: /* (a0: Initiator ID a1: Target ID, a2: Reselect) */
     lui t2, 0x10
 .assertloop:
     lw t1, 4(t0)
-    andi t1, t1, 4
-    beq t1, zero, .ret
+    andi t1, t1, 8
+    bne t1, zero, .ret
     addi t2, t2, -1
     bltu zero, t2, .assertloop /* bgtu t2, zero, .assertloop */
     li a0, 1

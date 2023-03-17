@@ -51,6 +51,7 @@ typedef enum {
     ARBITRATION,
     SELECT_ID,
     SELECT_FINISH,
+    TRANSFER_PIO,
 } NCRControllerPhases;
 
 typedef struct {
@@ -139,11 +140,13 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
                 for(;value > 0;value >>= 1) {
                     if((value & 0x1) != 0) {
                         if(i != SCSIController.initiator_id) {
-                            /*SCSIController.*/
+                            SCSIController.target_id = i;
+                            break;
                         }
                     }
                     i+=1;
                 }
+                SCSIController.phase = SELECT_FINISH;
             } else {
                 SCSIController.data_out = value;
             }
@@ -154,6 +157,10 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
             if(SCSIController.phase == ARBITRATION && SCSIController.icr.bits.select) {
                 SCSIController.phase = SELECT_ID;
             }
+            if(SCSIController.phase == SELECT_FINISH && SCSIController.icr.bits.busy == 0) {
+                SCSIController.icr.bits.busy = 1;
+                SCSIController.phase = READY;
+            }
             break;
         }
         case 0x22: {
@@ -161,11 +168,12 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
                 SCSIController.icr.bits.aip = 1;
                 SCSIController.icr.bits.la = 0;
                 SCSIController.icr.bits.busy = 1;
-                SCSIController.phase = ARBITRATION;
+                if(SCSIController.phase == READY) {
+                    SCSIController.phase = ARBITRATION;
+                }
                 SCSIController.initiator_id = SCSIGetID(SCSIController.data_out);
                 SCSIController.data_out = 0;
             } else if((value & 1) == 0) {
-                SCSIController.phase = READY;
                 SCSIController.icr.bits.aip = 0;
             }
             SCSIController.mode.raw = value;
