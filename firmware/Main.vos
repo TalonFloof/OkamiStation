@@ -33,7 +33,7 @@
         (= a (w@ 0xbe000040))
         (if a (= i a))
     )
-    (if (== i 0x3A) (BootROM nvramCorrupted 3))
+    (if (== i 0x3A) (BootROM nvramCorrupted 2))
     (ConsoleInit)
     (memset (wordBuf) 9 0)
     (memcpy (wordBuf) 0xbe001008 8)
