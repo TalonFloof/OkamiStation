@@ -39,12 +39,12 @@ int main(int argc, const char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if(strcmp(argv[i],"-help") == 0) {
             printf("OkamiStation Emulator\nCopyright (C) 2023 TalonFox, Licensed under the MIT License\nOptions:\n");
-            printf("  -nostall\n    Disables Emulated Cache Stalling\n");
+            printf("  -cachestall\n    Enables Emulated Cache Stalling\n");
             printf("  -cachestats\n    Displays Statistics relating to the cache every second\n    (prints out to stderr)\n");
             printf("  -ram [KiBs]\n    Set the amount of RAM to the given amount in KiBs\n");
             return 0;
-        } else if(strcmp(argv[i],"-nostall") == 0) {
-            shouldCacheStall = 0;
+        } else if(strcmp(argv[i],"-cachestall") == 0) {
+            shouldCacheStall = 1;
         } else if(strcmp(argv[i],"-cachestats") == 0) {
             showCacheInfo = true;
         } else if(strcmp(argv[i],"-ram") == 0) {
@@ -123,12 +123,14 @@ int main(int argc, const char* argv[]) {
         SDL_RenderClear(ScreenRenderer);
         if(SDL_RenderCopy(ScreenRenderer, FBTexture, NULL, NULL) != 0) {
             fprintf(stderr, "Render Copy Error: %s\n", SDL_GetError());
+            OkamiBoardSaveNVRAM();
             abort();
         }
         SDL_RenderPresent(ScreenRenderer);
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT: {
+                    OkamiBoardSaveNVRAM();
                     return 0;
                 }
                 case SDL_KEYDOWN: {
@@ -152,7 +154,7 @@ int main(int argc, const char* argv[]) {
             if(showCacheInfo) {
                 double iPercent = (((double)iHitCount)/(((double)iHitCount)+((double)iMissCount)))*100.0;
                 double dPercent = (((double)dHitCount)+((double)dMissCount)) == 0 ? 100.0 : ((((double)dHitCount)/(((double)dHitCount)+((double)dMissCount)))*100.0);
-                fprintf(stderr, "ICache Hits: %i, ICache Misses: %i (%.2f%% hit/miss)\nDCache Hits: %i, DCache Misses: %i (%.2f%% hit/miss)\n", iHitCount, iMissCount, iPercent, dHitCount, dMissCount, dPercent);
+                fprintf(stderr, "ICache Hits: %li, ICache Misses: %li (%.2f%% hit/miss)\nDCache Hits: %li, DCache Misses: %li (%.2f%% hit/miss)\n", iHitCount, iMissCount, iPercent, dHitCount, dMissCount, dPercent);
             }
             iHitCount = 0;
             iMissCount = 0;
@@ -162,5 +164,6 @@ int main(int argc, const char* argv[]) {
             title_update = SDL_GetTicks()+1000;
         }
     }
+    OkamiBoardSaveNVRAM();
     return 0;
 }

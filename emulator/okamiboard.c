@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 uint8_t ROM[128*1024];
+uint8_t NVRAM[0x10000];
 OkamiPort OkamiPorts[256];
 
 /*
@@ -25,6 +26,9 @@ int OkamiBoardRead(uint32_t addr, uint32_t len, void *buf) {
         if(OkamiPorts[addr >> 2].isPresent) {
             return OkamiPorts[addr >> 2].read(addr >> 2, len, (uint32_t*)buf);
         }
+    } else if(addr >= 0x1000 && addr <= 0x11000) { // NVRAM
+        memcpy(buf,((uint8_t*)&NVRAM)+(addr-0x1000),len);
+        return 1;
     } else if(addr >= 0x1F00000) { // Firmware
         memcpy(buf,((uint8_t*)&ROM)+(addr-0x1F00000),len);
         return 1;
@@ -37,6 +41,9 @@ int OkamiBoardWrite(uint32_t addr, uint32_t len, void *buf) {
         if(OkamiPorts[addr >> 2].isPresent) {
             return OkamiPorts[addr >> 2].write(addr >> 2, len, *((uint32_t*)buf));
         }
+    } else if(addr >= 0x1000 && addr <= 0x11000) { // NVRAM
+        memcpy(((uint8_t*)&NVRAM)+(addr-0x1000),buf,len);
+        return 1;
     } else if(addr >= 0x1F00000) { // Firmware
         return 1;
     }
@@ -58,4 +65,16 @@ void OkamiBoardInit() {
     }
     fread(&ROM, sizeof(ROM), 1, firmware);
     fclose(firmware);
+    FILE *nvramfile = fopen("nvram.nv", "r");
+    if(nvramfile != NULL) {
+        fread(&NVRAM,sizeof(NVRAM),1,nvramfile);
+        fclose(nvramfile);
+    }
+}
+
+void OkamiBoardSaveNVRAM() {
+    fprintf(stderr, "Flushing NVRAM...\n");
+    FILE* nvramfile = fopen("nvram.nv", "w");
+    fwrite(&NVRAM,sizeof(NVRAM),1,nvramfile);
+    fclose(nvramfile);
 }

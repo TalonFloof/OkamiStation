@@ -9,7 +9,6 @@
 (int rTop 0)
 
 (fn FORTH ()
-    (int chr)
     (= dictHead (FWbss_end))
     (= dictTail (FWbss_end))
     (= dTop 255)
@@ -17,18 +16,7 @@
     (DefineWords)
     (ConsolePrint "ok ")
     (while 1
-        (= forthPromptLen 0)
-        (while 1
-            (= chr (ConsoleGetChar))
-            (if (== chr 10) (break) (| (!= chr 8) (& (== chr 8) (u> forthPromptLen 0))) (do
-                (b! (+ (stringBuffer) forthPromptLen) chr)
-                (if (| (== chr 8) (u< forthPromptLen 127)) (ConsoleWrite (+ (stringBuffer) forthPromptLen) 1))
-                (if (== chr 8) (= forthPromptLen (- forthPromptLen 1)) 
-                    (if (u>= forthPromptLen 127) (do) (= forthPromptLen (+ forthPromptLen 1)))
-                )
-            ))
-        )
-        (b! (+ (stringBuffer) forthPromptLen) 0)
+        (dPush (stringBuffer)) (dPush 128) (fun_accept) (= forthPromptLen (dPop))
         (= tokenOff 0)
         (ConsolePrint "  ")
         (fun_interpret)

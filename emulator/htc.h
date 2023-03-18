@@ -1,4 +1,4 @@
 #pragma once
 
-int HTCInterrupt(int irq);
+void HTCInterrupt(int irq);
 void HTCInit();

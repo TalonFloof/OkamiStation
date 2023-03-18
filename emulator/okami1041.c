@@ -10,7 +10,7 @@ extern uint64_t iHitCount;
 extern uint64_t iMissCount;
 extern uint64_t dHitCount;
 extern uint64_t dMissCount;
-int shouldCacheStall = 1;
+int shouldCacheStall = 0;
 
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
@@ -296,7 +296,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         } else {
             dMissCount += 1;
         }
-        stallTicks = shouldCacheStall*3; // Uncached Stall
+        stallTicks = 3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {
@@ -315,6 +315,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             return result;
         }
     }
+    return 0;
 }
 
 void reset() {

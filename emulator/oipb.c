@@ -122,6 +122,7 @@ int OIPBWrite(uint32_t port, uint32_t length, uint32_t value) {
     if(port == 0x10) {
         return 0;
     }
+	return 0;
 }
 
 void OIPBInit() {

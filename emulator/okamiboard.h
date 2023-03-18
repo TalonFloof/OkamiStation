@@ -14,3 +14,4 @@ typedef struct {
 extern OkamiPort OkamiPorts[256];
 
 void OkamiBoardInit();
+void OkamiBoardSaveNVRAM();

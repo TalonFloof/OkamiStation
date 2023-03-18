@@ -8,7 +8,7 @@ Interrupt Layout:
 0 Timer, 1 OIPB #0, 2 OIPB #1, 3 OIPB #2, 4 SCSI
 */
 
-int HTCInterrupt(int irq) {
+void HTCInterrupt(int irq) {
     if(!(HTCRegisters[0] & (1 << (irq&0x1F)))) {
         if(HTCRegisters[1] == 0) {
             triggerTrap(1,0,false);
@@ -18,7 +18,6 @@ int HTCInterrupt(int irq) {
 }
 
 int HTCRead(uint32_t port, uint32_t length, uint32_t *value) {
-    *value = HTCRegisters[port];
     if(port == 0x2) { // Claim
         for(int i=0; i < 32; i++) {
             if(HTCRegisters[1] & (1 << (i&0x1f))) {
@@ -39,7 +38,7 @@ int HTCWrite(uint32_t port, uint32_t length, uint32_t value) {
     if(port == 0x2) { // Acknowledge
         HTCRegisters[1] = HTCRegisters[1] & ~(1 << (value&0x1f));
         return 1;
-    } else if(port == 0x0) {
+    } else {
         HTCRegisters[port] = value;
         return 1;
     }

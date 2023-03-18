@@ -73,6 +73,7 @@
     (NewNative ".(" (ptrOf fun_printStrInterp))
     (NewNative "cr" (ptrOf fun_cr))
     (NewNative "page" (ptrOf ConsoleInit))
+    (NewNative "accept" (ptrOf fun_accept))
 
     /* Interpreter */
     (NewNative "word" (ptrOf fun_word))
@@ -90,6 +91,8 @@
     (NewNative "reset" 0xbff00000)
 
     (NewNative "help" (ptrOf fun_help))
+    (NewNative "config" (ptrOf fun_config))
+    (NewNative "boot" (ptrOf fun_boot))
 
     (NewNative "words" (ptrOf fun_words))
 )
@@ -293,6 +296,22 @@
 
 (fn fun_cr () (ConsolePrint "\n"))
 
+(fn fun_accept ()
+    (int chr addr len outLen) (= len (- (dPop) 1)) (= addr (dPop)) (= outLen 0)
+    (while 1
+        (= chr (ConsoleGetChar))
+        (if (== chr 10) (break) (| (!= chr 8) (& (== chr 8) (u> outLen 0))) (do
+            (b! (+ addr outLen) chr)
+            (if (| (== chr 8) (u< outLen len)) (ConsoleWrite (+ addr outLen) 1))
+            (if (== chr 8) (= outLen (- outLen 1)) 
+                (if (u>= outLen len) (do) (= outLen (+ outLen 1)))
+            )
+        ))
+    )
+    (b! (+ addr outLen) 0)
+    (dPush outLen)
+)
+
 (fn fun_word ()
     (int delimitor i val)
     (memset (wordBuf) 128 0)
@@ -420,4 +439,28 @@
 
 (fn fun_help ()
     (ConsolePrint "\nConsult the OkamiStation Operation Manual for further information\non using the OkamiBoot shell.\n\nBasic Commands:\n  help - Shows this message\n  boot <drive> - Boots from the given device\n  config - Configures NVRAM\n  words - Lists all of the available FORTH words\n")
+)
+
+(fn fun_config ()
+    (memcpy 0xbe001000 "\x80OkBoot\x80" 8)
+    (ConsolePrint "\nBoot Device: ")
+    (dPush (wordBuf)) (dPush 33) (fun_accept) (dPop)
+    (memcpy 0xbe001008 (wordBuf) (+ (strlen (wordBuf)) 1))
+    (ConsolePrint "\nRun SelfTest on Startup (y/n)? ")
+    (dPush (wordBuf)) (dPush 2) (fun_accept) (dPop)
+    (b! 0xbe001010 (strncmp (wordBuf) "y" 1))
+    (ConsolePrint "\nRun Memory Test on Startup (y/n)? ")
+    (dPush (wordBuf)) (dPush 2) (fun_accept) (dPop)
+    (b! 0xbe001011 (strncmp (wordBuf) "y" 1))
+    (if (strncmp (wordBuf) "n" 1) (do
+        (ConsolePrint "\nMemory Size (in KiB): ")
+        (dPush (wordBuf)) (dPush 17) (fun_accept) (dPop)
+        (w! 0xbe001018 (u* (atoi10 (wordBuf)) 1024))
+    ))
+)
+
+(fn fun_boot ()
+    (dPush 0x20) (fun_word)
+    (fun_cr)
+    (Boot 0)
 )
