@@ -63,3 +63,33 @@ SCSISelect: /* (a0: Initiator ID a1: Target ID, a2: Reselect) */
     sw t1, 4(t0)
     li a0, 0
     br ra
+
+SCSIRead: /* (a0: Base, a1: Length, a2: Phase) */
+    la t0, 0xbe000080
+    sw a2, 12(t0)
+    
+    br ra
+
+SCSIWrite: /* (a0: Base, a1: Length, a2: Phase) */
+    la t0, 0xbe000080
+    sw a2, 12(t0)
+    /* Assert the Data Bus */
+    lw t1, 4(t0)
+    ori t1, t1, 0x01
+    sw t1, 4(t0)
+.loop:
+    lbu t1, 0(a0)
+    sb t1, 0(t0)
+.reqhigh:
+    lw t1, 16(t0)
+    andi t1, t1, 0x20
+    beq t1, zero, .reqhigh
+.phasehigh:
+    lw t1, 20(t0)
+    andi t1, t1, 0x8
+    beq t1, zero, .phasehigh
+
+    addi a0, a0, 1
+    addi a1, a1, -1
+    bltu zero, a1, .loop
+    br ra

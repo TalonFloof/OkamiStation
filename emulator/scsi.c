@@ -24,17 +24,11 @@ Registers:
 */
 
 typedef struct {
-
-} SCSISignal;
-
-typedef struct {
     FILE* image;
     uint32_t busID;
     uint32_t blocks;
-    uint32_t heads;
-    uint32_t cylinders;
-    uint32_t sectors;
-    bool isSpinning;
+    uint8_t cmd[10];
+    uint8_t cmdOffset;
 } SCSIDrive;
 
 typedef enum {
@@ -51,7 +45,6 @@ typedef enum {
     ARBITRATION,
     SELECT_ID,
     SELECT_FINISH,
-    TRANSFER_PIO,
 } NCRControllerPhases;
 
 typedef struct {
@@ -102,6 +95,7 @@ typedef struct {
 
 NCR5380 SCSIController;
 SCSIDrive SCSIDrives[8];
+int nextID = 0;
 
 int SCSIGetID(uint8_t id) {
     int i = 0;
@@ -128,6 +122,10 @@ int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
             *value = SCSIController.mode.raw;
             break;
         }
+        case 0x25: {
+            *value = 0x8;
+            break;
+        }
     }
     return 1;
 }
@@ -149,6 +147,12 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
                 SCSIController.phase = SELECT_FINISH;
             } else {
                 SCSIController.data_out = value;
+                if(SCSIController.phase == READY) {
+                    int transPhase = (SCSIController.tcr.raw & 3);
+                    if(transPhase == PHASE_COMMAND) {
+
+                    }
+                }
             }
             break;
         }
@@ -190,4 +194,20 @@ void SCSIInit() {
         OkamiPorts[i].read = SCSIPortRead;
         OkamiPorts[i].write = SCSIPortWrite;
     }
+}
+
+void SCSIAttachDrive(const char* path) {
+    FILE* hdfile = fopen(path,"r+");
+    if(!hdfile) {
+        fprintf(stderr, "WARN: Unable to attach SCSI Drive at path \"%s\"\n", path);
+        return;
+    }
+    fseek(hdfile,0,SEEK_END);
+    long size = ftell(hdfile);
+    fseek(hdfile,0,SEEK_SET);
+    SCSIDrives[nextID].image = hdfile;
+    SCSIDrives[nextID].blocks = size/512;
+    SCSIDrives[nextID].busID = nextID;
+    SCSIDrives[nextID].cmdOffset = 0;
+    nextID++;
 }

@@ -733,8 +733,6 @@ unsigned int GenObject(char* out) {
   unsigned int zero = 0;
   fwrite(text,textSize*4,1,outfile);
   fwrite(rodata,rodataSize,1,outfile);
-  if(rodataSize % 4 != 0)
-    fwrite(&zero,4-(rodataSize%4),1,outfile);
   fwrite(dataSeg,dataSize,1,outfile);
   if(dataSize % 4 != 0)
     fwrite(&zero,4-(dataSize%4),1,outfile);
@@ -755,7 +753,7 @@ unsigned int GenObject(char* out) {
         lind = lind->next;
       }
       if(lind == NULL) {
-        Error(index->labelName,0,0,"Label has no matching definition");
+        Error(relocHead->labelName,0,0,"Label has no matching definition");
       }
     } else {
       fprintf(stderr, "\x1b[33mWARN - Leftover REL16 found (assembler bug!)\x1b[0m\n");
@@ -776,15 +774,45 @@ unsigned int GenObject(char* out) {
   return size;
 }
 
+char* allocString(const char* s) {
+  char* data = malloc(strlen(s)+1);
+  memcpy(data,s,strlen(s)+1);
+  return data;
+}
+
 int main(int argc, char **argv) {
   struct timeval startTime, endAsmTime, endTime;
   if(argc < 3) {
     printf("Usage: okas [infile] [outfile]\n");
     return 0;
   }
+  curSegment = SEG_BSS;
+  addLabel(allocString("__BSS_BEGIN__"),0);
+  curSegment = SEG_DATA;
+  addLabel(allocString("__DATA_BEGIN__"),0);
+  curSegment = SEG_RODATA;
+  addLabel(allocString("__RODATA_BEGIN__"),0);
+  curSegment = SEG_TEXT;
+  addLabel(allocString("__TEXT_BEGIN__"),0);
   gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
   gettimeofday(&endAsmTime, 0);
+  curSegment = SEG_BSS;
+  addLabel(allocString("__BSS_END__"),0);
+  curSegment = SEG_DATA;
+  if(getSegmentSize()%4 > 0) {
+    unsigned int zero = 0;
+    addToSegment((void*)&zero,(4-(getSegmentSize()%4)));
+  }
+  addLabel(allocString("__DATA_END__"),0);
+  curSegment = SEG_RODATA;
+  if(getSegmentSize()%4 > 0) {
+    unsigned int zero = 0;
+    addToSegment((void*)&zero,(4-(getSegmentSize()%4)));
+  }
+  addLabel(allocString("__RODATA_END__"),0);
+  curSegment = SEG_TEXT;
+  addLabel(allocString("__TEXT_END__"),0);
   long fileSize = GenObject(argv[2]);
   gettimeofday(&endTime, 0);
   free(text);

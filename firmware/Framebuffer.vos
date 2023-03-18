@@ -1,9 +1,5 @@
 (include_asm "Framebuffer.s")
-(extern Unifont)
-(extern OkamiLogo)
-(extern OkamiStation)
-(extern SystestText)
-(extern Dither)
+(extern Terminus OkamiLogo OkamiStation SystestText Dither)
 
 (fn FramebufferDither (color)
     (int x row)
@@ -51,7 +47,7 @@
     )
 )
 
-(fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color 1 (+ (Unifont) (u* rune 16))))
+(fn FramebufferRenderRune (x y scale color rune) (FramebufferRenderMonochromeBitmap x y 8 16 scale color 1 (+ (Terminus) (u* rune 16))))
 (fn FramebufferRenderString (x y scale color str)
     (int i len)
     (= len (strlen str))

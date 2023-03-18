@@ -1,10 +1,13 @@
 (var cursorX 1)
 (var cursorY 1)
 (var kbdShift 1)
+(int consoleTextColor 253)
+(int consoleTemp 0)
 
 (fn ConsoleInit ()
     /* Change palette entry 240 to the console color (since it's a duplicate of entry 0) */
     (w! 0xb0000fc0 0x1e1e2e)
+    (= consoleTextColor 253)
     (b! (cursorX) 0)
     (b! (cursorY) 0)
     (FramebufferDrawRect 182 124 659 509 255)
@@ -29,7 +32,7 @@
             ) (b! (cursorX) cursor))
         )
         (do
-            (FramebufferRenderRune (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 1 253 (b@ (+ str i)))
+            (FramebufferRenderRune (+ 192 (u* (b@ (cursorX)) 8)) (+ 144 (u* (b@ (cursorY)) 16)) 1 consoleTextColor (b@ (+ str i)))
             (= cursor (+ (b@ (cursorX)) 1))
             (if (u>= cursor 80) (ConsoleNewline) (b! (cursorX) cursor))
         ))
@@ -39,6 +42,10 @@
 )
 
 (fn ConsolePrint (str) (ConsoleWrite str (strlen str)))
+(fn ConsolePutc (char)
+    (= consoleTemp char)
+    (ConsoleWrite (ptrOf consoleTemp) 1)
+)
 
 (fn ConsoleNewline ()
     (int cursor)

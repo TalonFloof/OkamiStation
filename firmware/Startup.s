@@ -30,8 +30,8 @@
     /* Caches are now cleared, clear the TLB next */
     bl ClearTLB
     /* Setup Stack */
-    la sp, FWbss_end
-    /* Clear the BSS */
+    la sp, __BSS_END__
+    /* Clear the BSS segment */
     la a0, 0xa0000000
     la a1, FWstack
     lui t0, 0x8000
@@ -83,3 +83,7 @@ halt:
     addi t0, t0, 1
     bltu t0, t1, .loop
     blr zero, ra
+
+.rodata
+Secret:
+.text

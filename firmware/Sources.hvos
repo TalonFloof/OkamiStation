@@ -9,8 +9,10 @@
 (externFn memset memset16 memcpy memcpy32)
 
 (include_asm "SCSI.s")
-(externFn SCSISelect)
+(externFn SCSISelect SCSIRead SCSIWrite)
 
 (include_asm "Traps.s")
 (externFn SetupTrap)
 (extern TrapHandler)
+
+(extern __RODATA_END__ __DATA_BEGIN__ __DATA_END__ __BSS_END__ Secret HiddenStuff)

@@ -1,5 +1,5 @@
 TestRAM_:
-    la a0, FWbss_end
+    la a0, __BSS_END__
     la t2, RAMTestFaulted
     li t3, 2
     lui t0, 0x2000
@@ -21,3 +21,5 @@ TestRAM_:
     bl RAMErr    
 .end:
     br ra
+
+.rodata .byte 0x58 .byte 0x59 .byte 0x5A .byte 0x5A .byte 0x59 .byte 0 .text

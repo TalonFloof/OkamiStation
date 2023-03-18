@@ -296,7 +296,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         } else {
             dMissCount += 1;
         }
-        stallTicks = 3; // Uncached Stall
+        stallTicks = shouldCacheStall?3:3; // Uncached Stall
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {

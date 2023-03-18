@@ -39,10 +39,19 @@ int main(int argc, const char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if(strcmp(argv[i],"-help") == 0) {
             printf("OkamiStation Emulator\nCopyright (C) 2023 TalonFox, Licensed under the MIT License\nOptions:\n");
+            printf("  -scsihd [path]\n    Attaches a SCSI Hard Drive\n");
             printf("  -cachestall\n    Enables Emulated Cache Stalling\n");
             printf("  -cachestats\n    Displays Statistics relating to the cache every second\n    (prints out to stderr)\n");
             printf("  -ram [KiBs]\n    Set the amount of RAM to the given amount in KiBs\n");
             return 0;
+        } else if(strcmp(argv[i],"-scsihd") == 0) {
+            if (i+1 < argc) {
+                SCSIAttachDrive(argv[i+1]);
+                i++;
+            } else {
+                printf("No path was specified\n");
+                return 1;
+            }
         } else if(strcmp(argv[i],"-cachestall") == 0) {
             shouldCacheStall = 1;
         } else if(strcmp(argv[i],"-cachestats") == 0) {
