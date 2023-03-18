@@ -1,7 +1,7 @@
 (include_asm "Startup.s")
+(include "SelfTest/SelfTest.vos")
 (include "Framebuffer.vos")
 (include "String.vos")
-(include "SelfTest/SelfTest.vos")
 (include "Console.vos")
 (include "FORTH/FORTH.vos")
 
