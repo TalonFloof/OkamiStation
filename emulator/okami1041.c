@@ -70,10 +70,10 @@ uint32_t getExtRegister(int index) {
             return extRegisters[index];
         }
         case 0x11: {
-            return ((uint64_t*)&TLB)[index] & 0xFFFFFFFF;
+            return ((uint64_t*)&TLB)[extRegisters[0x10]] & 0xFFFFFFFF;
         }
         case 0x12: {
-            return ((uint64_t*)&TLB)[index] >> 32;
+            return ((uint64_t*)&TLB)[extRegisters[0x10]] >> 32;
         }
         case 0x13: {
             return (random()%56)+8; // Doesn't comply with my documentation but whatever, it's for debugging purposes anyway.
@@ -98,11 +98,11 @@ void setExtRegister(int index, uint32_t val) {
             break;
         }
         case 0x11: {
-            ((uint32_t*)&TLB)[index*2] = val;
+            ((uint32_t*)&TLB)[extRegisters[0x10]*2] = val;
             break;
         }
         case 0x12: {
-            ((uint32_t*)&TLB)[(index*2)+1] = val;
+            ((uint32_t*)&TLB)[(extRegisters[0x10]*2)+1] = val;
             break;
         }
     }
@@ -300,7 +300,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         if(write) {
             bool result = KoriBusWrite(addr-0xa0000000,len,buf);
             if(!result) {
-                triggerTrap(7,addr,false); // Data Exception
+                triggerTrap(9,addr,false); // Data Exception
             }
             return result;
         } else {
@@ -309,7 +309,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 if(fetch) {
                     triggerTrap(8,addr,false); // Fetch Exception
                 } else {
-                    triggerTrap(7,addr,false); // Data Exception
+                    triggerTrap(9,addr,false); // Data Exception
                 }
             }
             return result;

@@ -23,7 +23,9 @@
     bl ClearICache
     bl ClearDCache
     /* Clear the framebuffer */
-    la a0, 0xb0001000
+    lui a0, 0xb000
+    sw zero, 0(a0)
+    addi a0, a0, 0x1000
     la a1, 786432
     li a2, 0
     bl memset

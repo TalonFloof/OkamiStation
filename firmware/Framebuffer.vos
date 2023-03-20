@@ -37,7 +37,7 @@
             (if (& (b@ (+ ptr (u* i byte_width) (u/ j 8))) (<< 1 (- 7 (u% j 8))))
                 (if invert
                     (FramebufferDrawRect (+ x (u* j scale)) (+ y (u* i scale)) scale scale color)
-                    (FramebufferDrawRect (+ x (u* j scale)) (+ y (u* (- h i) scale)) scale scale color)
+                    (FramebufferDrawRect (+ x (u* j scale)) (+ y (u* (- h i 1) scale)) scale scale color)
                 )
             )
             (= j (+ j 1))

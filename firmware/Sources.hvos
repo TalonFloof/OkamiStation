@@ -8,8 +8,7 @@
 (include_asm "Memory.s")
 (externFn memset memset16 memcpy memcpy32)
 
-(include_asm "SCSI.s")
-(externFn SCSISelect SCSIRead SCSIWrite)
+(include "SCSI.vos")
 
 (include_asm "Traps.s")
 (externFn SetupTrap)

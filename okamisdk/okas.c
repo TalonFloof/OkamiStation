@@ -339,7 +339,8 @@ unsigned int parseImm(OpType type, char* data, unsigned long* i) {
   int isNumber = 1;
   while(isalnum(data[*i]) || data[*i] == '_' || data[*i] == '.' || data[*i] == '-') {
     if(isNumber) {
-      if((data[*i] < '0' || data[*i] > '9') && (data[*i] < 'a' || data[*i] > 'f') && (data[*i] < 'A' || data[*i] > 'F') && data[*i] != 'x' && data[*i] != 'o' && data[*i] != '-') {
+      if((data[*i] >= '0' && data[*i] <= '9') || (((data[*i] >= 'a' && data[*i] <= 'f') || (data[*i] >= 'A' && data[*i] <= 'F')) && data[start+1] == 'x') || (*i == start+1 && data[start] == '0' && (data[start+1] == 'x' || data[start+1] == 'o')) || data[*i] == '-') {
+      } else {
         isNumber = 0;
       }
     }
