@@ -14,4 +14,7 @@
 (externFn SetupTrap)
 (extern TrapHandler)
 
+(include_asm "FirmwareCall.s")
+(extern DoFirmwareCall)
+
 (extern __RODATA_END__ __DATA_BEGIN__ __DATA_END__ __BSS_END__ Secret HiddenStuff)

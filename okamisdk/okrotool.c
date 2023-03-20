@@ -1,3 +1,10 @@
+/* Okami Relocatable Object Tool
+ *
+ * Created by TalonFox for the OkamiStation 1000.
+ * Copyright (C) 2023 TalonFox, Licensed under the MIT License
+ * This is a FOSS project.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -5,16 +12,18 @@
 #include <stdbool.h>
 
 typedef struct {
-    unsigned long long magic;
-    unsigned long long version;
-    unsigned int text;
-    unsigned int rodata;
-    unsigned int data;
-    unsigned int bss;
-    unsigned int reloc;
-    unsigned int sym;
-    unsigned int str;
-    unsigned int entry;
+    unsigned char magic[8]; /* "\x89OkamiRO" */
+    unsigned int version; /* Set to 1 */
+    unsigned int text; /* Size of Text Segment */
+    unsigned int rodata; /* Size of Read-Only Segment */
+    unsigned int data; /* Size of Data Segment */
+    unsigned int bss; /* Size of BSS Segment */
+    unsigned int reloc; /* Size of Relocation Table */
+    unsigned int sym; /* Size of Symbol Table */
+    unsigned int str; /* Size of String Table */
+    unsigned int roBase; /* Base Address of Text and Read-Only segment (only set if object has been relocated) */
+    unsigned int rwBase; /* Base Address of Data and BSS segment (only set if object has been relocated) */
+    unsigned int entry; /* Entrypoint Offset (within Text Segment) */
 } OkROHeader;
 
 typedef enum {
@@ -108,6 +117,9 @@ void preformRelocation(uint8_t* image, uint32_t base, uint32_t dataBase) {
     uint32_t bssAddr = dataAddr+getSize(header->data);
     uint32_t entries = header->reloc/sizeof(RelocationEntry);
     for(int i=0; i < entries; i++) {
+        if(relocation[i].dstSegment == EXTERN) {
+            continue;
+        }
         uint32_t labelAddr;
         uint32_t* dstPtr;
         if(relocation[i].dstSegment == TEXT) {
@@ -163,9 +175,11 @@ int main(int argc, const char* argv[]) {
         printf("Commands:\n");
         printf("info [object]: Get info about an Object.\n");
         printf("rinfo [object]: Get relocation info from an object.\n");
+        printf("sinfo [object]: Get symbol info from an object.\n");
+        printf("reloc [-noalign] [roBase] [rwBase] [object]: Relocates an object, this also strips unneeded relocation info.\n");
         printf("strip [object]: Removes unneeded symbol data from an object.\n");
-        printf("dump [base] [object] [binary]: Convert an object into a raw binary.\n");
-        printf("fwdump [base] [dataBase] [object] [binary]: Convert an object into an OkamiStation firmware binary.\n");
+        printf("setentry [entrySymbol] [object]: Sets the entrypoint to the given symbol.\n");
+        printf("dump [object] [binary]: Convert an object into a raw binary.\n");
     } else if(strcmp(argv[1],"info") == 0) {
         uint8_t* image = readImage(argv[2],NULL);
         if(!image) {
@@ -179,7 +193,7 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        printf("== %s ==\nVersion: %i\nText Size: %i bytes (~%i instructions)\nRoData Size: %i bytes\nData Size: %i bytes\nBSS Size: %i bytes\nRelocation Entries: %i\nSymbols: %i\n", argv[2], header->version, header->text, header->text/4, header->rodata, header->data, header->bss, header->reloc/sizeof(RelocationEntry), header->sym/sizeof(Symbol));
+        printf("== %s ==\nVersion: %i\nText Size: %i bytes (~%i instructions)\nRoData Size: %i bytes\nData Size: %i bytes\nBSS Size: %i bytes\nRelocation Entries: %i\nSymbols: %i\nRead-Only Load Address: 0x%08x\nRead-Write Load Address: 0x%08x\nEntrypoint: <.text+0x%x>\n", argv[2], header->version, header->text, header->text/4, header->rodata, header->data, header->bss, header->reloc/sizeof(RelocationEntry), header->sym/sizeof(Symbol), header->roBase, header->rwBase, header->entry);
         free(image);
     } else if(strcmp(argv[1],"rinfo") == 0) {
         uint8_t* image = readImage(argv[2],NULL);
@@ -194,11 +208,10 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        printf("== RELOCATION ENTRIES ==\n");
         RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
         uint32_t entries = header->reloc/sizeof(RelocationEntry);
         for(int i=0; i < entries; i++) {
-            printf("+- Entry %i\n", i+1);
+            printf("Entry #%i:\n", i+1);
             const char* relocType = "Unknown (Assembler Bug?)";
             if(relocation[i].type == BRANCH28) {
                 relocType = "BRANCH28";
@@ -207,12 +220,34 @@ int main(int argc, const char* argv[]) {
             } else if(relocation[i].type == LA32) {
                 relocType = "LA32";
             }
-            printf("|- Type: %s\n", relocType);
-            printf("|- Source: <%s+0x%x>\n", segToString(relocation[i].srcSegment), relocation[i].srcOffset);
-            printf("|- Destination: <%s+0x%x>\n", segToString(relocation[i].dstSegment), relocation[i].dstOffset);
+            printf("  Type: %s\n", relocType);
+            printf("  Source: <%s+0x%x>\n", segToString(relocation[i].srcSegment), relocation[i].srcOffset);
+            printf("  Destination: <%s+0x%x>\n", segToString(relocation[i].dstSegment), relocation[i].dstOffset);
         }
         free(image);
-    } else if(strcmp(argv[1],"fwdump") == 0) {
+    } else if(strcmp(argv[1],"sinfo") == 0) {
+        uint8_t* image = readImage(argv[2],NULL);
+        if(!image) {
+            fprintf(stderr, "Unable to read image!\n");
+            free(image);
+            return 1;
+        }
+        OkROHeader* header = (OkROHeader*)image;
+        if(memcmp(image,"\x89OkamiRO",8) != 0) {
+            fprintf(stderr, "Magic number is invalid\n");
+            free(image);
+            return 2;
+        }
+        Symbol* symbols = (Symbol*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data)+getSize(header->reloc));
+        unsigned char* strs = (unsigned char*)(((uintptr_t)symbols)+getSize(header->sym));
+        for(int i=0; i < header->sym/sizeof(Symbol); i++) {
+            printf("Symbol #%i:\n", i+1);
+            printf("  Name: %s\n", strs+symbols[i].nameoff);    
+            printf("  Type: %s\n", symbols[i].libname?"Requested Library":(symbols[i].external?"External Symbol":"Global Symbol"));
+            printf("  Location: <%s+0x%x>\n", segToString(symbols[i].segment), symbols[i].offset);
+        }
+        free(image);
+    } else if(strcmp(argv[1],"reloc") == 0) {
         size_t imgSize;
         uint8_t* image = readImage(argv[4],&imgSize);
         if(!image) {
@@ -226,14 +261,38 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        uint32_t num = (uint32_t)strtoul(argv[2],NULL,0);
+        uint32_t num1 = (uint32_t)strtoul(argv[2],NULL,0);
         uint32_t num2 = (uint32_t)strtoul(argv[3],NULL,0);
-        preformRelocation(image,num,num2);
-        writeImage(argv[5],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
+        if(num2 == 0) {
+            num2 = num1+getSize(header->text)+getSize(header->rodata);
+            if((num2 & 0xfff) != 0)
+                num2 = ((num2>>12)+1)<<12;
+        }
+        preformRelocation(image,num1,num2);
+        FILE* finalImage = fopen(argv[4],"wb");
+        RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
+        size_t oldRelocSize = getSize(header->reloc);
+        header->reloc = 0;
+        header->roBase = num1;
+        header->rwBase = num2;
+        for(int i=0; i < oldRelocSize/sizeof(RelocationEntry); i++) {
+            if(relocation[i].dstSegment == EXTERN) {
+                header->reloc += sizeof(RelocationEntry);
+            }
+        }
+        fwrite(image,sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data),1,finalImage);
+        for(int i=0; i < oldRelocSize/sizeof(RelocationEntry); i++) {
+            if(relocation[i].dstSegment == EXTERN) {
+                fwrite(relocation+i,sizeof(RelocationEntry),1,finalImage);
+            }
+        }
+        size_t finalData = sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data)+oldRelocSize;
+        fwrite(image+finalData,getSize(header->sym)+header->str,1,finalImage);
+        fclose(finalImage);
         free(image);
-    } else if(strcmp(argv[1],"dump") == 0) {
+    } else if(strcmp(argv[1],"strip") == 0) {
         size_t imgSize;
-        uint8_t* image = readImage(argv[3],&imgSize);
+        uint8_t* image = readImage(argv[2],&imgSize);
         if(!image) {
             fprintf(stderr, "Unable to read image!\n");
             free(image);
@@ -245,9 +304,55 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        uint32_t num = (uint32_t)strtoul(argv[2],NULL,0);
-        preformRelocation(image,num,0);
-        writeImage(argv[4],image+sizeof(OkROHeader),imgSize-sizeof(OkROHeader)-getSize(header->reloc));
+        FILE* finalImage = fopen(argv[2],"wb");
+        size_t oldSymSize = getSize(header->sym);
+        unsigned char* newStringTable = NULL;
+        header->str = 0;
+        header->sym = 0;
+        RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
+        Symbol* symbols = (Symbol*)(((uintptr_t)relocation)+getSize(header->reloc));
+        unsigned char* strs = (unsigned char*)(((uintptr_t)symbols)+oldSymSize);
+        for(int i=0; i < oldSymSize/sizeof(Symbol); i++) {
+            if(symbols[i].libname || symbols[i].external) {
+                newStringTable = realloc(newStringTable,header->str+strlen(strs+symbols[i].nameoff)+1);
+                memcpy(newStringTable+header->str,strs+symbols[i].nameoff,strlen(strs+symbols[i].nameoff)+1);
+                symbols[i].nameoff = header->str;
+                if(symbols[i].external) {
+                    for(int j=0; j < header->reloc/sizeof(RelocationEntry); j++) {
+                        if(relocation[j].dstSegment == EXTERN && relocation[j].dstOffset == i*sizeof(Symbol)) {
+                            relocation[j].dstOffset = header->sym;
+                        }
+                    }
+                }
+                header->str += strlen(strs+symbols[i].nameoff)+1;
+                header->sym += sizeof(Symbol);
+            }
+        }
+        fwrite(image,sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data)+getSize(header->reloc),1,finalImage);
+        for(int i=0; i < oldSymSize/sizeof(Symbol); i++) {
+            if(symbols[i].libname || symbols[i].external) {
+                fwrite(symbols+i,sizeof(Symbol),1,finalImage);
+            }
+        }
+        fwrite(newStringTable,header->str,1,finalImage);
+        free(newStringTable);
+        fclose(finalImage);
+        free(image);
+    } else if(strcmp(argv[1],"dump") == 0) {
+        size_t imgSize;
+        uint8_t* image = readImage(argv[2],&imgSize);
+        if(!image) {
+            fprintf(stderr, "Unable to read image!\n");
+            free(image);
+            return 1;
+        }
+        OkROHeader* header = (OkROHeader*)image;
+        if(memcmp(image,"\x89OkamiRO",8) != 0) {
+            fprintf(stderr, "Magic number is invalid\n");
+            free(image);
+            return 2;
+        }
+        writeImage(argv[3],image+sizeof(OkROHeader),getSize(header->text)+getSize(header->rodata)+getSize(header->data));
         free(image);
     }
     return 0;

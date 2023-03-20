@@ -17,16 +17,18 @@
 #endif
 
 typedef struct {
-    unsigned long long magic;
-    unsigned long long version;
-    unsigned int text;
-    unsigned int rodata;
-    unsigned int data;
-    unsigned int bss;
-    unsigned int reloc;
-    unsigned int sym;
-    unsigned int str;
-    unsigned int entry;
+    unsigned char magic[8]; /* "\x89OkamiRO" */
+    unsigned int version; /* Set to 1 */
+    unsigned int text; /* Size of Text Segment */
+    unsigned int rodata; /* Size of Read-Only Segment */
+    unsigned int data; /* Size of Data Segment */
+    unsigned int bss; /* Size of BSS Segment */
+    unsigned int reloc; /* Size of Relocation Table */
+    unsigned int sym; /* Size of Symbol Table */
+    unsigned int str; /* Size of String Table */
+    unsigned int roBase; /* Base Address of Text and Read-Only segment (only set if object has been relocated) */
+    unsigned int rwBase; /* Base Address of Data and BSS segment (only set if object has been relocated) */
+    unsigned int entry; /* Entrypoint Offset (within Text Segment) */
 } OkROHeader;
 
 typedef enum {
@@ -189,6 +191,7 @@ unsigned int relocSize = 0;
 
 char* curLabel = NULL;
 int curLabelGlobal = 0;
+int curLabelExternal = 0;
 SegmentType curSegment = SEG_TEXT;
 /*******************/
 
@@ -328,10 +331,13 @@ void addLabel(char* labelName, int local) {
   l->reserved = 0;
   l->external = 0;
   l->global = curLabelGlobal;
-  if(curLabelGlobal)
+  if(curLabelGlobal || curLabelExternal) {
     labelSize++;
+    strSize += strlen(labelName)+1;
+  }
   l->local = local;
   curLabelGlobal = 0;
+  curLabelExternal = 0;
 }
 
 unsigned int parseImm(OpType type, char* data, unsigned long* i) {
@@ -369,6 +375,8 @@ unsigned int parseImm(OpType type, char* data, unsigned long* i) {
       addReloc(LA32,buf);
     } else if(type == OP_REGIMM) {
       addReloc(REL16,buf);
+    } else if(type == OP_NONE) {
+      addReloc(PTR32,buf);
     }
     return 0;
   }
@@ -441,8 +449,14 @@ void Assemble(char* name, char* data) {
         memcpy(buf+lbLen,data+start,length-1);
         addLabel(buf,1);
       } else if(strncmp(data+start,".global",length) == 0) {
+        curLabelGlobal = 1;
       } else if(strncmp(data+start,".extern",length) == 0) {
-        Error(name,line,start-lineStart,".extern is not implemented yet!");
+        curLabelExternal = 1;
+      } else if(strncmp(data+start,".requestLib",length) == 0) {
+        i++;
+        char* str = parseString(data,&i);
+
+        free(str);
       } else if(strncmp(data+start,".align",length) == 0) {
         i++;
         unsigned int num = parseImm(OP_NONE,data,&i);
@@ -721,14 +735,17 @@ unsigned int GenObject(char* out) {
     Error(out,0,0,"Unable to open!");
   }
   OkROHeader header;
-  memcpy((unsigned char*)&header,"\x89OkamiRO\x01\0\0\0\0\0\0\0",16);
+  memcpy((unsigned char*)&header,"\x89OkamiRO",8);
+  header.version = 1;
   header.text = textSize*4;
   header.rodata = rodataSize;
   header.data = dataSize;
   header.bss = bss;
   header.reloc = relocSize*sizeof(RelocationEntry);
   header.sym = labelSize*sizeof(Symbol);
-  header.str = 0;
+  header.str = strSize;
+  header.roBase = 0;
+  header.rwBase = 0;
   header.entry = 0;
   fwrite(&header,sizeof(OkROHeader),1,outfile);
   unsigned int zero = 0;
@@ -764,14 +781,34 @@ unsigned int GenObject(char* out) {
     free(relocHead);
     relocHead = next;
   }
-  long size = ftell(outfile);
-  fclose(outfile);
+  unsigned int nameOffset = 0;
+  Label* l = labelHead;
+  while(l != NULL) {
+    if(l->global || l->external) {
+      Symbol symbol;
+      symbol.nameoff = nameOffset;
+      nameOffset += strlen(l->name)+1;
+      symbol.offset = l->offset;
+      symbol.segment = l->seg;
+      symbol.external = l->external;
+      symbol.libname = 0;
+      symbol.reserved = 0;
+      fwrite(&symbol,sizeof(Symbol),1,outfile);
+    }
+    l = l->next;
+  }
   while(labelHead != NULL) {
     void* next = labelHead->next;
+    if(labelHead->global || labelHead->external) {
+      fwrite(labelHead->name,strlen(labelHead->name),1,outfile);
+      fwrite("\0",1,1,outfile);
+    }
     free(labelHead->name);
     free(labelHead);
     labelHead = next;
   }
+  long size = ftell(outfile);
+  fclose(outfile);
   return size;
 }
 
@@ -787,6 +824,8 @@ int main(int argc, char **argv) {
     printf("Usage: okas [infile] [outfile]\n");
     return 0;
   }
+  curLabelExternal = 0;
+  curLabelGlobal = 0;
   curSegment = SEG_BSS;
   addLabel(allocString("__BSS_BEGIN__"),0);
   curSegment = SEG_DATA;
@@ -798,6 +837,8 @@ int main(int argc, char **argv) {
   gettimeofday(&startTime, 0);
   Assemble(argv[1],readFile(argv[1],NULL));
   gettimeofday(&endAsmTime, 0);
+  curLabelExternal = 0;
+  curLabelGlobal = 0;
   curSegment = SEG_BSS;
   addLabel(allocString("__BSS_END__"),0);
   curSegment = SEG_DATA;

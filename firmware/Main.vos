@@ -11,6 +11,7 @@
     (TestFB)
     (SetupTrap (TrapHandler) 0)
     (SetupTrap (TrapHandler) 1)
+    (SetupTrap (DoFirmwareCall) 2)
 
     (FramebufferRenderBackground)
     (FramebufferRenderString 0 752 1 255 "Rev 0.1")
@@ -52,7 +53,7 @@
             (ConsolePrint "\n")
             (SCSISelect (atoi10 (+ (wordBuf) 4)))
             (= result (SCSIStartStop 1))
-            (if (== result 1) (do (ConsolePrint "SCSI Drive not in COMMAND phase (is there even a drive inserted?)\n") (return)) (== result 2) (do (ConsolePrint "Failed to start SCSI drive (check condition)!\n") (return)))
+            (if (== result 3) (do (ConsolePrint "SCSI Drive not in COMMAND phase (is there even a drive inserted?)\n") (return)) (== result 2) (do (ConsolePrint "Failed to start SCSI drive (check condition)!\n") (return)))
             (= consoleTextColor 253)
             (SCSIReadBlocks 0 1 0x80010000)
         )
@@ -61,7 +62,7 @@
     )
 )
 
-(table SecretNumbers 106 226 221 211 127 23)
+(table SecretNumbers 227 227 177 177 132 132)
 
 (fn BootROM (nvramCorrupted badOption)
     (int i) (= i 0)

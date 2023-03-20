@@ -82,7 +82,3 @@
     li t7, 2
     sb t7, 0(kr)
     rft
-
-.rodata
-
-.text

@@ -86,6 +86,4 @@ halt:
     bltu t0, t1, .loop
     blr zero, ra
 
-.rodata
-Secret:
-.text
+.rodata Secret: .text

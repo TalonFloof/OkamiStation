@@ -26,7 +26,7 @@
     (b! (+ (cdb) 4) blocks)
     (b! (+ (cdb) 5) 0)
     (w! 0xbe000088 (| 0x70 id))
-    (if (!= (SCSIGetPhase) 2) (return 1)) /* Incorrect Phase? */
+    (if (!= (SCSIGetPhase) 2) (return 3)) /* Incorrect Phase? */
     (SCSIWrite (cdb) 6)
     (return 0)
 )
@@ -38,7 +38,7 @@
     (b! (+ (cdb) 4) start)
     (b! (+ (cdb) 5) 0)
     (w! 0xbe000088 (| 0x70 id))
-    (if (!= (SCSIGetPhase) 2) (return 1)) /* Incorrect Phase? */
+    (if (!= (SCSIGetPhase) 2) (return 3)) /* Incorrect Phase? */
     (SCSIWrite (cdb) 6)
     (while (!= (SCSIGetPhase) 3) (do))
     (return (b@ 0xbe000080))

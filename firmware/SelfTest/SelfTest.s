@@ -1,4 +1,4 @@
-TestRAM_:
+.global TestRAM_:
     la a0, __BSS_END__
     la t2, RAMTestFaulted
     li t3, 2
