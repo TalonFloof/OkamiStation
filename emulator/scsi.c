@@ -94,6 +94,9 @@ void SCSISuccess(uint8_t id) {
 void SCSIDoCommand(uint8_t id) {
     switch(SCSIDrives[id].cmd[0]) {
         case 0x08: { // READ(6)
+            uint32_t lba = (SCSIDrives[id].cmd[1]<<16)|(SCSIDrives[id].cmd[2]<<8)|SCSIDrives[id].cmd[3];
+            uint32_t blocks = SCSIDrives[id].cmd[4];
+            
             break;
         }
         case 0x1b: { // START STOP UNIT
@@ -113,7 +116,8 @@ int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
         case 0x20: {
             switch(SCSIDrives[SCSIController.id].phase) {
                 case PHASE_STATUS: {
-                    SCSIDrives[SCSIController.id].phase = PHASE_COMMAND;
+                    *value = SCSIDrives[SCSIController.id].status;
+                    SCSIDrives[SCSIController.id].phase = 0;
                     return 1;
                 }
                 default: {
@@ -163,8 +167,11 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
             return 1;
         }
         case 0x22: {
-            SCSIController.id = (value&0xFF);
-            SCSIController.initiator_id = ((value>>8)&0xFF);
+            SCSIController.id = (value&0xF);
+            SCSIController.initiator_id = ((value>>4)&0xF);
+            if(SCSIDrives[SCSIController.id].image != NULL) {
+                SCSIDrives[SCSIController.id].phase = PHASE_COMMAND;
+            }
             return 1;
         }
         case 0x24: { // DMA isn't implemented yet...

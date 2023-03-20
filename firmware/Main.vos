@@ -22,9 +22,7 @@
         (FramebufferRenderMonochromeBitmap 352 320 128 128 1 0 0 (OkamiLogo))
         (FramebufferRenderMonochromeBitmap 560 320 32 32 4 0 1 (OkamiStation))
         (FramebufferRenderMonochromeBitmap 490 369 64 31 1 0 0 (SystestText))
-        (SetTimeout 5000 "NCR5380 Arbitration & Select Timeout (check SCSI Controller!)")
-        /*(SCSIArbitrate 7)
-        (if (u> (SCSISelect 0) 0) (SelfTestProblem "NCR5380 Busy line stuck low during selection (check SCSI Controller!)"))*/
+        (SetTimeout 5000 "OkamiC7429 SelfTest Failure (check SCSI Controller!)")
         (= i 0)
         (while (u< i 1048576) (w! 0xbe000000 0xffffffff) (= i (+ i 1)))
     ))

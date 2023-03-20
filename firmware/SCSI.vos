@@ -1,6 +1,7 @@
 (var cdb 10)
+(int id 0)
 
-(fn SCSISelect (target) (w! 0xbe000088 (| 0x0f00 target)))
+(fn SCSISelect (target) (= id target))
 (fn SCSIGetPhase () (return (& (w@ 0xbe000084) 0x3)))
 (fn SCSIRead (addr len)
     (int end) (= end (+ addr len))
@@ -12,7 +13,7 @@
 (fn SCSIWrite (addr len)
     (int end) (= end (+ addr len))
     (while (u< addr end)
-        (b! addr (b@ 0xbe000080))
+        (b! 0xbe000080 (b@ addr))
         (= addr (+ addr 1))
     )
 )
@@ -24,6 +25,7 @@
     (b! (+ (cdb) 3) lba)
     (b! (+ (cdb) 4) blocks)
     (b! (+ (cdb) 5) 0)
+    (w! 0xbe000088 (| 0x70 id))
     (if (!= (SCSIGetPhase) 2) (return 1)) /* Incorrect Phase? */
     (SCSIWrite (cdb) 6)
     (return 0)
@@ -35,6 +37,7 @@
     (b! (+ (cdb) 3) 0)
     (b! (+ (cdb) 4) start)
     (b! (+ (cdb) 5) 0)
+    (w! 0xbe000088 (| 0x70 id))
     (if (!= (SCSIGetPhase) 2) (return 1)) /* Incorrect Phase? */
     (SCSIWrite (cdb) 6)
     (while (!= (SCSIGetPhase) 3) (do))

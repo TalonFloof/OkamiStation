@@ -1,6 +1,5 @@
 # Okami1041
-<img src="docs/okami1041-badge.png" width="256">
-
+---
 # Instructions
 ## Arithmetic
 ```
