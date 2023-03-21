@@ -149,6 +149,10 @@ void SCSITick() {
 void SCSIDoCommand(uint8_t id) {
     switch(SCSIDrives[id].cmd[0]) {
         case 0x08: { // READ(6)
+            if(!SCSIDrives[id].isSpinning) {
+                SCSICheckStatusError(id,2,4,2); /* Not Ready - need initialise command (start unit) */
+                break;
+            }
             uint32_t lba = (SCSIDrives[id].cmd[1]<<16)|(SCSIDrives[id].cmd[2]<<8)|SCSIDrives[id].cmd[3];
             uint32_t blocks = SCSIDrives[id].cmd[4];
             SCSIDrives[id].dataOffset = 0;
@@ -159,6 +163,10 @@ void SCSIDoCommand(uint8_t id) {
             break;
         }
         case 0x0a: { // WRITE(6)
+            if(!SCSIDrives[id].isSpinning) {
+                SCSICheckStatusError(id,2,4,2); /* Not Ready - need initialise command (start unit) */
+                break;
+            }
             uint32_t lba = (SCSIDrives[id].cmd[1]<<16)|(SCSIDrives[id].cmd[2]<<8)|SCSIDrives[id].cmd[3];
             uint32_t blocks = SCSIDrives[id].cmd[4];
             SCSIDrives[id].dataOffset = 0;
@@ -170,6 +178,11 @@ void SCSIDoCommand(uint8_t id) {
         }
         case 0x1b: { // START STOP UNIT
             SCSIDrives[id].isSpinning = (SCSIDrives[id].cmd[4] & 1);
+            SCSISuccess(id);
+            break;
+        }
+        case 0x25: { // READ CAPACITY(10)
+            
             SCSISuccess(id);
             break;
         }
@@ -247,7 +260,7 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
                     SCSIDrives[SCSIController.id].cmd[SCSIDrives[SCSIController.id].cmdOffset++] = value&0xFF;
                     if(SCSIDrives[SCSIController.id].cmdOffset >= SCSIGetCommandLength(SCSIController.id)) {
                         SCSIDoCommand(SCSIController.id);
-                        if(SCSIDrives[SCSIController.id].hasStatus && SCSIDrives[SCSIController.id].opInterval == 0) {
+                        if(SCSIDrives[SCSIController.id].hasStatus && SCSIDrives[SCSIController.id].phase == PHASE_COMMAND && SCSIDrives[SCSIController.id].opInterval == 0) {
                             SCSIDrives[SCSIController.id].phase = PHASE_STATUS;
                         } else if(SCSIDrives[SCSIController.id].phase == PHASE_COMMAND && SCSIDrives[SCSIController.id].opInterval == 0) {
                             SCSIDrives[SCSIController.id].phase = PHASE_DATA_OUT;

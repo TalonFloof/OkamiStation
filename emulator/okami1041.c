@@ -559,7 +559,6 @@ void next() {
                         break;
                     }
                     case 0b110: { // KCALL/MCALL
-                        fprintf(stderr, "FIRMWARE CALL 0x%x!\n", instr & 0x1FFFFFF);
                         triggerTrap(2,instr & 0x3FFFFFF,true);
                         break;
                     }
