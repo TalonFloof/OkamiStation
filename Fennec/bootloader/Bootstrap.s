@@ -1,7 +1,8 @@
 .text
 .global _start:
-    la a1, hello
+    la a0, hello
     mcall 0x101
-    beq zero, zero, -1
+.halt:
+    beq zero, zero, .halt
 .rodata
-hello: .string "Hello world!"
+hello: .ascii "Hello world!" .byte 0xa .byte 0

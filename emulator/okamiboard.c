@@ -58,14 +58,14 @@ void OkamiBoardInit() {
         OkamiPorts[i].isPresent = false;
     }
     HTCInit();
-    FILE *firmware = fopen("Firmware.bin", "r");
+    FILE *firmware = fopen("Firmware.bin", "rb");
     if(firmware == NULL) {
         fprintf(stderr, "Couldn't open the Boot ROM\n");
         exit(1);
     }
     fread(&ROM, sizeof(ROM), 1, firmware);
     fclose(firmware);
-    FILE *nvramfile = fopen("nvram.nv", "r");
+    FILE *nvramfile = fopen("nvram.nv", "rb");
     if(nvramfile != NULL) {
         fread(&NVRAM,sizeof(NVRAM),1,nvramfile);
         fclose(nvramfile);
@@ -74,7 +74,7 @@ void OkamiBoardInit() {
 
 void OkamiBoardSaveNVRAM() {
     fprintf(stderr, "Flushing NVRAM...\n");
-    FILE* nvramfile = fopen("nvram.nv", "w");
+    FILE* nvramfile = fopen("nvram.nv", "wb");
     fwrite(&NVRAM,sizeof(NVRAM),1,nvramfile);
     fclose(nvramfile);
 }

@@ -86,4 +86,13 @@ halt:
     bltu t0, t1, .loop
     blr zero, ra
 
+.global Jump:
+    la sp, __BSS_END__
+    la t0, ClearICache
+    lui t1, 0x2000
+    add t0, t0, t1
+    mv a0, ra
+    br t0
+    b halt /* This should never happen, but just in case */
+
 .rodata Secret: .text

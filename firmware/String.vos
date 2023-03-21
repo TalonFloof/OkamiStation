@@ -18,6 +18,7 @@
     )
     (b! (+ str i) 0)
     (reverse str)
+    (return str)
 )
 
 (fn reverse (str)

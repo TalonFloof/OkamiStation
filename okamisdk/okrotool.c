@@ -248,8 +248,11 @@ int main(int argc, const char* argv[]) {
         }
         free(image);
     } else if(strcmp(argv[1],"reloc") == 0) {
+        int noAlign = 0;
+        if(strcmp(argv[2],"-noalign") == 0)
+            noAlign = 1;
         size_t imgSize;
-        uint8_t* image = readImage(argv[4],&imgSize);
+        uint8_t* image = readImage(argv[noAlign+4],&imgSize);
         if(!image) {
             fprintf(stderr, "Unable to read image!\n");
             free(image);
@@ -261,15 +264,17 @@ int main(int argc, const char* argv[]) {
             free(image);
             return 2;
         }
-        uint32_t num1 = (uint32_t)strtoul(argv[2],NULL,0);
-        uint32_t num2 = (uint32_t)strtoul(argv[3],NULL,0);
+        uint32_t num1 = (uint32_t)strtoul(argv[noAlign+2],NULL,0);
+        uint32_t num2 = (uint32_t)strtoul(argv[noAlign+3],NULL,0);
         if(num2 == 0) {
             num2 = num1+getSize(header->text)+getSize(header->rodata);
-            if((num2 & 0xfff) != 0)
-                num2 = ((num2>>12)+1)<<12;
+            if(!noAlign) {
+                if((num2 & 0xfff) != 0)
+                    num2 = ((num2>>12)+1)<<12;
+            }
         }
         preformRelocation(image,num1,num2);
-        FILE* finalImage = fopen(argv[4],"wb");
+        FILE* finalImage = fopen(argv[noAlign+4],"wb");
         RelocationEntry* relocation = (RelocationEntry*)(((uintptr_t)header)+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data));
         size_t oldRelocSize = getSize(header->reloc);
         header->reloc = 0;

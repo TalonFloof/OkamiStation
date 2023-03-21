@@ -53,11 +53,11 @@ Status Codes (a0):
     li t0, 3
     bne kr, t0, 3
     bl ConsoleGetChar
-    mv a1, a0
+    mv a0, a1
     b .success
     li t0, 4
     bne kr, t0, 8
-    mv kr, a0
+    mv a0, kr
     andi a0, a0, 1
     beq a0, zero, 1
     bl FramebufferDither
@@ -86,8 +86,8 @@ Status Codes (a0):
     li t0, 4
     bne kr, t0, .invalid
     addi sp, sp, -8
-    mv a0, sp
-    mv a1, sp
+    mv sp, a0
+    mv sp, a1
     addi a1, a1, 4
     bl 0
     addi sp, sp, 8

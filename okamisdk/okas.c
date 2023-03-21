@@ -565,7 +565,7 @@ void Assemble(char* name, char* data) {
                 unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
                 if(reg1 == -1 || reg2 == -1) {Error(name,line,i-lineStart,"Invalid Register");}
                 unsigned int opcode = 0;
-                if(OkamiInstructions[index].opcode == 16) {
+                if(OkamiInstructions[index].opcode == 16 || (OkamiInstructions[index].opcode >= 35 && OkamiInstructions[index].opcode <= 40)) {
                   opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26) 
                            | (((unsigned int)reg2) << 21)
                            | (((unsigned int)reg1) << 16)

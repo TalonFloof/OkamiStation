@@ -123,7 +123,7 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
         case 2: { // MCall/KCall
             extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
             extRegisters[1] = type;
-            extRegisters[2] = afterInc ? PC-4 : PC;
+            extRegisters[2] = PC;
             extRegisters[3] = addr & 0x1FFFFFF;
             if(addr & 0x2000000) {
                 // This is a MCALL
@@ -559,6 +559,7 @@ void next() {
                         break;
                     }
                     case 0b110: { // KCALL/MCALL
+                        fprintf(stderr, "FIRMWARE CALL 0x%x!\n", instr & 0x1FFFFFF);
                         triggerTrap(2,instr & 0x3FFFFFF,true);
                         break;
                     }

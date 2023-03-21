@@ -294,7 +294,7 @@ void SCSIInit() {
 }
 
 void SCSIAttachDrive(const char* path) {
-    FILE* hdfile = fopen(path,"r+");
+    FILE* hdfile = fopen(path,"r+b");
     if(!hdfile) {
         fprintf(stderr, "WARN: Unable to attach SCSI Drive at path \"%s\"\n", path);
         return;
