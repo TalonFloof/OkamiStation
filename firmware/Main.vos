@@ -41,6 +41,14 @@
     (halt)
 )
 
+(struct BootRecord
+    8 Magic /* "OkmiBRcd" */
+    16 OSName
+    4 BootloaderStartLBA
+    4 BootloaderSize
+    512 OSIcon /* 64x64 1-bit icon */
+)
+
 (fn Boot (nvramCorrupted)
     (int result) (= result 0)
     (if (| nvramCorrupted (strncmp (wordBuf) "rom" 3)) (BootROM nvramCorrupted 0)
@@ -54,8 +62,9 @@
             (SCSISelect (atoi10 (+ (wordBuf) 4)))
             (= result (SCSIStartStop 1))
             (if (== result 3) (do (ConsolePrint "SCSI Drive not in COMMAND phase (is there even a drive inserted?)\n") (return)) (== result 2) (do (ConsolePrint "Failed to start SCSI drive (check condition)!\n") (return)))
+            (SCSIReadBlocks 0 2 0x80010000)
+            (if (! (strncmp (+ 0x80010000 (BootRecord.Magic)) "OkmiBRcd" 8)) (do (ConsolePrint "Bad Magic Number on Boot Record\n") (return)))
             (= consoleTextColor 253)
-            (SCSIReadBlocks 0 1 0x80010000)
         )
         (strncmp (wordBuf) (Secret) (strlen (Secret))) (do (b! 0xbe001017 1) (BootROM nvramCorrupted 3))
         (BootROM nvramCorrupted 1)

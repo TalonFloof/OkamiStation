@@ -28,7 +28,24 @@
     (w! 0xbe000088 (| 0x70 id))
     (if (!= (SCSIGetPhase) 2) (return 3)) /* Incorrect Phase? */
     (SCSIWrite (cdb) 6)
-    (return 0)
+    (while (!= (SCSIGetPhase) 1) (do)) /* Wait for disk to seek */
+    (SCSIRead addr len)
+    (return (b@ 0xbe000080))
+)
+(fn SCSIWriteBlocks (lba blocks addr)
+    (int len) (= len (u* blocks 512))
+    (b! (cdb) 8)
+    (b! (+ (cdb) 1) (>> lba 16))
+    (b! (+ (cdb) 2) (>> lba 8))
+    (b! (+ (cdb) 3) lba)
+    (b! (+ (cdb) 4) blocks)
+    (b! (+ (cdb) 5) 0)
+    (w! 0xbe000088 (| 0x70 id))
+    (if (!= (SCSIGetPhase) 2) (return 3)) /* Incorrect Phase? */
+    (SCSIWrite (cdb) 6)
+    (while (!= (SCSIGetPhase) 0) (do)) /* Wait for disk to seek */
+    (SCSIWrite addr len)
+    (return (b@ 0xbe000080))
 )
 (fn SCSIStartStop (start)
     (b! (cdb) 0x1b)

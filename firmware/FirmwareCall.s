@@ -81,7 +81,7 @@ Status Codes (a0):
     b .ret
     li t0, 2
     bne kr, t0, 2
-    bl 0
+    bl SCSIWriteBlocks
     b .ret
     li t0, 4
     bne kr, t0, .invalid

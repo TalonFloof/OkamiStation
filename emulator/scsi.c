@@ -5,6 +5,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+/* i may or may not have stolen hyenasky's disk geometry... */
+#define LBA_TO_BLOCK(lba)    ((lba)%63)
+#define LBA_TO_TRACK(lba)    ((lba)/63)
+#define LBA_TO_CYLINDER(lba) (LBA_TO_TRACK(lba)/4)
+
 /*
 Registers:
 0x20: Current SCSI Input/Output Data (R/W)
@@ -21,6 +28,9 @@ typedef struct {
     uint32_t blocks;
     uint8_t cmd[10];
     uint8_t cmdOffset;
+    uint8_t* data;
+    uint32_t dataOffset;
+    uint32_t dataLen;
     bool hasStatus;
     uint8_t status;
     uint8_t phase;
@@ -30,10 +40,13 @@ typedef struct {
     uint8_t q;
 
     bool isSpinning;
-    uint32_t headTrackLocation;
-	uint32_t operationInterval;
+    bool isSeeking;
+    uint32_t headLocation;
+	uint32_t opInterval;
 	uint32_t seekDestination;
 	uint32_t consecutiveZeroSeekCount;
+    uint32_t platterLocation;
+    uint8_t opPhase;
 } SCSIDrive;
 
 typedef enum {
@@ -91,12 +104,68 @@ void SCSISuccess(uint8_t id) {
     SCSIDrives[id].status = 0;
 }
 
+void SCSISeek(uint8_t id, uint32_t lba, uint8_t phase) {
+    SCSIDrive* drive = &SCSIDrives[id];
+    drive->isSeeking = true;
+    int cylseek = abs(((int)(drive->headLocation) - (int)(LBA_TO_CYLINDER(lba)))) / (1000/200);
+    if (drive->headLocation != LBA_TO_CYLINDER(lba))
+        cylseek += 3;
+    int blockseek = LBA_TO_BLOCK(lba) - drive->platterLocation;
+    if(blockseek < 0)
+        blockseek += 63;
+    drive->opPhase = phase;
+    drive->opInterval = cylseek + blockseek/(63/(1000/(3600/60)));
+    drive->seekDestination = lba;
+    if(drive->opInterval == 0) {
+        drive->consecutiveZeroSeekCount += blockseek;
+        if(drive->consecutiveZeroSeekCount > (63/(1000/(3600/60)))) {
+            drive->opInterval = 1;
+            drive->consecutiveZeroSeekCount = 0;
+        }
+    } else {
+        drive->consecutiveZeroSeekCount = 0;
+    }
+}
+
+void SCSITick() {
+    for(int i=0; i < 8; i++) {
+        if (SCSIDrives[i].image == NULL)
+			continue;
+        if(SCSIDrives[i].isSeeking && SCSIDrives[i].opInterval <= 1) {
+            SCSIDrives[i].isSeeking = false;
+            SCSIDrives[i].opInterval = 0;
+            SCSIDrives[i].platterLocation = LBA_TO_BLOCK(SCSIDrives[i].seekDestination);
+			SCSIDrives[i].headLocation = LBA_TO_CYLINDER(SCSIDrives[i].seekDestination);
+            SCSIDrives[i].phase = SCSIDrives[i].opPhase;
+        } else if(SCSIDrives[i].opInterval > 0) {
+            SCSIDrives[i].opInterval--;
+        } else if (SCSIDrives[i].isSpinning) {
+			SCSIDrives[i].platterLocation += (63/(1000/(3600/60)));
+			SCSIDrives[i].platterLocation %= 63;
+		}
+    }
+}
+
 void SCSIDoCommand(uint8_t id) {
     switch(SCSIDrives[id].cmd[0]) {
         case 0x08: { // READ(6)
             uint32_t lba = (SCSIDrives[id].cmd[1]<<16)|(SCSIDrives[id].cmd[2]<<8)|SCSIDrives[id].cmd[3];
             uint32_t blocks = SCSIDrives[id].cmd[4];
-            
+            SCSIDrives[id].dataOffset = 0;
+            SCSIDrives[SCSIController.id].dataLen = blocks*512;
+            fseek(SCSIDrives[id].image,lba*512,SEEK_SET);
+            SCSISeek(id,lba,PHASE_DATA_IN);
+            SCSISuccess(id);
+            break;
+        }
+        case 0x0a: { // WRITE(6)
+            uint32_t lba = (SCSIDrives[id].cmd[1]<<16)|(SCSIDrives[id].cmd[2]<<8)|SCSIDrives[id].cmd[3];
+            uint32_t blocks = SCSIDrives[id].cmd[4];
+            SCSIDrives[id].dataOffset = 0;
+            SCSIDrives[id].dataLen = blocks*512;
+            fseek(SCSIDrives[id].image,lba*512,SEEK_SET);
+            SCSISeek(id,lba,PHASE_DATA_OUT);
+            SCSISuccess(id);
             break;
         }
         case 0x1b: { // START STOP UNIT
@@ -115,6 +184,24 @@ int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
     switch(port) {
         case 0x20: {
             switch(SCSIDrives[SCSIController.id].phase) {
+                case PHASE_DATA_IN: {
+                    if(SCSIDrives[SCSIController.id].cmd[0] == 0x08) {
+                        fread(value,1,1,SCSIDrives[SCSIController.id].image);
+                    } else {
+                        *value = SCSIDrives[SCSIController.id].data[SCSIDrives[SCSIController.id].dataOffset];
+                    }
+                    SCSIDrives[SCSIController.id].dataOffset += 1;
+                    if(SCSIDrives[SCSIController.id].dataOffset >= SCSIDrives[SCSIController.id].dataLen) {
+                        if(SCSIDrives[SCSIController.id].data != NULL)
+                            free(SCSIDrives[SCSIController.id].data);
+                        if(SCSIDrives[SCSIController.id].hasStatus) {
+                            SCSIDrives[SCSIController.id].phase = PHASE_STATUS;
+                        } else {
+                            SCSIDrives[SCSIController.id].phase = 0;
+                        }
+                    }
+                    return 1;
+                }
                 case PHASE_STATUS: {
                     *value = SCSIDrives[SCSIController.id].status;
                     SCSIDrives[SCSIController.id].phase = 0;
@@ -142,14 +229,27 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
     switch(port) {
         case 0x20: {
             switch(SCSIDrives[SCSIController.id].phase) {
+                case PHASE_DATA_OUT: {
+                    if(SCSIDrives[SCSIController.id].cmd[0] == 0x0a) {
+                        fwrite(&value,1,1,SCSIDrives[SCSIController.id].image);
+                        SCSIDrives[SCSIController.id].dataOffset++;
+                        if(SCSIDrives[SCSIController.id].dataOffset >= SCSIDrives[SCSIController.id].dataLen) {
+                            SCSIDrives[SCSIController.id].dataOffset = 0;
+                            SCSIDrives[SCSIController.id].dataLen = 0;
+                            SCSIDrives[SCSIController.id].phase = PHASE_STATUS;
+                        }
+                        return 1;
+                    } else {
+                        SCSIDrives[SCSIController.id].data[SCSIDrives[SCSIController.id].dataOffset++] = value&0xFF;
+                    }
+                }
                 case PHASE_COMMAND: {
                     SCSIDrives[SCSIController.id].cmd[SCSIDrives[SCSIController.id].cmdOffset++] = value&0xFF;
                     if(SCSIDrives[SCSIController.id].cmdOffset >= SCSIGetCommandLength(SCSIController.id)) {
-                        fprintf(stderr, "SCSI Run Command 0x%02x\n", SCSIDrives[SCSIController.id].cmd[0]);
                         SCSIDoCommand(SCSIController.id);
-                        if(SCSIDrives[SCSIController.id].hasStatus) {
+                        if(SCSIDrives[SCSIController.id].hasStatus && SCSIDrives[SCSIController.id].opInterval == 0) {
                             SCSIDrives[SCSIController.id].phase = PHASE_STATUS;
-                        } else if(SCSIDrives[SCSIController.id].phase == PHASE_COMMAND) {
+                        } else if(SCSIDrives[SCSIController.id].phase == PHASE_COMMAND && SCSIDrives[SCSIController.id].opInterval == 0) {
                             SCSIDrives[SCSIController.id].phase = PHASE_DATA_OUT;
                         }
                         SCSIDrives[SCSIController.id].cmdOffset = 0;
@@ -169,7 +269,7 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
         case 0x22: {
             SCSIController.id = (value&0xF);
             SCSIController.initiator_id = ((value>>4)&0xF);
-            if(SCSIDrives[SCSIController.id].image != NULL) {
+            if(SCSIDrives[SCSIController.id].image != NULL && SCSIDrives[SCSIController.id].phase == 0) {
                 SCSIDrives[SCSIController.id].phase = PHASE_COMMAND;
             }
             return 1;
@@ -209,5 +309,16 @@ void SCSIAttachDrive(const char* path) {
     SCSIDrives[nextID].hasStatus = false;
     SCSIDrives[nextID].phase = PHASE_COMMAND;
     SCSIDrives[nextID].isSpinning = false;
+    SCSIDrives[nextID].isSeeking = false;
+    SCSIDrives[nextID].dataOffset = 0;
+    SCSIDrives[nextID].dataLen = 0;
+    SCSIDrives[nextID].data = NULL;
     nextID++;
+}
+
+void SCSICloseDrives() {
+    for(int i=0; i < 8; i++) {
+        if(SCSIDrives[i].image != NULL)
+            fclose(SCSIDrives[i].image);
+    }
 }

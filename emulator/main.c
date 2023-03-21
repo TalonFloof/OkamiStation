@@ -123,6 +123,7 @@ int main(int argc, const char* argv[]) {
             if (i == dt-1)
                 cyclesleft += extracycles;
             TimerTick();
+            SCSITick();
             while (cyclesleft > 0) {
                 next();
 			    cyclesleft -= 1;
@@ -140,6 +141,7 @@ int main(int argc, const char* argv[]) {
             switch (event.type) {
                 case SDL_QUIT: {
                     OkamiBoardSaveNVRAM();
+                    SCSICloseDrives();
                     return 0;
                 }
                 case SDL_KEYDOWN: {
