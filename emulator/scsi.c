@@ -182,7 +182,11 @@ void SCSIDoCommand(uint8_t id) {
             break;
         }
         case 0x25: { // READ CAPACITY(10)
-            
+            SCSIDrives[id].data = malloc(8);
+            SCSIDrives[id].dataOffset = 0;
+            SCSIDrives[id].dataLen = 8;
+            ((uint32_t*)SCSIDrives[id].data)[0] = SCSIDrives[id].blocks-1;
+            ((uint32_t*)SCSIDrives[id].data)[1] = 512;
             SCSISuccess(id);
             break;
         }

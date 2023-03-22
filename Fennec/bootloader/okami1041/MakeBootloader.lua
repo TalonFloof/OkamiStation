@@ -5,9 +5,9 @@ local function check(success,_,num)
     end
 end
 
-check(os.execute("../../okamisdk/okas Bootstrap.s Bootloader.o"))
-check(os.execute("../../okamisdk/okrotool reloc -noalign 0x80010000 0 Bootloader.o"))
-check(os.execute("../../okamisdk/okrotool dump Bootloader.o Bootloader.bin"))
+check(os.execute("../../../okamisdk/okas Bootstrap.s Bootloader.o"))
+check(os.execute("../../../okamisdk/okrotool reloc -noalign 0x80010000 0 Bootloader.o"))
+check(os.execute("../../../okamisdk/okrotool dump Bootloader.o Bootloader.bin"))
 local file = io.open("Bootloader.bin","rb")
 local data = file:read("*all")
 file:close()
@@ -22,4 +22,4 @@ if (#data % 512) > 0 then
     outfile:write(string.rep("\0",512-(#data%512)))
 end
 outfile:close()
-os.rename("Bootloader.bin","../../emulator/Bootloader.bin")
+os.rename("Bootloader.bin","../../../emulator/Bootloader.bin")

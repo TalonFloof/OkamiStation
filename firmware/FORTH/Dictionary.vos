@@ -15,12 +15,12 @@
 
 (fn NewWord (name flags ptr len)
     (w! dictTail dictFinalWord)
-    (b! (+ dictTail (ForthWord.flags)) flags)
-    (memset (+ dictTail (ForthWord.name)) 19 0)
-    (memcpy (+ dictTail (ForthWord.name)) name (strlen name))
-    (if ptr (memcpy (+ dictTail (ForthWord.data)) ptr len))
+    (b! (index dictTail ForthWord.flags) flags)
+    (memset (index dictTail ForthWord.name) 19 0)
+    (memcpy (index dictTail ForthWord.name) name (strlen name))
+    (if ptr (memcpy (index dictTail ForthWord.data) ptr len))
     (= dictFinalWord dictTail)
-    (= dictTail (+ dictTail (ForthWord.data) len))
+    (= dictTail (+ (index dictTail ForthWord.data) len))
 )
 
 (fn NewNative (name ptr) (w! (stringBuffer) ptr) (NewWord name (FlagNative) (stringBuffer) 4))
@@ -30,8 +30,8 @@
     (int index l)
     (= index dictFinalWord)
     (while 1
-        (= l (strlen (+ index (ForthWord.name))))
-        (if (strncmp name (+ index (ForthWord.name)) 17) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
+        (= l (strlen (index index ForthWord.name)))
+        (if (strncmp name (index index ForthWord.name) 17) (return index) (== (w@ index) 0) (return 0) (= index (w@ index)))
     )
 )
 

@@ -344,12 +344,12 @@
                 (ConsolePrint "? ")
                 (return)
             ) (do
-                (if (& (b@ (+ ptr (ForthWord.flags))) (FlagImmed)) (if forthState (do
+                (if (& (b@ (index ptr ForthWord.flags)) (FlagImmed)) (if forthState (do
                     (dPush ptr) 
                     (fun_execute)
                 ) (do
                     (ConsolePrint "\nInterpreting compile-only word: ")
-                    (ConsolePrint (+ ptr (ForthWord.name)))
+                    (ConsolePrint (index ptr ForthWord.name))
                     (ConsolePrint " ")
                     (return)
                 )) (if forthState (do
@@ -368,8 +368,8 @@
 (fn fun_execute ()
     (int ptr flags)
     (= ptr (dPop))
-    (= flags (b@ (+ ptr (ForthWord.flags))))
-    (if (& flags (FlagNative)) (call (w@ (+ ptr (ForthWord.data)))) (fun_run_list (+ ptr (ForthWord.data))))
+    (= flags (b@ (index ptr ForthWord.flags)))
+    (if (& flags (FlagNative)) (call (w@ (index ptr ForthWord.data))) (fun_run_list (index ptr ForthWord.data)))
 )
 
 (fn fun_run_list (offset)
@@ -416,7 +416,7 @@
     (int index)
     (= index dictFinalWord)
     (while 1
-        (ConsolePrint (+ index (ForthWord.name)))
+        (ConsolePrint (index index ForthWord.name))
         (ConsolePrint " ")
         (if (== (w@ index) 0) (break) (= index (w@ index)))
     )
