@@ -60,3 +60,4 @@
     (while (!= (SCSIGetPhase) 3) (do))
     (return (b@ 0xbe000080))
 )
+(fn SCSI)

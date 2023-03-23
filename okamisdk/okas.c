@@ -692,6 +692,11 @@ void Assemble(char* name, char* data) {
         i++;
       }
       i++;
+    } else if(data[i] == '/' && data[i+1] == '/') {
+      i+=2;
+      while(data[i] != '\n') {
+        i++;
+      }
     } else {
       Error(name,line,i-lineStart,"Unknown Token");
     }

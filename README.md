@@ -24,3 +24,7 @@ That's it...
 > There's not really much to show off rn
 
 ![A Picture of the OkamiStation emulator running a basic FORTH program within the OkamiBoot shell](docs/OkamiBoot.png)
+
+## Discord Server
+
+<a href="https://discord.gg/Jw7Te5FaVS"><img src="https://discordapp.com/api/guilds/1087939016852254740/widget.png?style=banner2" alt="Join the Discord!"/></a>
