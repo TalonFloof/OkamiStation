@@ -1,3 +1,5 @@
 program FennecKernel;
 
-uses 
+begin
+
+end.
