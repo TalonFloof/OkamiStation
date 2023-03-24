@@ -1,24 +1,28 @@
-type
-    PascalSourceFile = record
-        Name: string;
-        Data: string;
-        CurrentLine: integer;
-        LineStart: integer;
-        CurrentOffset: integer;
+unit PascalFile;
+interface
+    type
+        PascalSourceFile = packed record
+            Name: string;
+            FileHandler: file of string;
+            CurrentLineNum: integer;
+            CurrentLine: string[255];
+            CurrentCol: integer;
+        end;
+        PPascalSourceFile = ^PascalSourceFile;
+    function OpenSourceFile(Name: string): PPascalSourceFile;
+implementation
+    function OpenSourceFile(Name: string): PPascalSourceFile;
+    var
+        srcIn: file of string;
+        output: PPascalSourceFile;
+    begin
+        New(output);
+        output^.Name := Name;
+        output^.CurrentLineNum := 1;
+        output^.CurrentLine := '';
+        output^.CurrentCol := 0;
+        Assign(srcIn,Name);
+        output^.FileHandler := srcIn;
+        OpenSourceFile := output;
     end;
-    PascalSourceFilePtr = ^PascalSourceFile;
-function ReadSourceFile(Name: string): PascalSourceFile;
-var
-    srcIn: file of string;
-    output: PascalSourceFile;
-begin
-    output.Name := Name;
-    output.CurrentLine := 1;
-    output.LineStart := 0;
-    output.CurrentOffset := 0;
-    Assign(srcIn,Name);
-    Read(srcIn,output.Data);
-    
-    Close(srcIn);
-    ReadSourceFile := output;
-end;
+end.
