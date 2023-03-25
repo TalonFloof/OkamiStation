@@ -46,6 +46,10 @@ return function(fileName, data)
         return c >= "0" and c <= "9"
     end
 
+    local function isHexNumber(c)
+        return (c >= "0" and c <= "9") (c:lower() >= "a" and c:lower() <= "f")
+    end
+
     local function isAlpha(c)
         return (c:lower() >= "a" and c:lower() <= "z") or c == "_"
     end
@@ -54,8 +58,14 @@ return function(fileName, data)
         return isAlpha(c) or isNumber(c)
     end
 
+    local function isSymbol(c)
+        return c == "+" or c == "-" or c == "*" or c == "/" or c == "=" or c == "^" or c == "<" or c == ">" 
+               or c == "(" or c == ")" or c == "[" or c == "]" or c == "." or c == "," or c == ":" or c == ";"
+               or c == "@"
+    end
+
     local function addToken(tokenType)
-        table.insert(tokens,{type=tokenType,line=curLine,col=startOffset-lineStart,txt=data:sub(startOffset,curOffset)})
+        table.insert(tokens,{type=tokenType,file=fileName,line=curLine,col=startOffset-lineStart,txt=data:sub(startOffset,curOffset)})
         startOffset = curOffset + 1
         curOffset = curOffset + 1
     end
@@ -69,6 +79,18 @@ return function(fileName, data)
             startOffset = curOffset
             curLine = curLine + 1
             lineStart = curOffset
+        elseif data:sub(curOffset,curOffset) == "{" then -- Comment
+            while data:sub(curOffset,curOffset) ~= "}" do
+                if data:sub(curOffset,curOffset) == "\n" then
+                    curOffset = curOffset + 1
+                    curLine = curLine + 1
+                    lineStart = curOffset
+                else
+                    curOffset = curOffset + 1
+                end
+            end
+            curOffset = curOffset + 1
+            startOffset = curOffset
         elseif isAlpha(data:sub(curOffset,curOffset)) then
             while isAlphanum(data:sub(curOffset,curOffset)) do curOffset = curOffset + 1 end
             curOffset = curOffset - 1
@@ -83,6 +105,20 @@ return function(fileName, data)
             if not addedToken then
                 addToken("identifier")
             end
-        elseif 
+        elseif data:sub(curOffset,curOffset) == "$" then
+            while isHexNumber(data:sub(curOffset,curOffset)) do curOffset = curOffset + 1 end
+            curOffset = curOffset - 1
+            addToken("number")
+        elseif isNumber(data:sub(curOffset,curOffset)) then
+            while isNumber(data:sub(curOffset,curOffset)) do curOffset = curOffset + 1 end
+            curOffset = curOffset - 1
+            addToken("number")
+        elseif data:sub(curOffset,curOffset) == "'" then
+            curOffset = curOffset + 1
+            while data:sub(curOffset,curOffset) == "'" and data:sub(curOffset+1,curOffset+1) ~= "'" do curOffset = curOffset + 1 end
+            addToken("string")
+        elseif isSymbol(data:sub(curOffset,curOffset)) then
+            addToken("symbol")
+        end
     end
 end
