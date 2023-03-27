@@ -19,6 +19,8 @@ return function(fileName, data)
         "for",
         "function",
         "goto",
+        "implementation",
+        "interface",
         "if",
         "in",
         "label",
@@ -37,6 +39,8 @@ return function(fileName, data)
         "to",
         "type",
         "until",
+        "unit",
+        "uses",
         "var",
         "while",
         "with"
@@ -47,7 +51,7 @@ return function(fileName, data)
     end
 
     local function isHexNumber(c)
-        return (c >= "0" and c <= "9") (c:lower() >= "a" and c:lower() <= "f")
+        return (c >= "0" and c <= "9") or (string.lower(c) >= "a" and string.lower(c) <= "f")
     end
 
     local function isAlpha(c)
@@ -96,7 +100,7 @@ return function(fileName, data)
             curOffset = curOffset - 1
             local addedToken = false
             for _, i in ipairs(reservedWords) do
-                if data:sub(startOffset,curOffset) == i then
+                if string.lower(data:sub(startOffset,curOffset)) == string.lower(i) then
                     addToken("keyword")
                     addedToken = true
                     break
@@ -106,6 +110,8 @@ return function(fileName, data)
                 addToken("identifier")
             end
         elseif data:sub(curOffset,curOffset) == "$" then
+            curOffset = curOffset + 1
+            print(data:sub(curOffset,curOffset))
             while isHexNumber(data:sub(curOffset,curOffset)) do curOffset = curOffset + 1 end
             curOffset = curOffset - 1
             addToken("number")
@@ -116,9 +122,22 @@ return function(fileName, data)
         elseif data:sub(curOffset,curOffset) == "'" then
             curOffset = curOffset + 1
             while data:sub(curOffset,curOffset) == "'" and data:sub(curOffset+1,curOffset+1) ~= "'" do curOffset = curOffset + 1 end
+            curOffset = curOffset - 1
             addToken("string")
+        elseif data:sub(curOffset,curOffset) == "#" then
+            curOffset = curOffset + 1
+            while isNumber(data:sub(curOffset,curOffset)) do curOffset = curOffset + 1 end
+            curOffset = curOffset - 1
+            addToken("character")
         elseif isSymbol(data:sub(curOffset,curOffset)) then
+            if (data:sub(curOffset,curOffset) == "<" and (data:sub(curOffset+1,curOffset+1) == ">" or data:sub(curOffset+1,curOffset+1) == "=")) or (data:sub(curOffset,curOffset) == ">" and data:sub(curOffset+1,curOffset+1) == "=") then
+                curOffset = curOffset + 1
+            end
             addToken("symbol")
+        else
+            print("\x1b[1;31m"..fileName.."("..curLine..":"..(curOffset-lineStart)..") Unknown Symbol: "..data:sub(curOffset,curOffset).."\x1b[0m")
+            os.exit(1)
         end
     end
+    return tokens
 end
