@@ -1,5 +1,0 @@
-program FennecKernel;
-
-begin
-
-end.
