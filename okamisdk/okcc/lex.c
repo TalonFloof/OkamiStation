@@ -56,6 +56,7 @@ lexLoop:
         }
         l->curOffset += 2;
         l->startOffset = l->curOffset;
+        goto lexLoop;
     } else if(isSymbol(c)) {
         while(isSymbol(l->code[l->curOffset]))
             l->curOffset++;
@@ -113,7 +114,31 @@ lexLoop:
             else if(c==',') l->currentToken.type = tkComma;
             else ccErr(l->name,l->line,l->startOffset-l->lineStart,"huh?");
         }
-        l->startOffset = l->curOffset; 
+        l->startOffset = l->curOffset;
+        return &l->currentToken;
+    } else if(c == '"') { /* String */
+        while(!(l->code[l->curOffset] == '"' && l->code[l->curOffset-1] != '\\'))
+            l->curOffset++;
+        l->curOffset++;
+        l->currentToken.size = l->curOffset-l->startOffset;
+        l->currentToken.type = tkString;
+        l->startOffset = l->curOffset;
+        return &l->currentToken;
+    } else if(c == '\'') { /* Character */
+        while(!(l->code[l->curOffset] == '\'' && l->code[l->curOffset-1] != '\\'))
+            l->curOffset++;
+        l->curOffset++;
+        l->currentToken.size = l->curOffset-l->startOffset;
+        l->currentToken.type = tkCharacter;
+        l->startOffset = l->curOffset;
+        return &l->currentToken;
+    } else if(isdigit(c)) { /* Number */
+        char* endPtr;
+        strtoul(l->code+l->curOffset,&endPtr,0);
+        l->currentToken.size = endPtr-l->startOffset;
+        l->currentToken.type = tkNumber;
+        l->startOffset = endPtr-l->code;
+        return &l->currentToken;
     } else if(isalpha(c) || c == '_') { /* Identifier / Keyword */
         while(isIdent(l->code[l->curOffset]))
             l->curOffset++;
@@ -154,6 +179,7 @@ lexLoop:
             else if(strncmp(str,"union",5)) l->currentToken.type = tkUnionKw;
             else if(strncmp(str,"while",5)) l->currentToken.type = tkWhileKw;
         }
+        l->startOffset = l->curOffset;
         return &l->currentToken;
     }
     return NULL; /* Failsafe */
