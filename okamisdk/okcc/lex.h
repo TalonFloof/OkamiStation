@@ -107,4 +107,7 @@ typedef struct Lexer {
     Token_t currentToken;
 } Lexer_t;
 
+Token_t* lexNext(Lexer_t* l);
+Lexer_t* lexNew(char* name, char* code);
+
 #endif

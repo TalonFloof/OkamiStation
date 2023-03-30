@@ -58,9 +58,10 @@ lexLoop:
         l->startOffset = l->curOffset;
         goto lexLoop;
     } else if(isSymbol(c)) {
+        char* str;
         while(isSymbol(l->code[l->curOffset]))
             l->curOffset++;
-        char* str = l->currentToken.begin;
+        str = l->currentToken.begin;
         if((l->curOffset-l->startOffset) > 3) {
             ccErr(l->name,l->line,l->startOffset-l->lineStart,"Symbol tokens cannot be larger than three symbols");
         } else if(l->curOffset-l->startOffset == 3) {
@@ -135,9 +136,10 @@ lexLoop:
     } else if(isdigit(c)) { /* Number */
         char* endPtr;
         strtoul(l->code+l->curOffset,&endPtr,0);
-        l->currentToken.size = endPtr-l->startOffset;
+        l->currentToken.size = (endPtr-l->code)-l->startOffset;
         l->currentToken.type = tkNumber;
         l->startOffset = endPtr-l->code;
+        l->curOffset = l->startOffset;
         return &l->currentToken;
     } else if(isalpha(c) || c == '_') { /* Identifier / Keyword */
         while(isIdent(l->code[l->curOffset]))

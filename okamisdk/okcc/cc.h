@@ -3,5 +3,6 @@
 #include <stdio.h>
 
 void ccErr(char* file, unsigned long line, unsigned long col, char* err);
+char* readFile(char* path, unsigned long* size);
 
 #endif
