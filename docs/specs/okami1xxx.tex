@@ -33,6 +33,86 @@ and how programmers can best utilize its features.
 \begin{verbatim}0000 00bb bbbs ssss dddd d000 0000 0000\end{verbatim}
 Adds two 32-bit numbers stored in \verb|rs1| and \verb|rs2|.
 The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{sub rd, rs1, rs2}\end{large}
+\begin{verbatim}0000 01bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Subtracts two 32-bit numbers stored in \verb|rs1| and \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{and rd, rs1, rs2}\end{large}
+\begin{verbatim}0000 10bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Logical Ands two 32-bit numbers stored in \verb|rs1| and \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{or rd, rs1, rs2}\end{large}
+\begin{verbatim}0000 11bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Logical Ors two 32-bit numbers stored in \verb|rs1| and \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{xor rd, rs1, rs2}\end{large}
+\begin{verbatim}0001 00bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Exclusive Ors two 32-bit numbers stored in \verb|rs1| and \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{sll rd, rs1, rs2}\end{large}
+\begin{verbatim}0001 01bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Logical Left Shifts the 32-bit number stored in \verb|rs1| by \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{srl rd, rs1, rs2}\end{large}
+\begin{verbatim}0001 10bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Logical Right Shifts the 32-bit number stored in \verb|rs1| by \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{sra rd, rs1, rs2}\end{large}
+\begin{verbatim}0001 10bb bbbs ssss dddd d100 0000 0000\end{verbatim}
+Arithmatic Right Shifts the 32-bit number stored in \verb|rs1| by \verb|rs2|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 1 - \textbf{slt rd, rs1, rs2}\end{large}
+\begin{verbatim}0001 11bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Set \verb|rd| to \verb|1| if the signed number \verb|rs1| is less than the signed number \verb|rs2|.
+\newline\newline
+\begin{large}Category 1 - \textbf{sltu rd, rs1, rs2}\end{large}
+\begin{verbatim}0010 00bb bbbs ssss dddd d000 0000 0000\end{verbatim}
+Set \verb|rd| to \verb|1| if the unsigned number \verb|rs1| is less than the unsigned number \verb|rs2|.
+\newline\newline
+\begin{large}Category 1 - \textbf{mul rd, ru, rs1, rs2}\end{large}
+\begin{verbatim}0010 01bb bbbs ssss uuuu uddd dd00 0000\end{verbatim}
+Preforms signed 32-bit fast multiplication on \verb|rs1| and \verb|rs2|.
+The lower 32-bits is stored into \verb|rd| and the upper 32-bits are stored into \verb|ru|.
+\newline\newline
+\begin{large}Category 1 - \textbf{mulu rd, ru, rs1, rs2}\end{large}
+\begin{verbatim}0010 01bb bbbs ssss uuuu uddd dd00 0001\end{verbatim}
+Preforms unsigned 32-bit fast multiplication on \verb|rs1| and \verb|rs2|.
+The lower 32-bits is stored into \verb|rd| and the upper 32-bits are stored into \verb|ru|.
+\newline\newline
+\begin{large}Category 1 - \textbf{div rd, ru, rs1, rs2}\end{large}
+\begin{verbatim}0010 10bb bbbs ssss uuuu uddd dd00 0000\end{verbatim}
+Preforms signed 32-bit fast division on \verb|rs1| and \verb|rs2|.
+The quotent is stored into \verb|rd| and the remander is stored into \verb|ru|.
+\newline\newline
+\begin{large}Category 1 - \textbf{divu rd, ru, rs1, rs2}\end{large}
+\begin{verbatim}0010 10bb bbbs ssss uuuu uddd dd00 0001\end{verbatim}
+Preforms unsigned 32-bit fast division on \verb|rs1| and \verb|rs2|.
+The quotent is stored into \verb|rd| and the remander is stored into \verb|ru|.
+\pagebreak
 
+\begin{large}Category 1 - \textbf{coproc imm26}\end{large}
+\begin{verbatim}0011 11xx xxxx xxxx xxxx xxxx xxxx xxxx\end{verbatim}
+This instruction is reserved for preforming an operation on a floating-point coprocessor.
+The exact formatting of this instruction varies on the coprocessor in question that is installed,
+and is not part of the Core Specificiation.
+\newline\newline
+\begin{large}Category 2 - \textbf{addi rd, rs, imm16}\end{large}
+\begin{verbatim}0100 00ss sssd dddd iiii iiii iiii iiii\end{verbatim}
+Adds the value of \verb|rs1| by the signed 16-bit number \verb|imm16|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
+\begin{large}Category 2 - \textbf{andi rd, rs, imm16}\end{large}
+\begin{verbatim}0100 01ss sssd dddd iiii iiii iiii iiii\end{verbatim}
+Logical Ands the value of \verb|rs1| by the unsigned 16-bit number \verb|imm16|.
+The result of this operation is stored into \verb|rd|.
+\newline\newline
 \end{flushleft}
 \end{document}
