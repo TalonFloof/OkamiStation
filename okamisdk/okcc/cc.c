@@ -1,26 +1,26 @@
 #include <stdio.h>
 #include "cc.h"
-#include "notice.h"
 #include "parse.h"
 #include <stdlib.h>
 
-int main(int argc,char *argv[]) {
-    fputs(VERSION, stderr);
-    fputs(CRIGHT, stderr);
+int main(int argc,char **argv) {
+    fputs("Okami1041 C Compiler, Release 0.1\n", stderr);
+    fputs("Copyright (C) 2023 TalonFox\n\n", stderr);
     if(argc < 3) {
         fputs("usage: cc [file(s)] [asm_out]\n",stderr);
         return 1;
     }
+    Parser_t* p = parseNew(&argv[1],argc-2);
     return 0;
 }
 
 void ccErr(char* file, unsigned long line, unsigned long col, char* err) {
     if(file == NULL) {
-        fprintf(stderr,"\x1b[1;21mAnonymousBuffer(NO LOCATION) - %s\x1b[0m\n",err);
+        fprintf(stderr,"\x1b[1;31mAnonymousBuffer(NO LOCATION) - %s\x1b[0m\n",err);
     } else if(line == 0) {
-        fprintf(stderr,"\x1b[1;21m%s(NO LOCATION) - %s\x1b[0m\n",err);
+        fprintf(stderr,"\x1b[1;31m%s(NO LOCATION) - %s\x1b[0m\n",file,err);
     } else {
-        fprintf(stderr,"\x1b[1;21m%s(%li:%li) - %s\x1b[0m\n",line,col,err);
+        fprintf(stderr,"\x1b[1;31m%s(%li:%li) - %s\x1b[0m\n",file,line,col,err);
     }
     exit(2);
 }

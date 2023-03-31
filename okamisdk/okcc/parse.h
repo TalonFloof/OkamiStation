@@ -10,17 +10,16 @@ typedef enum {
     astNode,
 } ASTSymType;
 
-typedef struct ASTSymbol {
+typedef struct ASTNode {
     ASTSymType type;
     unsigned long size;
     void* data; /* This doesn't actually point to anything,
                    rather it marks the beginning of the data */
-} ASTSymbol_t;
-
-typedef ASTSymbol_t ASTNode_t;
+} ASTNode_t;
 
 typedef struct Parser {
     ASTNode_t* rootNode;
+    int lexerCount;
     Lexer_t* lexers[];
 } Parser_t;
 
