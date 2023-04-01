@@ -1,0 +1,11 @@
+(* The Main Module for the Fennec Kernel *)
+
+MODULE FennecKernel;
+IMPORT Target;
+
+PROCEDURE main();
+BEGIN
+    halt();
+END main;
+
+END FennecKernel.

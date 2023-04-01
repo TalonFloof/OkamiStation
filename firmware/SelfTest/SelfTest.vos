@@ -3,6 +3,7 @@
 (extern RAMTestHandler)
 
 (fn TestFB ()
+    (w! 0xb0000004 0)
     (memset16 0xb0001000 0xC0000 0x55aa)
     (memset16 0xb0001000 0xC0000 0xaa55)
     (memset16 0xb0001000 0xC0000 0xffff)
@@ -24,6 +25,8 @@
 )
 
 (fn EarlyException (addr)
+    (w! 0xb0000004 0)
+    (w! 0xb0000000 1)
     (itoa addr 0x80000000 16)
     (FramebufferRenderMonochromeBitmap (- 512 64) 624 128 128 1 255 0 (+ (OkamiLogo) 0x20000000))
     (FramebufferRenderString (- 512 (u* (strlen 0x80000000) 8)) 368 2 255 0x80000000)
@@ -31,6 +34,8 @@
 )
 
 (fn RAMErr (addr)
+    (w! 0xb0000004 0)
+    (w! 0xb0000000 1)
     (itoa addr (stringBuffer) 16)
     (FramebufferRenderMonochromeBitmap (- 512 64) 624 128 128 1 255 0 (OkamiLogo))
     (FramebufferRenderString (- 512 (u* (strlen (stringBuffer)) 8)) 368 2 255 (stringBuffer))

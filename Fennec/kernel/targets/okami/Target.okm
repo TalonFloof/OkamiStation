@@ -1,0 +1,14 @@
+MODULE Target;
+
+PROCEDURE targetinit();
+BEGIN
+    
+END targetinit;
+
+PROCEDURE halt();
+BEGIN
+
+END targetinit;
+
+
+END Target.
