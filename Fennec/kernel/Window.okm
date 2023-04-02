@@ -1,14 +1,30 @@
 MODULE Window;
-TYPE
-    WindowBuffer = POINTER TO BYTE;
-    WindowRec = RECORD
-        x: USHORT;
-        y: USHORT;
-        w: USHORT;
-        h: USHORT;
-        flags: UINT;
-        name: ARRAY 32 OF CHAR;
-        data: WindowBuffer;
-    END;
+    IMPORT Framebuffer;
+    (* 12x19x2 1-bit images w/ alignment = 76 bytes *)
+    (*EXTERN CursorBitmaps: ARRAY 76 OF BYTE;*)
+    (* Windows must have an extra 2 pixels on the width, and an extra 22 pixels on the height *)
+    TYPE
+        WindowBuffer = POINTER TO BYTE;
+        WindowRec = RECORD
+            x: USHORT;
+            y: USHORT;
+            w: USHORT;
+            h: USHORT;
+            flags: UINT;
+            name: ARRAY 32 OF CHAR;
+            data: WindowBuffer;
+        END;
+    VAR RootWindow, SysConWindow: WindowRec;
+
+    PROCEDURE InitWin();
+    BEGIN
+        RootWindow.x := 0;
+        RootWindow.y := 0;
+        RootWindow.w := Framebuffer.width;
+        RootWindow.h := Framebuffer.height;
+        RootWindow.flags := 80000000H;
+        RootWindow.data := Framebuffer.ptr;
+        SysConWindow.x := ((RootWindow.w/2));
+    END InitWin;
 
 END Window.

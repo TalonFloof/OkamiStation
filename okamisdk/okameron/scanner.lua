@@ -79,7 +79,7 @@ return function(fileName,module)
     local function isDigit(c)
         return c >= "0" and c <= "9"
     end
-    while cursor < #module do
+    while cursor < #module+1 do
         if module:sub(cursorStart,cursor) == "\n" or module:sub(cursorStart,cursor) == "\r" then
             cursor = cursor + 1
             cursorStart = cursor
@@ -90,7 +90,7 @@ return function(fileName,module)
             cursorStart = cursor
         elseif module:sub(cursorStart,cursor+1) == "(*" then
             cursor = cursor + 2
-            while module:sub(cursor,cursor+1) != "*)" do
+            while module:sub(cursor,cursor+1) ~= "*)" and cursor < #module+1 do
                 if module:sub(cursor,cursor) == "\n" or module:sub(cursor,cursor) == "\r" then
                     line = line + 1
                     lineStart = cursor+1
@@ -100,7 +100,7 @@ return function(fileName,module)
             cursor = cursor + 2
             cursorStart = cursor
         elseif isAlpha(module:sub(cursor,cursor)) then
-            while isAlpha(module:sub(cursor,cursor)) or isDigit(module:sub(cursor,cursor)) do cursor = cursor + 1 end
+            while isAlpha(module:sub(cursor,cursor)) or isDigit(module:sub(cursor,cursor)) and cursor < #module+1 do cursor = cursor + 1 end
             cursor = cursor - 1
             if keywords[module:sub(cursorStart,cursor)] then
                 addToken(keywords[module:sub(cursorStart,cursor)])
@@ -109,15 +109,16 @@ return function(fileName,module)
             end
         elseif module:sub(cursor,cursor) == "\"" then
             cursor = cursor + 1
-            while module:sub(cursor,cursor) != "\"" do cursor = cursor + 1 end
+            while module:sub(cursor,cursor) ~= "\"" and cursor < #module+1 do cursor = cursor + 1 end
             addToken("string")
         elseif isDigit(module:sub(cursor,cursor)) then
-            while isAlpha(module:sub(cursor,cursor)) or isDigit(module:sub(cursor,cursor)) do cursor = cursor + 1 end
-            addToken("number")
-        elseif symbols[module:sub(cursor,cursor)] then
-            while symbols[module:sub(cursor,cursor)] do cursor = cursor + 1 end
+            while isAlpha(module:sub(cursor,cursor)) or isDigit(module:sub(cursor,cursor)) and cursor < #module+1 do cursor = cursor + 1 end
             cursor = cursor - 1
-            addToken(symbols[module:sub(cursor,cursor)])
+            addToken("number")
+    elseif symbols[module:sub(cursorStart,cursor)] ~= nil then
+            while symbols[module:sub(cursorStart,cursor)] ~= nil and cursor < #module+1 do cursor = cursor + 1 end
+            cursor = cursor - 1
+            addToken(symbols[module:sub(cursorStart,cursor)])
         else
             io.stderr:write("\x1b[1;31m"..fileName.."("..line..":"..(cursorStart-lineStart)..") Unknown Token!\x1b[0m\n")
             os.exit(2)

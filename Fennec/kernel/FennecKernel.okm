@@ -1,13 +1,12 @@
 (* The Main Module for the Fennec Kernel *)
 
 MODULE FennecKernel;
-IMPORT Target, Window;
+    IMPORT Target, Window;
 
-PROCEDURE main();
-BEGIN
-    targetinit();
-    Window_Init();
-    halt();
-END main;
-
+    PROCEDURE main();
+    BEGIN
+        targetinit();
+        InitWin();
+        halt();
+    END main;
 END FennecKernel.
