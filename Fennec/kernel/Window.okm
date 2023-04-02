@@ -1,0 +1,14 @@
+MODULE Window;
+TYPE
+    WindowBuffer = POINTER TO BYTE;
+    WindowRec = RECORD
+        x: USHORT;
+        y: USHORT;
+        w: USHORT;
+        h: USHORT;
+        flags: UINT;
+        name: ARRAY 32 OF CHAR;
+        data: WindowBuffer;
+    END;
+
+END Window.

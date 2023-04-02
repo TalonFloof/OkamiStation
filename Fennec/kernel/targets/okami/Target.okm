@@ -2,13 +2,13 @@ MODULE Target;
 
 PROCEDURE targetinit();
 BEGIN
-    
+
 END targetinit;
 
 PROCEDURE halt();
 BEGIN
-
-END targetinit;
-
+    Put(0bH); (* Mask Every Interrupt on the HTC *)
+    WHILE TRUE DO END;
+END halt;
 
 END Target.

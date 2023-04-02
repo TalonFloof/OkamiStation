@@ -18,8 +18,8 @@ typedef struct {
     uint32_t journalsize; /* Journal Log Size (excludes metadata) */
     uint32_t ztagsize; /* Zone Tag Table Size */
     uint32_t zone; /* First block in zone */
-    uint32_t zones; /* Number of blocks in zone */
-    uint32_t blksize; /* Block Size (must be at least 1024) */
+    uint32_t zones; /* Number of zones */
+    uint32_t zonesize; /* Zone Size (must be at least 512) */
     FennecFSState state; /* Filesystem State */
     uint64_t magic; /* "\x80Fennec\x80" */
     uint32_t revision; /* 1 */
@@ -29,7 +29,7 @@ typedef struct {
 ## Zone Tag
 ```
 0x00000000: Free Zone
-0x00000001: Damaged Zone
+0x00000001: Damaged Zone (Bad Block(s))
 0x00000002-0xfffffffe: Used Zone (points to next zone, this forms a linked chain)
 0xffffffff: End of Zone Chain
 ```
