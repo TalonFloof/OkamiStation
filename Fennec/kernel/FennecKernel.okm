@@ -8,5 +8,5 @@ MODULE FennecKernel;
         targetinit();
         InitWin();
         halt();
-    END main;
-END FennecKernel.
+    END;
+END.

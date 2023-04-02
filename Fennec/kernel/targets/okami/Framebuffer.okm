@@ -5,17 +5,18 @@ MODULE Framebuffer;
                                               but OkamiStation's FB is 8-bit so this is a stub *)
     BEGIN
         RETURN(c);
-    END NativeColor;
+    END;
 
     PROCEDURE FBDrawRect(x,y,w,h: SHORT; clr: UINT;);
-    VAR I, Y2: INT;
+    VAR i, y2: INT;
     BEGIN
-        
-    END FBDrawRect;
+        i := 0;
+        y2 := 0;
+    END;
 
     PROCEDURE FBGetSize(w,h: POINTER TO INT;);
     BEGIN
         w^ := 1024;
         h^ := 768;
-    END FBGetSize;
-END Framebuffer.
+    END;
+END.

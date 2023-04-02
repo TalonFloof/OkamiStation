@@ -4,6 +4,7 @@ return function(tokens)
     local cur
     local function parseErr(file,line,col,err)
         io.stderr:write("\x1b[1;31m"..file.."("..line..":"..col..") "..err.."\x1b[0m\n")
+        error()
         os.exit(3)
     end
     local function shunt(ending)
@@ -12,33 +13,33 @@ return function(tokens)
         local RIGHT = 2
         local finalInsns = {}
         local opTable = {
-            {".",0,LEFT,false},
+            {".",0,NONE,false},
+            {":=",0,NONE,false},
             {"]",0,NONE,false},
             {"(",0,NONE,false},
             {")",0,NONE,false},
-            {"+",2,LEFT,false},
-            {"-",2,LEFT,false},
-            {"_",4,RIGHT,true,function(x) return 0 - x end}, -- Unary -
-            {"^",4,LEFT,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
-            {"*",1,LEFT,false},
-            {"/",1,LEFT,false},
-            {"DIV",1,LEFT,false},
-            {"MOD",1,LEFT,false},
-            {"&",1,LEFT,false},
-            {"XOR",2,LEFT,false},
-            {"OR",2,LEFT,false},
-            {"~",4,RIGHT,true,function(x) return ~x end},
-            {"=",3,LEFT,false},
-            {"#",3,LEFT,false},
-            {"<",3,LEFT,false},
-            {">",3,LEFT,false},
-            {"<=",3,LEFT,false},
-            {">=",3,LEFT,false},
-            {":=",10,LEFT,false},
+            {"+",8,LEFT,false},
+            {"-",8,LEFT,false},
+            {"_",10,RIGHT,true,function(x) return 0 - x end}, -- Unary -
+            {"^",10,LEFT,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
+            {"*",9,LEFT,false},
+            {"/",9,LEFT,false},
+            {"DIV",9,LEFT,false},
+            {"MOD",9,LEFT,false},
+            {"&",9,LEFT,false},
+            {"XOR",8,LEFT,false},
+            {"OR",8,LEFT,false},
+            {"~",10,RIGHT,true,function(x) return ~x end},
+            {"=",7,LEFT,false},
+            {"#",7,LEFT,false},
+            {"<",7,LEFT,false},
+            {">",7,LEFT,false},
+            {"<=",7,LEFT,false},
+            {">=",7,LEFT,false},
         }
         local opStack = {}
         local outStack = {}
-        local lastOp = {"X",0,NONE,false}
+        local lastOp = nil
         local function getOp(c)
             for _,i in ipairs(opTable) do
                 if i[1] == c then
@@ -73,8 +74,9 @@ return function(tokens)
         local function addOp(op)
             if op then
                 if lastOp then
-                    if lastOp[1] == "X" or lastOp[1] ~= ")" then
-                        if op[1] == "-" then op=getOp("_") end
+                    if op[1] == "-" then op=getOp("_")
+                    elseif op[1] ~= "(" and op[1] ~= ":=" and not op[4] then
+                        parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Illegal use of binary operator \""..op[1].."\"")
                     end
                 end
                 while #opStack > 0 and opStack[#opStack][1] ~= "(" do
@@ -85,12 +87,7 @@ return function(tokens)
                     elseif po2 > po2 then operator = popOp()
                     elseif po2 == po1 and op[3] == LEFT then operator = popOp()
                     else break end
-                    if operator[4] and type(outStack[#outStack]) == "number" then
-                        local val = popNum()
-                        table.insert(outStack,operator[5](val))
-                    else
-                        table.insert(outStack,operator)
-                    end
+                    table.insert(outStack,operator)
                 end
                 table.insert(opStack,op)
                 lastOp = op
@@ -113,6 +110,14 @@ return function(tokens)
                     parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Freestanding \"]\" in expression")
                 end
                 table.insert(outStack,popOp())
+            elseif tokens[cursor].type == "dot" then
+                lastOp = {".",0,NONE,false}
+            elseif tokens[cursor].type == "assign" then
+                while #opStack > 0  do
+                    local pop = popOp()
+                    table.insert(outStack,pop)
+                end
+                addOp({":=",0,NONE,false})
             elseif tokens[cursor].type == "rparen" then
                 while #opStack > 0 and opStack[#opStack][1] ~= "(" do
                     local pop = popOp()
@@ -140,14 +145,20 @@ return function(tokens)
                 inFunc = true
             elseif tokens[cursor].type == "identifier" and not getOp(tokens[cursor].txt) then
                 table.insert(outStack,tokens[cursor].txt)
+                if lastOp ~= nil and lastOp[1] == "." then
+                    table.insert(outStack,lastOp)
+                end
+                lastOp = nil
             elseif tokens[cursor].type == "number" then
                 if string.sub(tokens[cursor].txt,#tokens[cursor].txt,#tokens[cursor].txt) == "H" then
                     table.insert(outStack,load("return 0x"..string.sub(tokens[cursor].txt,1,#tokens[cursor].txt-1))())
                 else
                     table.insert(outStack,tonumber(tokens[cursor].txt))
                 end
+                lastOp = nil
             elseif tokens[cursor].type == "string" then
                 table.insert(outStack,{"STR",tokens[cursor].txt})
+                lastOp = nil
             else
                 local op = getOp(tokens[cursor].txt)
                 addOp(op)
@@ -181,7 +192,11 @@ return function(tokens)
                     local n1 = table.remove(tempStack,#tempStack)
                     local n2 = nil
                     if i[4] then
-                        table.insert(tempStack,{i[1],n1})
+                        if n1[1] == "number" then
+                            table.insert(tempStack,{"number",i[5](n1[2])})
+                        else
+                            table.insert(tempStack,{i[1],n1})
+                        end
                     else
                         n2 = table.remove(tempStack,#tempStack)
                         table.insert(tempStack,{i[1],n2,n1})
@@ -195,13 +210,6 @@ return function(tokens)
         if tokens[cursor].type ~= type then
             parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Expected \""..type.."\" token, got \""..tokens[cursor].type.."\" token")
         end
-    end
-    local function parseProcedure(t)
-        local tab = t
-        if tab == 0 then
-
-        end
-        return tab
     end
     local function parseType()
         if tokens[cursor].type == "identifier" then
@@ -235,10 +243,7 @@ return function(tokens)
             return {"ptrOf",parseType()}
         end
     end
-    local function parseTypeSection()
-
-    end
-    local function parseVariable(isfn)
+    local function parseVariable()
         local out = {}
         local idents = {}
         while tokens[cursor].type ~= "colon" do
@@ -260,6 +265,78 @@ return function(tokens)
         end
         return out
     end
+    local function parseTypeSection()
+        local out = {}
+        while tokens[cursor].type == "identifier" do
+            local name = tokens[cursor].txt
+            cursor = cursor + 1
+            expectToken("eq")
+            cursor = cursor + 1
+            local t = false
+            if tokens[cursor].type == "recordKw" then
+                t = {"record"}
+                cursor = cursor + 1
+                while tokens[cursor].type ~= "endKw" do
+                    for _,i in ipairs(parseVariable()) do
+                        table.insert(t,i)
+                    end
+                end
+                cursor = cursor + 1
+            else
+                t = parseType()
+                cursor = cursor + 1
+            end
+            expectToken("semicolon")
+            cursor = cursor + 1
+            table.insert(out,{name,t})
+        end
+        return out
+    end
+    local function parseCode(delim)
+        local code = {}
+        local d = delim or {["endKw"]=true}
+        while not d[tokens[cursor].type] do
+            if tokens[cursor].type == "identifier" then
+                table.insert(code,shunt())
+                cursor = cursor + 1
+            elseif tokens[cursor].type == "whileKw" then
+                cursor = cursor + 1
+                local expr = shunt("doKw")
+                cursor = cursor + 1
+                local c = parseCode()
+                table.insert(code,{"while",expr,c})
+            elseif tokens[cursor].type == "ifKw" then
+                cursor = cursor + 1
+                local expr = shunt("thenKw")
+                cursor = cursor + 1
+                local c = parseCode({["endKw"]=true,["elseKw"]=true,["elsifKw"]=true})
+                local tab = {"if",{expr,c}}
+                while tokens[cursor].type ~= "endKw" do
+                    if tokens[cursor].type == "elsifKw" then
+                        cursor = cursor + 1
+                        expr = shunt("thenKw")
+                        c = parseCode({["endKw"]=true,["elseKw"]=true,["elsifKw"]=true})
+                        table.insert(tab,{"elseif",expr,c})
+                    elseif tokens[cursor].type == "elseKw" then
+                        c = parseCode({["endKw"]=true})
+                        table.insert(tab,{"else",c})
+                        break
+                    end
+                end
+                cursor = cursor + 1
+                expectToken("semicolon")
+                cursor = cursor + 1
+            else
+                parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Unexpected Token: \""..tokens[cursor].type.."\"")
+            end
+        end
+        if delim == nil then
+            cursor = cursor + 1
+            expectToken("semicolon")
+            cursor = cursor + 1
+        end
+        return code
+    end
     while cursor < #tokens+1 do
         expectToken("moduleKw")
         cursor = cursor + 1
@@ -269,7 +346,7 @@ return function(tokens)
         expectToken("semicolon")
         cursor = cursor + 1
         local module = {"module",modName,{},{},{},{}}
-        while not (tokens[cursor].type == "endKw" and tokens[cursor+1].txt == modName and tokens[cursor+2].type == "dot") do
+        while not (tokens[cursor].type == "endKw" and tokens[cursor+1].type == "dot") do
             if tokens[cursor].type == "importKw" then
                 cursor = cursor + 1
                 while tokens[cursor].type ~= "semicolon" do
@@ -282,8 +359,29 @@ return function(tokens)
                     if tokens[cursor].type ~= "semicolon" then cursor = cursor + 1 end
                 end
                 cursor = cursor + 1
+            elseif tokens[cursor].type == "externKw" then
+                cursor = cursor + 1
+                local funcs = false
+                if tokens[cursor].type == "procedure" then
+                    funcs = true
+                end
+                local out = {"extern",funcs}
+                while tokens[cursor].type == "identifier" do
+                    for _,i in ipairs(parseVariable()) do
+                        table.insert(out,i)
+                    end
+                end
+                table.insert(module[5],out)
             elseif tokens[cursor].type == "typeKw" then
-                parseTypeSection()
+                cursor = cursor + 1
+                module[4] = parseTypeSection()
+            elseif tokens[cursor].type == "varKw" then
+                cursor = cursor + 1
+                while tokens[cursor].type == "identifier" do
+                    for _,i in ipairs(parseVariable()) do
+                        table.insert(module[5],i)
+                    end
+                end
             elseif tokens[cursor].type == "procedureKw" then
                 cursor = cursor + 1
                 expectToken("identifier")
@@ -318,23 +416,14 @@ return function(tokens)
                 end
                 expectToken("beginKw")
                 cursor = cursor + 1
-                local code = {}
-                while not (tokens[cursor].type == "endKw" and tokens[cursor+1].txt == procName and tokens[cursor+2].type == "semicolon") do
-                    if tokens[cursor].type == "identifier" then
-                        table.insert(code,shunt())
-                    else
-                        parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Unexpected Token: \""..tokens[cursor].type.."\"")
-                    end
-                    cursor = cursor + 1
-                end
-                cursor = cursor + 3
+                local code = parseCode()
                 table.insert(module[6],{"procedure",procName,args,ret,vars,code})
             else
                 parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Unexpected Token: \""..tokens[cursor].type.."\"")
             end
         end
         table.insert(tree,module)
-        cursor = cursor + 3
+        cursor = cursor + 2
     end
     print(serialize_table(tree))
 end

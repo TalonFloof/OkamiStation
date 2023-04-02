@@ -1,7 +1,7 @@
 MODULE Window;
     IMPORT Framebuffer;
     (* 12x19x2 1-bit images w/ alignment = 76 bytes *)
-    (*EXTERN CursorBitmaps: ARRAY 76 OF BYTE;*)
+    EXTERN CursorBitmaps: ARRAY 76 OF BYTE;
     (* Windows must have an extra 2 pixels on the width, and an extra 22 pixels on the height *)
     TYPE
         WindowBuffer = POINTER TO BYTE;
@@ -24,7 +24,6 @@ MODULE Window;
         RootWindow.h := Framebuffer.height;
         RootWindow.flags := 80000000H;
         RootWindow.data := Framebuffer.ptr;
-        SysConWindow.x := ((RootWindow.w/2));
-    END InitWin;
-
-END Window.
+        SysConWindow.x := RootWindow.w/2;
+    END;
+END.
