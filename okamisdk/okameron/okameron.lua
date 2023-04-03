@@ -1,7 +1,19 @@
+local function getdirectory(p)
+	for i = #p, 1, -1 do
+		if p:sub(i,i) == "/" then
+			return p:sub(1,i)
+		end
+	end
+
+	return "./"
+end
+local sd = getdirectory(arg[0])
+
 local args = {...}
 
-local scan = dofile("scanner.lua")
-local parse = dofile("parser.lua")
+local scan = dofile(sd.."scanner.lua")
+local parse = dofile(sd.."parser.lua")
+local irgen = dofile(sd.."irgen.lua")
 
 local tokens = {}
 
@@ -52,4 +64,5 @@ for _,i in ipairs(args) do
     addToTokens(scan(i,file:read("*a")))
     file:close()
 end
-print(parse(tokens))
+local tree = parse(tokens)
+local ircode = irgen(tree,10)

@@ -1,10 +1,9 @@
 return function(tokens)
     local cursor = 1;
     local tree = {}
-    local cur
+    local asmCode = ""
     local function parseErr(file,line,col,err)
         io.stderr:write("\x1b[1;31m"..file.."("..line..":"..col..") "..err.."\x1b[0m\n")
-        error()
         os.exit(3)
     end
     local function shunt(ending)
@@ -359,11 +358,21 @@ return function(tokens)
                     if tokens[cursor].type ~= "semicolon" then cursor = cursor + 1 end
                 end
                 cursor = cursor + 1
+            elseif tokens[cursor].type == "asmKw" then
+                cursor = cursor + 1
+                expectToken("string")
+                local file = io.open((tokens[cursor].txt):sub(2,#tokens[cursor].txt-1),"rb")
+                asmCode = asmCode .. file:read("*a")
+                file:close()
+                cursor = cursor + 1
+                expectToken("semicolon")
+                cursor = cursor + 1
             elseif tokens[cursor].type == "externKw" then
                 cursor = cursor + 1
                 local funcs = false
-                if tokens[cursor].type == "procedure" then
+                if tokens[cursor].type == "procedureKw" then
                     funcs = true
+                    cursor = cursor + 1
                 end
                 local out = {"extern",funcs}
                 while tokens[cursor].type == "identifier" do
@@ -379,6 +388,7 @@ return function(tokens)
                 cursor = cursor + 1
                 while tokens[cursor].type == "identifier" do
                     for _,i in ipairs(parseVariable()) do
+                        local tab = {"var",table.unpack(i)}
                         table.insert(module[5],i)
                     end
                 end
@@ -425,5 +435,5 @@ return function(tokens)
         table.insert(tree,module)
         cursor = cursor + 2
     end
-    print(serialize_table(tree))
+    return tree, asmCode
 end

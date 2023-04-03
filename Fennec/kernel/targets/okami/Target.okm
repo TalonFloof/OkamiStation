@@ -1,4 +1,6 @@
 MODULE Target;
+    (*ASM "targets/okami/string.S";*)
+    EXTERN PROCEDURE memset, memcpy: CHAR;
 
     PROCEDURE targetinit();
     BEGIN

@@ -1,3 +1,22 @@
-MODULE FennecFS
+MODULE FennecFS;
+    TYPE
+        FennecSuperblock = RECORD
+            icount, ibmapcount, journalzone, ztagsize, zone, zones, zonesize, state: UINT;
+            magic: ARRAY 8 OF BYTE;
+            revision: UINT;
+        END;
+        FennecInode = RECORD
+            mode, links, uid, gid, size: UINT;
+            atimeLow, atimeHigh, mtimeLow, mtimeHigh, ctimeLow, ctimeHigh: UINT;
+            firstzone: UINT;
+            reserved: ARRAY 76 OF BYTE;
+            iconcolor: UINT;
+            icon: ARRAY 128 OF BYTE;
+        END;
+        FennecDirEntry = RECORD
+            inodeid: UINT;
+            name: ARRAY 60 OF CHAR;
+        END;
 
+    
 END.

@@ -1,5 +1,5 @@
 MODULE Framebuffer;
-
+    IMPORT Target;
     PROCEDURE NativeColor(c: BYTE;): UINT; (* Is normally implemented for systems that
                                               That have a framebuffer with a BPP > 8-bits
                                               but OkamiStation's FB is 8-bit so this is a stub *)
@@ -10,8 +10,12 @@ MODULE Framebuffer;
     PROCEDURE FBDrawRect(x,y,w,h: SHORT; clr: UINT;);
     VAR i, y2: INT;
     BEGIN
-        i := 0;
-        y2 := 0;
+        i := y;
+        y2 := y+h;
+        WHILE i < y2 DO
+            memset();
+            i := i + 1;
+        END;
     END;
 
     PROCEDURE FBGetSize(w,h: POINTER TO INT;);
