@@ -1,8 +1,16 @@
 -- Sign of an expression is determined using the first value
 
-return function(tree,savedCount)
+return function(tree)
     local ircode = {{},{},{}}
-
+    local savedReg = {}
+    local function ralloc()
+        local i = 0
+        while true do
+            
+            i = i + 1
+        end
+    end
+    
     local function text(...)
         table.insert(ircode[1],table.pack(...))
     end
@@ -78,24 +86,77 @@ return function(tree,savedCount)
             return getSize(mod,imports,getType(mod,imports,typ[2]))
         end
     end
+    local function evaluate(mod,proc,varSpace,val,reg)
+        if val[1] == ":=" then
+            
+        elseif val[1] == "call" then
+            
+        elseif val[1] == "if" then
+
+        elseif val[1] == "while" then
+
+        elseif val[1] == "+" then
+
+        elseif val[1] == "-" then
+
+        elseif val[1] == "*" then
+
+        elseif val[1] == "/" or val[1] == "DIV" then
+
+        elseif val[1] == "MOD" then
+
+        elseif val[1] == "XOR" then
+
+        elseif val[1] == "OR" then
+
+        elseif val[1] == "&" then
+
+        elseif val[1] == "_" then
+
+        elseif val[1] == "=" then
+
+        elseif val[1] == "#" then
+
+        elseif val[1] == ">" then
+
+        elseif val[1] == "<" then
+
+        elseif val[1] == ">=" then
+
+        elseif val[1] == "<=" then
+
+        elseif val[1] == "~" then
+
+        elseif val[1] == "NOT" then
+
+        end
+    end
 
     for _,mod in ipairs(tree) do
         for _,proc in ipairs(mod[6]) do
             text("DefSymbol",proc[2])
-            text("PushRet")
+            text("PushRet") -- Includes Saved Registers
             local varSpace = {}
             local stackUsage = 4
+            local argUsage = 0
             for _,a in ipairs(proc[3]) do
                 varSpace[a[1]] = stackUsage
                 stackUsage = stackUsage + getSize(mod[2],mod[3],a[2])
+                argUsage = argUsage + 4
             end
             for _,a in ipairs(proc[5]) do
                 varSpace[a[1]] = stackUsage
                 stackUsage = stackUsage + getSize(mod[2],mod[3],a[2])
             end
+            text("PushVariables",stackUsage-4,argUsage//4)
+            for _,a in ipairs(proc[6]) do
+                evaluate(mod,proc,varSpace,a)
+            end
+            text("PopVariables")
             text("PopRet")
             text("Return")
         end
     end
+    print(serialize_list(ircode,true,false))
     return ircode
 end

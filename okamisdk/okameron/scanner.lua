@@ -20,6 +20,7 @@ return function(fileName,module)
         ["MOD"] = "modKw",
         ["MODULE"] = "moduleKw",
         ["NIL"] = "nilKw",
+        ["NOT"] = "notKw",
         ["OF"] = "ofKw",
         ["OR"] = "orKw",
         ["POINTER"] = "pointerKw",

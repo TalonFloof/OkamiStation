@@ -65,4 +65,5 @@ for _,i in ipairs(args) do
     file:close()
 end
 local tree = parse(tokens)
-local ircode = irgen(tree,10)
+print(serialize_table(tree))
+local ircode = irgen(tree)
