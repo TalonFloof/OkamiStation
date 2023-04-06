@@ -3,10 +3,15 @@
 return function(tree)
     local ircode = {{},{},{}}
     local savedReg = {}
+    local ifCount = 0
+    local whileCount = 0
+    local strings = {}
     local function ralloc()
         local i = 0
         while true do
-            
+            if not savedReg[i] then
+                return {"saved",i}
+            end
             i = i + 1
         end
     end
@@ -88,11 +93,33 @@ return function(tree)
     end
     local function evaluate(mod,proc,varSpace,val,reg)
         if val[1] == ":=" then
-            
+            local r1 = ralloc()
+            evaluate(mod,proc,varSpace,val[3],r1)
+            local r2 = ralloc()
+            evaluate(mod,proc,varSpace,val[2],r2)
+            rfree(r2)
+            rfree(r1)
+            text("Store",r2,0,r1)
         elseif val[1] == "call" then
-            
+            local args = #val-2
+            for i=1,args do
+                evaluate(mod,proc,varSpace,val[2+i],{"arg",i})
+            end
+            text("Call",val[2])
         elseif val[1] == "if" then
-
+            for i=1,(#val-1)/2 do
+                local r = ralloc()
+                evaluate(mod,proc,varSpace,val[2+(i*2)],r)
+                rfree(r)
+                text("BranchIfZero",".if"..ifCount.."_"..i)
+            end
+            text("Branch",".if"..ifCount.."_after")
+            for i=1,(#val-1)/2 do
+                text("LocalLabel","if"..ifCount.."_"..i)
+                evaluate(mod,proc,varSpace,val[33+(i*2)])
+            end
+            text("LocalLabel","if"..ifCount.."_after")
+            ifCount = ifCount + 1
         elseif val[1] == "while" then
 
         elseif val[1] == "+" then

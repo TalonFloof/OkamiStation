@@ -40,4 +40,4 @@
     addi a2, a2, -1
     bne a2, zero, memcpy
 .ret:
-    blr zero, ra
+    br ra
