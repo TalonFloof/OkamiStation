@@ -6,10 +6,10 @@ MODULE FennecFS;
             revision: UINT;
         END;
         FennecInode = RECORD
-            mode, links, uid, gid, size: UINT;
+            mode, links, uid, gid, sizeLow, sizeHigh: UINT;
             atimeLow, atimeHigh, mtimeLow, mtimeHigh, ctimeLow, ctimeHigh: UINT;
             firstzone: UINT;
-            reserved: ARRAY 76 OF BYTE;
+            reserved: ARRAY 72 OF BYTE;
             iconcolor: UINT;
             icon: ARRAY 128 OF BYTE;
         END;
@@ -17,6 +17,6 @@ MODULE FennecFS;
             inodeid: UINT;
             name: ARRAY 60 OF CHAR;
         END;
-
+    
     
 END.

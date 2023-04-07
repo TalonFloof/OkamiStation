@@ -60,14 +60,16 @@ return function(tokens)
         local function parenSkip(c)
             local val = c
             val = val + 1
-            while tokens[val].type ~= "rparen" do
+            local level = 1
+            while level > 0 do
                 if tokens[val].type == "lparen" then
-                    parenSkip(val)
-                else
-                    val = val + 1
+                    level = level + 1
+                elseif tokens[val].type == "rparen" then
+                    level = level - 1
                 end
+                val = val + 1
             end
-            val = val + 1
+            val = val - 1
             return val
         end
         local function addOp(op)
@@ -393,7 +395,7 @@ return function(tokens)
                 while tokens[cursor].type == "identifier" do
                     for _,i in ipairs(parseVariable()) do
                         local tab = {"var",table.unpack(i)}
-                        table.insert(module[5],i)
+                        table.insert(module[5],tab)
                     end
                 end
             elseif tokens[cursor].type == "procedureKw" then

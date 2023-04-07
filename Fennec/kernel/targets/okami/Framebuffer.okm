@@ -7,15 +7,33 @@ MODULE Framebuffer;
         RETURN(c);
     END;
 
+    PROCEDURE FBGetPtr(): UPTR;
+    BEGIN
+        RETURN(90001000H);
+    END;
+
     PROCEDURE FBDrawRect(x,y,w,h: SHORT; clr: UINT;);
     VAR i, y2: INT;
     BEGIN
         i := y;
         y2 := y+h;
         WHILE i < y2 DO
-            memset();
+            memset(90001000H + (i * 1024) + x, w, clr);
             i := i + 1;
         END;
+    END;
+
+    PROCEDURE FBOutlineRect(x,y,w,h: SHORT; clr: UINT;);
+    VAR i, y2: INT;
+    BEGIN
+        i := y+1;
+        y2 := (y+h)-1;
+        
+    END;
+
+    PROCEDURE FBInvOutlineRect(x,y,w,h: SHORT;);
+    BEGIN
+        
     END;
 
     PROCEDURE FBGetSize(w,h: POINTER TO INT;);

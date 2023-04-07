@@ -4,7 +4,7 @@ MODULE Window;
     EXTERN CursorBitmaps: ARRAY 76 OF BYTE;
     (* Windows must have an extra 2 pixels on the width, and an extra 22 pixels on the height *)
     TYPE
-        WindowBuffer = POINTER TO BYTE;
+        WindowPtr = POINTER TO WindowRec;
         WindowRec = RECORD
             x: USHORT;
             y: USHORT;
@@ -12,18 +12,19 @@ MODULE Window;
             h: USHORT;
             flags: UINT;
             name: ARRAY 32 OF CHAR;
-            data: WindowBuffer;
         END;
-    VAR RootWindow, SysConWindow: WindowRec;
+    VAR SysConWindow: WindowRec;
 
     PROCEDURE InitWin();
+    VAR w,h: INT;
     BEGIN
-        RootWindow.x := 0;
-        RootWindow.y := 0;
-        RootWindow.w := Framebuffer.width;
-        RootWindow.h := Framebuffer.height;
-        RootWindow.flags := 80000000H;
-        RootWindow.data := Framebuffer.ptr;
-        SysConWindow.x := RootWindow.w/2;
+        FBGetSize(PTROF(w),PTROF(h));
+        SysConWindow.x := w/2;
+        SysConWindow.y := h/2;
+    END;
+
+    PROCEDURE DrawWin(win: WindowPtr;);
+    BEGIN
+
     END;
 END.

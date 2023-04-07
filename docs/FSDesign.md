@@ -41,12 +41,12 @@ typedef struct {
     uint32_t links; /* Number of Hard Links */
     uint32_t uid; /* User ID */
     uint32_t gid; /* Group ID */
-    uint32_t size; /* Data Size */
+    uint64_t size; /* Data Size */
     uint64_t atime; /* Access Time */
     uint64_t mtime; /* Modify Time */
     uint64_t ctime; /* Status Change Time */
     uint32_t firstzone; /* First Allocated Zone of the File */
-    uint8_t reserved[76]; /* Reserved for future metadata */
+    uint8_t reserved[72]; /* Reserved for future metadata */
     uint32_t iconcolor; /* Color of the inode icon */
     uint8_t icon[128]; /* 32x32 pixel 1-bit icon bitmap */
 } FennecInode;
