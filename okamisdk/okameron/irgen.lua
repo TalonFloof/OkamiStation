@@ -7,6 +7,7 @@ return function(tree)
     local whileCount = 0
     local strings = {}
     local lastSym = nil
+    local lastType = nil
     local function ralloc()
         local i = 0
         while true do
@@ -37,7 +38,16 @@ return function(tree)
         io.stderr:write("\x1b[1;31mModule("..modname..") - "..err.."\x1b[0m\n")
         os.exit(4)
     end
-
+    local function getProcVars(proc)
+        local t = {}
+        for _,i in ipairs(proc[3]) do
+            table.insert(t,{"var",table.unpack(i,1,#i)})
+        end
+        for _,i in ipairs(proc[5]) do
+            table.insert(t,i)
+        end
+        return t
+    end
     local function findModule(name)
         for _,i in ipairs(tree) do
             if i[1] == "module" and i[2] == name then
@@ -87,8 +97,8 @@ return function(tree)
     end
     local function getVarType(mod,imports,loc,var)
         for _,i in ipairs(loc) do
-            if i[1] == var then
-                local ret = i[2]
+            if i[2] == var then
+                local ret = i[3]
                 while ret[1] == "customType" do ret = getType(mod,imports,ret[2]) end
                 return ret
             end
@@ -105,6 +115,17 @@ return function(tree)
             end
         end
         irgenErr(mod[2],"Undefined Variable \""..var.."\" (hint: use IMPORT to use variables from other modules)")
+    end
+    local function getLoadType(typ)
+        if typ[1] == "numType" then
+            if typ[2] == 1 and typ[3] then return "LoadSignedByte"
+            elseif typ[2] == 1 and not typ[3] then return "LoadByte"
+            elseif typ[2] == 2 and typ[3] then return "LoadSignedHalf"
+            elseif typ[2] == 2 and not typ[3] then return "LoadHalf"
+            else return "Load" end
+        elseif typ[1] == "ptrOf" then
+            return "Load"
+        end
     end
     local function assertGlobalVar(mod,imports,name)
         local tab = {table.unpack(imports),mod[2]}
@@ -174,8 +195,11 @@ return function(tree)
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                getVarType(mod,mod[3],proc[5],)
-                text("Store",r,varSpace[val[2][2]],{"frame"})
+                if lastType[1] == "numType" and lastType[2] == 1 then text("StoreByte",r,varSpace[val[2][2]],{"frame"})
+                elseif lastType[1] == "numType" and lastType[2] == 2 then text("StoreHalf",r,varSpace[val[2][2]],{"frame"})
+                else
+                    text("Store",r,varSpace[val[2][2]],{"frame"})
+                end
             else
                 local r1 = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r1)
@@ -183,14 +207,49 @@ return function(tree)
                 evaluate(mod,proc,varSpace,val[2],r2,true)
                 rfree(r2)
                 rfree(r1)
-                getVarType()
+                if lastType[1] == "numType" and lastType[2] == 1 then text("StoreByte",r1,0,r2)
+                elseif lastType[1] == "numType" and lastType[2] == 2 then text("StoreHalf",r1,0,r2)
+                else
+                    text("Store",r1,0,r2)
+                end
                 text("Store",r1,0,r2)
             end
         elseif val[1] == "call" then
             if val[2] == "PTROF" then
                 evaluate(mod,proc,varSpace,val[3],reg,true)
+            elseif val[2] == "LSH" then
+                evaluate(mod,proc,varSpace,val[3],reg)
+                if val[3][1] == "number" then
+                    text("Lsh",reg,val[4])
+                else
+                    local r = ralloc()
+                    evaluate(mod,proc,varSpace,val[4],r)
+                    rfree(r)
+                    text("Lsh",reg,r)
+                end
+            elseif val[2] == "RSH" then
+                evaluate(mod,proc,varSpace,val[3],reg)
+                if val[3][1] == "number" then
+                    text("Rsh",reg,val[4])
+                else
+                    local r = ralloc()
+                    evaluate(mod,proc,varSpace,val[4],r)
+                    rfree(r)
+                    text("Rsh",reg,r)
+                end
+            elseif val[2] == "ASH" then
+                evaluate(mod,proc,varSpace,val[3],reg)
+                if val[3][1] == "number" then
+                    text("Ash",reg,val[4])
+                else
+                    local r = ralloc()
+                    evaluate(mod,proc,varSpace,val[4],r)
+                    rfree(r)
+                    text("Ash",reg,r)
+                end
             elseif val[2] == "RETURN" then
-                evaluate(mod,proc,varSpace,val[3],reg,true)
+                evaluate(mod,proc,varSpace,val[3],{"arg",0},true)
+                text("Branch",".Lret")
             else
                 text("BeginCall")
                 local args = #val-2
@@ -387,12 +446,38 @@ return function(tree)
             text("Xor",reg,{"number",1})
         elseif val[1] == "." then
             evaluate(mod,proc,varSpace,val[2],reg,true)
-            text("Add",reg,{"number",getRecOffset(mod,mod[3],getVarType(mod,mod[3],proc[5],lastSym[2]),val[3])})
+            local t = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
+            text("Add",reg,{"number",getRecOffset(mod,mod[3],t,val[3])})
+            for _,i in ipairs(t) do
+                if type(i) == "table" and i[1] == val[3][2] then
+                    lastType = i[2]
+                end
+            end
             if not getAddr then
                 text("Load",reg,0,reg)
             end
         elseif val[1] == "[" then
-            
+            evaluate(mod,proc,varSpace,val[2],reg,true)
+            if lastType[1] ~= "array" and lastType[1] ~= "ptrOf" then
+                irgenErr(mod[2],"Attempted to index a value that wasn't an array or a pointer!")
+            end
+            local nodeSize = 0
+            local nodeType = nil
+            if lastType[1] == "ptrOf" then
+                nodeSize = getSize(mod,mod[3],lastType[2])
+                nodeType = lastType[2]
+            else
+                nodeSize = getSize(mod,mod[3],lastType[3])
+                nodeType = lastType[3]
+            end
+            local r = ralloc()
+            evaluate(mod,proc,varSpace,val[3],r,true)
+            if nodeSize > 1 then text("Mul",r,{"number",nodeSize}) end
+            rfree(r)
+            text("Add",reg,r)
+            if not getAddr then
+                text(getLoadType(nodeType),reg,0,reg)
+            end
         elseif val[1] == "^" then
             evaluate(mod,proc,varSpace,val[2],reg,false)
         elseif val[1] == "number" then
@@ -404,13 +489,15 @@ return function(tree)
                     text("Move",{"frame"},reg)
                     text("Add",reg,{"number",varSpace[val[2]]})
                 else
-                    text("Load",reg,varSpace[val[2]],{"frame"})
+                    lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
+                    text(getLoadType(lastType),reg,varSpace[val[2]],{"frame"})
                 end
             else
                 assertGlobalVar(mod,mod[3],val[2])
                 text("LoadAddr",reg,val[2])
                 if not getAddr then
-                    text("Load",reg,0,reg)
+                    lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
+                    text(getLoadType(lastType),reg,0,reg)
                 end
             end
         end
@@ -429,8 +516,8 @@ return function(tree)
                 argUsage = argUsage + 4
             end
             for _,a in ipairs(proc[5]) do
-                varSpace[a[1]] = stackUsage
-                stackUsage = stackUsage + getSize(mod,mod[3],a[2])
+                varSpace[a[2]] = stackUsage
+                stackUsage = stackUsage + getSize(mod,mod[3],a[3])
             end
             text("PushVariables",stackUsage-4,argUsage//4)
             for _,a in ipairs(proc[6]) do

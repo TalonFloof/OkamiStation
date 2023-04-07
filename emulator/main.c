@@ -26,6 +26,7 @@ uint64_t iMissCount = 0;
 uint64_t dHitCount = 0;
 uint64_t dMissCount = 0;
 extern int stallTicks;
+bool capturedMouse = false;
 
 SDL_Rect winrect = {
     /*.w = 1024,
@@ -33,6 +34,16 @@ SDL_Rect winrect = {
     .w = 1024 /*1228.8*/,
     .h = 768 /*921.6*/,
 };
+
+int8_t constrain(int val) {
+    if(val < -128) {
+        return 0x80;
+    } else if(val > 127) {
+        return 0x7f;
+    } else {
+        return val;
+    }
+}
 
 int main(int argc, const char* argv[]) {
     bool showCacheInfo = false;
@@ -108,6 +119,9 @@ int main(int argc, const char* argv[]) {
     }
     SDL_RenderPresent(ScreenRenderer);
     SDL_ShowWindow(ScreenWindow);
+    SDL_SetWindowGrab(ScreenWindow, false);
+    SDL_ShowCursor(true);
+    SDL_SetRelativeMouseMode(false);
     SDL_Event event;
     KarasuInit();
     title_update = SDL_GetTicks()+1000;
@@ -144,7 +158,61 @@ int main(int argc, const char* argv[]) {
                     SCSICloseDrives();
                     return 0;
                 }
+                case SDL_MOUSEBUTTONDOWN: {
+                    if(!capturedMouse) {
+                        SDL_SetWindowGrab(ScreenWindow, true);
+					    SDL_ShowCursor(false);
+                        SDL_SetRelativeMouseMode(true);
+                        capturedMouse = true;
+                        sprintf((char*)&title,"%s (strike RALT to release mouse)",SDL_GetWindowTitle(ScreenWindow));
+                        SDL_SetWindowTitle(ScreenWindow, (char*)&title);
+                        break;
+                    }
+                    switch(event.button.button) {
+                        case SDL_BUTTON_LEFT:
+                            MousePressed |= 1;
+                            break;
+                        case SDL_BUTTON_MIDDLE:
+                            MousePressed |= 2;
+                            break;
+                        case SDL_BUTTON_RIGHT:
+                            MousePressed |= 4;
+                            break;
+                    }
+                    MouseUpdate(0,0,MousePressed);
+                    break;
+                }
+                case SDL_MOUSEBUTTONUP: {
+                    if(capturedMouse) {
+                        switch(event.button.button) {
+                            case SDL_BUTTON_LEFT:
+                                MousePressed &= (~1);
+                                break;
+                            case SDL_BUTTON_MIDDLE:
+                                MousePressed &= (~2);
+                                break;
+                            case SDL_BUTTON_RIGHT:
+                                MousePressed &= (~4);
+                                break;
+                        }
+                        MouseUpdate(0,0,MousePressed);
+                    }
+                    break;
+                }
+                case SDL_MOUSEMOTION: {
+                    MouseUpdate(constrain(event.motion.xrel),constrain(event.motion.yrel),MousePressed);
+                    break;
+                }
                 case SDL_KEYDOWN: {
+                    if((event.key.keysym.scancode == SDL_SCANCODE_RALT) && capturedMouse) {
+                        SDL_SetWindowGrab(ScreenWindow, false);
+					    SDL_ShowCursor(true);
+                        SDL_SetRelativeMouseMode(false);
+                        capturedMouse = false;
+                        sprintf((char*)&title,"%.*s",(int)strlen(SDL_GetWindowTitle(ScreenWindow))-31,SDL_GetWindowTitle(ScreenWindow));
+                        SDL_SetWindowTitle(ScreenWindow, (char*)&title);
+                        break;
+                    }
                     KbdPush(event.key.keysym.scancode,0);
                     break;
                 }
@@ -160,7 +228,7 @@ int main(int argc, const char* argv[]) {
 			SDL_Delay(delay);
 		}
         if(SDL_GetTicks() >= title_update) {
-            sprintf((char*)&title, "OkamiStation - %.2f MIPS", (double)cycle_count/1000000.0);
+            sprintf((char*)&title, "OkamiStation - %.2f MIPS%s", (double)cycle_count/1000000.0, capturedMouse?" (strike RALT to release mouse)":"");
             SDL_SetWindowTitle(ScreenWindow, (char*)&title);
             if(showCacheInfo) {
                 double iPercent = (((double)iHitCount)/(((double)iHitCount)+((double)iMissCount)))*100.0;

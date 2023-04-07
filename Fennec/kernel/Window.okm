@@ -16,15 +16,16 @@ MODULE Window;
     VAR SysConWindow: WindowRec;
 
     PROCEDURE InitWin();
-    VAR w,h: INT;
+    VAR w, h: INT;
     BEGIN
         FBGetSize(PTROF(w),PTROF(h));
         SysConWindow.x := w/2;
         SysConWindow.y := h/2;
+        SysConWindow.name[0] := 0;
     END;
 
     PROCEDURE DrawWin(win: WindowPtr;);
     BEGIN
-
+        
     END;
 END.

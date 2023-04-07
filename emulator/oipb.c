@@ -91,6 +91,11 @@ uint8_t KbdScancodes[32];
 uint8_t KbdRead = 0;
 uint8_t KbdWrite = 0;
 
+uint32_t MouseBuffer[32];
+uint8_t MouseRead = 0;
+uint8_t MouseWrite = 0;
+int MousePressed = 0;
+
 void KbdPush(int sdlCode, int released) {
 	if(released) {
 		KbdScancodes[KbdWrite] = (uint8_t)(-((int8_t)ScancodeMapping[sdlCode].code));
@@ -105,6 +110,16 @@ void KbdPush(int sdlCode, int released) {
 	HTCInterrupt(1);
 }
 
+void MouseUpdate(int8_t relX, int8_t relY, uint32_t button) {
+	MouseBuffer[MouseWrite] = ((uint32_t)((uint8_t)relX)) | (((uint32_t)((uint8_t)relY)) << 8) | (button << 16);
+	MouseWrite = (MouseWrite + 1) % 32;
+	if(MouseRead == MouseWrite) { // Ring Buffer Error
+		MouseRead = 0;
+		MouseWrite = 0;
+	}
+	HTCInterrupt(2);
+}
+
 int OIPBRead(uint32_t port, uint32_t length, uint32_t *value) {
     if(port == 0x10) {
 		if(KbdRead != KbdWrite) {
@@ -114,7 +129,15 @@ int OIPBRead(uint32_t port, uint32_t length, uint32_t *value) {
 			*value = 0;
 		}
 		return 1;
-    }
+    } else if(port == 0x11) {
+		if(MouseRead != MouseWrite) {
+			*value = MouseBuffer[MouseRead];
+			MouseRead = (MouseRead + 1) % 32;
+		} else {
+			*value = 0;
+		}
+		return 1;
+	}
 	return 0;
 }
 
@@ -127,6 +150,7 @@ int OIPBWrite(uint32_t port, uint32_t length, uint32_t value) {
 
 void OIPBInit() {
     memset(KbdScancodes,0,32);
+	memset(MouseBuffer,0,sizeof(uint32_t)*32);
     for(int i=0x10; i < 0x13; i++) {
         OkamiPorts[i].isPresent = 1;
         OkamiPorts[i].read = OIPBRead;

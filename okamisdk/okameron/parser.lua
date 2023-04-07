@@ -426,7 +426,7 @@ return function(tokens)
                     cursor = cursor + 1
                     while tokens[cursor].type ~= "beginKw" do
                         for _,i in ipairs(parseVariable()) do
-                            table.insert(vars,i)
+                            table.insert(vars,{"var",table.unpack(i)})
                         end
                     end
                 end
