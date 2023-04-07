@@ -17,24 +17,24 @@ return function(tokens)
             {"]",0,NONE,false},
             {"(",0,NONE,false},
             {")",0,NONE,false},
-            {"+",8,LEFT,false},
-            {"-",8,LEFT,false},
+            {"+",8,LEFT,false,function(x,y) return x + y end},
+            {"-",8,LEFT,false,function(x,y) return x - y end},
             {"_",10,RIGHT,true,function(x) return 0 - x end}, -- Unary -
             {"^",10,LEFT,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
-            {"*",9,LEFT,false},
-            {"/",9,LEFT,false},
-            {"DIV",9,LEFT,false},
-            {"MOD",9,LEFT,false},
-            {"&",9,LEFT,false},
-            {"XOR",8,LEFT,false},
-            {"OR",8,LEFT,false},
+            {"*",9,LEFT,false,function(x,y) return x * y end},
+            {"/",9,LEFT,false,function(x,y) return x // y end},
+            {"DIV",9,LEFT,false,function(x,y) return x // y end},
+            {"MOD",9,LEFT,false,function(x,y) return x % y end},
+            {"&",9,LEFT,false,function(x,y) return x & y end},
+            {"XOR",8,LEFT,false,function(x,y) return x ~ y end},
+            {"OR",8,LEFT,false,function(x,y) return x | y end},
             {"~",10,RIGHT,true,function(x) return ~x end},
-            {"=",7,LEFT,false},
-            {"#",7,LEFT,false},
-            {"<",7,LEFT,false},
-            {">",7,LEFT,false},
-            {"<=",7,LEFT,false},
-            {">=",7,LEFT,false},
+            {"=",7,LEFT,false,function(x,y) return x == y end},
+            {"#",7,LEFT,false,function(x,y) return x ~= y end},
+            {"<",7,LEFT,false,function(x,y) return x < y end},
+            {">",7,LEFT,false,function(x,y) return x > y end},
+            {"<=",7,LEFT,false,function(x,y) return x <= y end},
+            {">=",7,LEFT,false,function(x,y) return x >= y end},
         }
         local opStack = {}
         local outStack = {}
@@ -198,7 +198,11 @@ return function(tokens)
                         end
                     else
                         n2 = table.remove(tempStack,#tempStack)
-                        table.insert(tempStack,{i[1],n2,n1})
+                        if n1[1] == "number" and n2[1] == "number" then
+                            table.insert(tempStack,{"number",i[5](n1[2],n2[2])})
+                        else
+                            table.insert(tempStack,{i[1],n2,n1})
+                        end
                     end
                 end
             end

@@ -107,23 +107,43 @@ return function(tree)
             end
             text("Call",val[2])
         elseif val[1] == "if" then
-            for i=1,(#val-1)/2 do
-                local r = ralloc()
-                evaluate(mod,proc,varSpace,val[2+(i*2)],r)
-                rfree(r)
-                text("BranchIfZero",".if"..ifCount.."_"..i)
+            for i=1,#val do
+                if val[i][1] ~= "else" then
+                    local r = ralloc()
+                    evaluate(mod,proc,varSpace,val[i][2],r)
+                    text("BranchIfNotZero",r,".Lif"..ifCount.."_"..i)
+                    rfree(r)
+                end
             end
-            text("Branch",".if"..ifCount.."_after")
-            for i=1,(#val-1)/2 do
-                text("LocalLabel","if"..ifCount.."_"..i)
-                evaluate(mod,proc,varSpace,val[33+(i*2)])
+            if val[#val][1] == "else" then
+                text("Branch",".Lif"..ifCount.."_"..(#val))
+            else
+                text("Branch",".Lif"..ifCount.."_after")
             end
-            text("LocalLabel","if"..ifCount.."_after")
+            for i=1,#val do
+                text("LocalLabel",".Lif"..ifCount.."_"..i)
+                evaluate(mod,proc,varSpace,val[i][3])
+                text("Branch",".Lif"..ifCount.."_after")
+            end
+            text("LocalLabel",".Lif"..ifCount.."_after")
             ifCount = ifCount + 1
         elseif val[1] == "while" then
-
+            
         elseif val[1] == "+" then
-
+            for i,arg in ipairs(val) do
+                if i == 2 then
+                    evaluate(mod,proc,varSpace,arg,reg)
+                elseif i ~= 1 then
+                    if arg[1] == "number" then
+                        text("Add",reg,arg)
+                    else
+                        local r = ralloc()
+                        evaluate(mod,proc,varSpace,arg,r)
+                        rfree(r)
+                        text("Add",reg,r)
+                    end
+                end
+            end
         elseif val[1] == "-" then
 
         elseif val[1] == "*" then
@@ -156,6 +176,8 @@ return function(tree)
 
         elseif val[1] == "NOT" then
 
+        elseif val[1] == "number" then
+            text("LoadImmediate",val[2])
         end
     end
 
