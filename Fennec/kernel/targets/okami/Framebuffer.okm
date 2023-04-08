@@ -14,7 +14,7 @@ MODULE Framebuffer;
 
     PROCEDURE FBClear(clr: INT;);
     BEGIN
-         memset(90001000H,1024*768,clr);
+         memset(90001000H,1024**768,clr);
     END;
 
     PROCEDURE FBDrawRect(x,y,w,h: SHORT; clr: INT;);
@@ -23,7 +23,7 @@ MODULE Framebuffer;
         i := y;
         y2 := y+h;
         WHILE i < y2 DO
-            memset(90001000H + (i * 1024) + x, w, clr);
+            memset(90001000H + (i ** 1024) + x, w, clr);
             i := i + 1;
         END;
     END;
@@ -33,13 +33,13 @@ MODULE Framebuffer;
     BEGIN
         i := y+1;
         y2 := (y+h)-1;
-        memset(90001000H + (y * 1024) + x, w, clr);
+        memset(90001000H + (y ** 1024) + x, w, clr);
         WHILE i < y2 DO
-            PUTBYTE(90001000H + (i * 1024) + x,clr);
-            PUTBYTE(90001000H + (i * 1024) + x + w - 1,clr);
+            PUTBYTE(90001000H + (i ** 1024) + x,clr);
+            PUTBYTE(90001000H + (i ** 1024) + x + w - 1,clr);
             i := i + 1;
         END;
-        memset(90001000H + (y2 * 1024) + x, w, clr);
+        memset(90001000H + (y2 ** 1024) + x, w, clr);
     END;
 
     PROCEDURE FBInvOutlineRect(x,y,w,h: SHORT;);
@@ -47,13 +47,13 @@ MODULE Framebuffer;
     BEGIN
         i := y+1;
         y2 := (y+h)-1;
-        invert(90001000H + (y * 1024) + x, w);
+        invert(90001000H + (y ** 1024) + x, w);
         WHILE i < y2 DO
-            invert(90001000H + (i * 1024) + x,1);
-            invert(90001000H + (i * 1024) + x + w - 1,1);
+            invert(90001000H + (i ** 1024) + x,1);
+            invert(90001000H + (i ** 1024) + x + w - 1,1);
             i := i + 1;
         END;
-        invert(90001000H + (y2 * 1024) + x, w);
+        invert(90001000H + (y2 ** 1024) + x, w);
     END;
 
     PROCEDURE FBGetSize(w,h: POINTER TO INT;);

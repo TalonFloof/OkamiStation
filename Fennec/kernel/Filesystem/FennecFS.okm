@@ -1,28 +1,20 @@
 MODULE FennecFS;
-    CONST
-        FFSStateOK = 0A072A572H;
-        FFSStates = {1,2,3,};
     TYPE
         FennecSuperblock = RECORD
-            icount, ibmapcount, journalzone, ztagsize, zone, zones, zonesize, state: UINT;
-            magic: ARRAY 8 OF BYTE;
-            revision: UINT;
+            icount, ibmapcount, journalzone, ztagsize, zone, zones, zonesize, state: INT;
+            magic: ARRAY 8 OF CHAR;
+            revision: INT;
         END;
         FennecInode = RECORD
-            mode, links, uid, gid, sizeLow, sizeHigh: UINT;
-            atimeLow, atimeHigh, mtimeLow, mtimeHigh, ctimeLow, ctimeHigh: UINT;
-            firstzone: UINT;
-            reserved: ARRAY 72 OF BYTE;
-            iconcolor: UINT;
-            icon: ARRAY 128 OF BYTE;
+            mode, links, uid, gid, sizeLow, sizeHigh: INT;
+            atimeLow, atimeHigh, mtimeLow, mtimeHigh, ctimeLow, ctimeHigh: INT;
+            firstzone: INT;
+            reserved: ARRAY 72 OF CHAR;
+            iconcolor: INT;
+            icon: ARRAY 128 OF CHAR;
         END;
         FennecDirEntry = RECORD
-            inodeid: UINT;
+            inodeid: INT;
             name: ARRAY 60 OF CHAR;
         END;
-    
-    PROCEDURE test(): INT;
-    BEGIN
-        RETURN(FFSStates[1]);
-    END;
 END.

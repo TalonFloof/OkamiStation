@@ -130,20 +130,20 @@ return function(ir,asm)
                 io.stdout:write("    sub "..getReg(r1)..", "..getReg(r1)..", "..getReg(r2).."\n")
             end
         end,
-        ["Mul"]=function(r1,r2)
+        ["Mul"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 loadImm("t0",r2[2])
-                io.stdout:write("    mul "..getReg(r1)..", zero, "..getReg(r1)..", t0\n")
+                io.stdout:write("    "..(sign and "mul" or "mulu").." "..getReg(r1)..", zero, "..getReg(r1)..", t0\n")
             else
-                io.stdout:write("    mul "..getReg(r1)..", zero, "..getReg(r1)..", "..getReg(r2).."\n")
+                io.stdout:write("    "..(sign and "mul" or "mulu").." "..getReg(r1)..", zero, "..getReg(r1)..", "..getReg(r2).."\n")
             end
         end,
-        ["Div"]=function(r1,r2)
+        ["Div"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 loadImm("t0",r2[2])
-                io.stdout:write("    div "..getReg(r1)..", zero, "..getReg(r1)..", t0\n")
+                io.stdout:write("    "..(sign and "div" or "divu").." "..getReg(r1)..", zero, "..getReg(r1)..", t0\n")
             else
-                io.stdout:write("    div "..getReg(r1)..", zero, "..getReg(r1)..", "..getReg(r2).."\n")
+                io.stdout:write("    "..(sign and "div" or "divu").." "..getReg(r1)..", zero, "..getReg(r1)..", "..getReg(r2).."\n")
             end
         end,
         ["Mod"]=function(r1,r2)
@@ -247,45 +247,45 @@ return function(ir,asm)
             ops["Sub"](r1,r2)
             io.stdout:write("    sltu "..getReg(r1)..", zero, "..getReg(r1).."\n")
         end,
-        ["Lt"]=function(r1,r2)
+        ["Lt"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    slti "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
-                    io.stdout:write("    slt "..getReg(r1)..", "..getReg(r1)..", t0\n")
+                    io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", t0\n")
                 end
             else
-                io.stdout:write("    slt "..getReg(r1)..", "..getReg(r1)..", "..getReg(r2).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", "..getReg(r2).."\n")
             end
         end,
-        ["Gt"]=function(r1,r2)
+        ["Gt"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 loadImm("t0",r2[2])
-                io.stdout:write("    slt "..getReg(r1)..", t0, "..getReg(r1).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", t0, "..getReg(r1).."\n")
             else
-                io.stdout:write("    slt "..getReg(r1)..", "..getReg(r2)..", "..getReg(r1).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r2)..", "..getReg(r1).."\n")
             end
         end,
-        ["Le"]=function(r1,r2)
+        ["Le"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 loadImm("t0",r2[2])
-                io.stdout:write("    slt "..getReg(r1)..", t0, "..getReg(r1).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", t0, "..getReg(r1).."\n")
             else
-                io.stdout:write("    slt "..getReg(r1)..", "..getReg(r2)..", "..getReg(r1).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r2)..", "..getReg(r1).."\n")
             end
             io.stdout:write("    xori "..getReg(r1)..", "..getReg(r1)..", 1\n")
         end,
-        ["Ge"]=function(r1,r2)
+        ["Ge"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    slti "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
-                    io.stdout:write("    slt "..getReg(r1)..", "..getReg(r1)..", t0\n")
+                    io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", t0\n")
                 end
             else
-                io.stdout:write("    slt "..getReg(r1)..", "..getReg(r1)..", "..getReg(r2).."\n")
+                io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", "..getReg(r2).."\n")
             end
             io.stdout:write("    xori "..getReg(r1)..", "..getReg(r1)..", 1\n")
         end,
@@ -298,14 +298,8 @@ return function(ir,asm)
         ["Store"]=function(d,offset,s)
             io.stdout:write("    sw "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
-        ["LoadSignedByte"]=function(d,offset,s)
-            io.stdout:write("    lb "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
-        end,
         ["LoadByte"]=function(d,offset,s)
             io.stdout:write("    lbu "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
-        end,
-        ["LoadSignedHalf"]=function(d,offset,s)
-            io.stdout:write("    lh "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
         ["LoadHalf"]=function(d,offset,s)
             io.stdout:write("    lhu "..getReg(d)..", "..offset.."("..getReg(s)..")\n")

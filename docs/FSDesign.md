@@ -1,8 +1,8 @@
 # Fennec File System
 
 ## Layout
-| OkamiBoot Metadata | Bootloader (optional) | Superblock | Journal (optional) | Inode Bitmap | Inodes | Zone Tag Table | Zones |
-|--------------------|-----------------------|------------|--------------------|--------------|--------|----------------|-------|
+| OkamiBoot Metadata | Bootloader (optional) | Superblock | Journal (optional) | Inodes | Zone Tag Table | Zones |
+|--------------------|-----------------------|------------|--------------------|--------|----------------|-------|
 
 ## Superblock
 ```c
@@ -14,12 +14,12 @@ typedef enum {
 
 typedef struct {
     uint32_t icount; /* Inode Count */
-    uint32_t ibmapcount; /* Inode Bitmap Size */
     uint32_t journalsize; /* Journal Log Size (excludes metadata) */
-    uint32_t ztagsize; /* Zone Tag Table Size */
+    uint32_t ztagsize; /* Zone Tag Table Size (in Zones) */
     uint32_t zone; /* First block in zone */
     uint32_t zones; /* Number of zones */
-    uint32_t zonesize; /* Zone Size (must be at least 512) */
+    uint32_t zonesize; /* Zone Size (must be at least 1024) */
+    uint32_t reserved;
     FennecFSState state; /* Filesystem State */
     uint64_t magic; /* "\x80Fennec\x80" */
     uint32_t revision; /* 1 */
@@ -42,9 +42,9 @@ typedef struct {
     uint32_t uid; /* User ID */
     uint32_t gid; /* Group ID */
     uint64_t size; /* Data Size */
-    uint64_t atime; /* Access Time */
-    uint64_t mtime; /* Modify Time */
-    uint64_t ctime; /* Status Change Time */
+    int64_t atime; /* Access Time */
+    int64_t mtime; /* Modify Time */
+    int64_t ctime; /* Status Change Time */
     uint32_t firstzone; /* First Allocated Zone of the File */
     uint8_t reserved[72]; /* Reserved for future metadata */
     uint32_t iconcolor; /* Color of the inode icon */

@@ -349,25 +349,25 @@ return function(tree)
                 rfree(r)
                 text("Sub",reg,r)
             end
-        elseif val[1] == "*" then
+        elseif val[1] == "*" or val[1] == "**" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Mul",reg,val[3])
+                text("Mul",reg,val[3],val[1] ~= "**")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Mul",reg,r)
+                text("Mul",reg,r,val[1] ~= "**")
             end
-        elseif val[1] == "/" or val[1] == "DIV" then
+        elseif val[1] == "/" or val[1] == "DIV" or val[1] == "//" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Div",reg,val[3])
+                text("Div",reg,val[3],val[1] ~= "//")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Div",reg,r)
+                text("Div",reg,r,val[1] ~= "//")
             end
         elseif val[1] == "MOD" then
             evaluate(mod,proc,varSpace,val[2],reg)
@@ -432,45 +432,45 @@ return function(tree)
                 rfree(r)
                 text("Neq",reg,r)
             end
-        elseif val[1] == ">" then
+        elseif val[1] == ">" or val[1] == ">>" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Gt",reg,val[3])
+                text("Gt",reg,val[3],val[1] ~= ">>")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Gt",reg,r)
+                text("Gt",reg,r,val[1] ~= ">>")
             end
-        elseif val[1] == "<" then
+        elseif val[1] == "<" or val[1] == "<<" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Lt",reg,val[3])
+                text("Lt",reg,val[3],val[1] ~= "<<")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Lt",reg,r)
+                text("Lt",reg,r,val[1] ~= "<<")
             end
-        elseif val[1] == ">=" then
+        elseif val[1] == ">=" or val[1] == ">>=" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Ge",reg,val[3])
+                text("Ge",reg,val[3],val[1] ~= ">>=")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Ge",reg,r)
+                text("Ge",reg,r,val[1] ~= ">>=")
             end
-        elseif val[1] == "<=" then
+        elseif val[1] == "<=" or val[1] == "<<=" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Le",reg,val[3])
+                text("Le",reg,val[3],val[1] ~= "<<=")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Le",reg,r)
+                text("Le",reg,r,val[1] ~= "<<=")
             end
         elseif val[1] == "~" then
             evaluate(mod,proc,varSpace,val[2],reg)
