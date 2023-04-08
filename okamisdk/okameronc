@@ -6,4 +6,4 @@ OUTPUT="${!#}"
 length=$(($#-1))
 ARGS=${@:1:$length} 
 
-lua -W ${path}/okameron/okameron.lua $ARGS > ./a.s && ${path}/okas ./a.s $OUTPUT && rm -f ./a.s
+lua -W ${path}/okameron/okameron.lua $ARGS > ./a.s # && ${path}/okas ./a.s $OUTPUT && rm -f ./a.s

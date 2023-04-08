@@ -14,6 +14,7 @@ local args = {...}
 local scan = dofile(sd.."scanner.lua")
 local parse = dofile(sd.."parser.lua")
 local irgen = dofile(sd.."irgen.lua")
+local codegen = dofile(sd.."codegen-okami1041.lua")
 
 local tokens = {}
 
@@ -64,6 +65,6 @@ for _,i in ipairs(args) do
     addToTokens(scan(i,file:read("*a")))
     file:close()
 end
-local tree = parse(tokens)
-print(serialize_table(tree))
+local tree, asm = parse(tokens)
 local ircode = irgen(tree)
+codegen(ircode,asm)

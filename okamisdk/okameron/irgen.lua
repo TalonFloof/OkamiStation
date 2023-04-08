@@ -6,6 +6,7 @@ return function(tree)
     local ifCount = 0
     local whileCount = 0
     local strings = {}
+    local strCount = 0
     local lastSym = nil
     local lastType = nil
     local function ralloc()
@@ -212,7 +213,6 @@ return function(tree)
                 else
                     text("Store",r1,0,r2)
                 end
-                text("Store",r1,0,r2)
             end
         elseif val[1] == "call" then
             if val[2] == "PTROF" then
@@ -251,15 +251,15 @@ return function(tree)
                 evaluate(mod,proc,varSpace,val[3],{"arg",0},true)
                 text("Branch",".Lret")
             else
-                text("BeginCall")
+                text("BeginCall",reg,#val-2)
                 local args = #val-2
                 for i=1,args do
                     evaluate(mod,proc,varSpace,val[2+i],{"arg",i-1})
                 end
                 if reg then
-                    text("EndCall",val[2],reg)
+                    text("EndCall",val[2],args,reg)
                 else
-                    text("EndCall",val[2])
+                    text("EndCall",val[2],args)
                 end
             end
         elseif val[1] == "if" then
@@ -377,7 +377,7 @@ return function(tree)
             end
         elseif val[1] == "_" then
             evaluate(mod,proc,varSpace,val[2],reg)
-            text("Sub",{"number",0},reg)
+            text("Negate",reg)
         elseif val[1] == "=" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
@@ -482,6 +482,13 @@ return function(tree)
             evaluate(mod,proc,varSpace,val[2],reg,false)
         elseif val[1] == "number" then
             text("LoadImmediate",reg,val[2])
+        elseif val[1] == "string" then
+            if not strings[val[2]] then
+                rodata("__okameronString"..strCount,val[2])
+                string[val[2]] = strCount
+                strCount = strCount + 1
+            end
+            text("LoadAddr","__okameronString"..strings[val[2]])
         elseif val[1] == "symbol" then
             lastSym = val
             if varSpace[val[2]] ~= nil then
@@ -527,7 +534,11 @@ return function(tree)
             text("PopRet")
             text("Return")
         end
+        for _,var in ipairs(mod[5]) do
+            if var[1] == "var" then
+                bss(var[2],getSize(mod,mod[3],var[3]))
+            end
+        end
     end
-    io.stderr:write(serialize_list(ircode[1],true,false).."\n")
     return ircode
 end

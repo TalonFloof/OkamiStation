@@ -1,0 +1,1 @@
+../../okamisdk/okameronc $(find . -not -wholename "*targets/*" -type f -name "*.okm") $(find ./targets/okami -type f -name "*.okm") Kernel.o

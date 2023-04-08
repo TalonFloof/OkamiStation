@@ -21,7 +21,6 @@ MODULE Window;
         FBGetSize(PTROF(w),PTROF(h));
         SysConWindow.x := w/2;
         SysConWindow.y := h/2;
-        SysConWindow.name[0] := 0;
     END;
 
     PROCEDURE DrawWin(win: WindowPtr;);
