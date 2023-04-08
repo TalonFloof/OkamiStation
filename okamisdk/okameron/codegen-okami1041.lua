@@ -337,7 +337,14 @@ return function(ir,asm)
     end
     io.stdout:write(".rodata\n")
     for _,i in ipairs(ir[2]) do
-        io.stdout:write(i[1]..": .string \""..i[2].."\"\n")
+        if i[2] == "string" then
+            io.stdout:write(i[1]..": .string \""..i[3].."\"\n")
+        elseif i[2] == "set" then
+            io.stdout:write(i[1]..":\n")
+            for _,j in ipairs(i[3]) do
+                io.stdout:write("    .word "..j[2].."\n")
+            end
+        end
     end
     io.stdout:write(".bss\n")
     for _,i in ipairs(ir[3]) do

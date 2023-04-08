@@ -75,7 +75,8 @@ return function(tree)
         return nil
     end
     local function getProcedure(mod,imports,name)
-        local tab = {table.unpack(imports),mod[2]}
+        local tab = {table.unpack(imports)}
+        table.insert(tab,mod[2])
         for _,i in ipairs(tab) do
             local val = findProcedure(findModule(i),name)
             if val ~= nil then
@@ -85,7 +86,8 @@ return function(tree)
         irgenErr(mod[2],"Undefined Procedure \""..name.."\" (hint: use IMPORT to use procedures from other modules)")
     end
     local function getType(mod,imports,typ)
-        local tab = {table.unpack(imports),mod[2]}
+        local tab = {table.unpack(imports)}
+        table.insert(tab,mod[2])
         for _,i in ipairs(tab) do
             local m = findModule(i)
             for _,j in ipairs(m[4]) do
@@ -104,7 +106,8 @@ return function(tree)
                 return ret
             end
         end
-        local tab = {table.unpack(imports),mod[2]}
+        local tab = {table.unpack(imports)}
+        table.insert(tab,mod[2])
         for _,i in ipairs(tab) do
             local m = findModule(i)
             for _,j in ipairs(m[5]) do
@@ -112,33 +115,38 @@ return function(tree)
                     local ret = j[3]
                     while ret[1] == "customType" do ret = getType(mod,imports,ret[2]) end
                     return ret
+                elseif j[1] == "const" and j[2] == var then
+                    if j[3][1] == "number" then
+                        return {"numType",4}
+                    elseif j[3][1] == "set" then
+                        return {"ptrOf",{"numType",4}}
+                    end
                 end
             end
         end
-        irgenErr(mod[2],"Undefined Variable \""..var.."\" (hint: use IMPORT to use variables from other modules)")
+        irgenErr(mod[2],"Undefined Variable/Constant \""..var.."\" whilst getting its type (hint: use IMPORT to use variables and constants from other modules)")
     end
     local function getLoadType(typ)
         if typ[1] == "numType" then
-            if typ[2] == 1 and typ[3] then return "LoadSignedByte"
-            elseif typ[2] == 1 and not typ[3] then return "LoadByte"
-            elseif typ[2] == 2 and typ[3] then return "LoadSignedHalf"
-            elseif typ[2] == 2 and not typ[3] then return "LoadHalf"
+            if typ[2] == 1 then return "LoadByte"
+            elseif typ[2] == 2 then return "LoadHalf"
             else return "Load" end
         elseif typ[1] == "ptrOf" then
             return "Load"
         end
     end
     local function assertGlobalVar(mod,imports,name)
-        local tab = {table.unpack(imports),mod[2]}
+        local tab = {table.unpack(imports)}
+        table.insert(tab,mod[2])
         for _,i in ipairs(tab) do
             local m = findModule(i)
             for _,j in ipairs(m[5]) do
-                if j[1] == "var" and j[2] == name then
+                if (j[1] == "var" or j[1] == "const") and j[2] == name then
                     return
                 end
             end
         end
-        irgenErr(mod[2],"Undefined Variable \""..name.."\" (hint: use IMPORT to use variables from other modules)")
+        irgenErr(mod[2],"Undefined Variable/Constant \""..name.."\" (hint: use IMPORT to use variables and constants from other modules)")
     end
     local function getSize(mod,imports,typ)
         if typ[1] == "numType" then
@@ -160,6 +168,8 @@ return function(tree)
                 end
             end
             return offset
+        elseif typ[1] == "set" then
+            return (#typ-1)*4
         elseif typ[1] == "customType" then
             return getSize(mod,imports,getType(mod,imports,typ[2]))
         end
@@ -167,7 +177,7 @@ return function(tree)
     end
     local function getRecOffset(mod,imports,typ,val)
         if typ[1] ~= "record" then
-            irgenErr(mod,"Given type \""..typ[1].."\" is not a record!")
+            irgenErr(mod[2],"Given type \""..typ[1].."\" is not a record!")
         end
         local offset = 0
         for i,j in ipairs(typ) do
@@ -247,8 +257,32 @@ return function(tree)
                     rfree(r)
                     text("Ash",reg,r)
                 end
+            elseif val[2] == "PUTBYTE" then
+                local r1 = ralloc()
+                local r2 = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r1)
+                evaluate(mod,proc,varSpace,val[4],r2)
+                rfree(r1)
+                rfree(r2)
+                text("StoreByte",r1,0,r2)
+            elseif val[2] == "PUTSHORT" then
+                local r1 = ralloc()
+                local r2 = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r1)
+                evaluate(mod,proc,varSpace,val[4],r2)
+                rfree(r1)
+                rfree(r2)
+                text("StoreHalf",r1,0,r2)
+            elseif val[2] == "PUTINT" then
+                local r1 = ralloc()
+                local r2 = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r1)
+                evaluate(mod,proc,varSpace,val[4],r2)
+                rfree(r1)
+                rfree(r2)
+                text("Store",r1,0,r2)
             elseif val[2] == "RETURN" then
-                evaluate(mod,proc,varSpace,val[3],{"arg",0},true)
+                evaluate(mod,proc,varSpace,val[3],{"arg",0},false)
                 text("Branch",".Lret")
             else
                 text("BeginCall",reg,#val-2)
@@ -446,7 +480,7 @@ return function(tree)
             text("Xor",reg,{"number",1})
         elseif val[1] == "." then
             evaluate(mod,proc,varSpace,val[2],reg,true)
-            local t = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
+            local t = val[2][1] == "symbol" and getVarType(mod,mod[3],getProcVars(proc),lastSym[2]) or lastType
             text("Add",reg,{"number",getRecOffset(mod,mod[3],t,val[3])})
             for _,i in ipairs(t) do
                 if type(i) == "table" and i[1] == val[3][2] then
@@ -459,7 +493,7 @@ return function(tree)
         elseif val[1] == "[" then
             evaluate(mod,proc,varSpace,val[2],reg,true)
             if lastType[1] ~= "array" and lastType[1] ~= "ptrOf" then
-                irgenErr(mod[2],"Attempted to index a value that wasn't an array or a pointer!")
+                irgenErr(mod[2],"Attempted to index a value that wasn't an array, a pointer, or a set!")
             end
             local nodeSize = 0
             local nodeType = nil
@@ -480,11 +514,14 @@ return function(tree)
             end
         elseif val[1] == "^" then
             evaluate(mod,proc,varSpace,val[2],reg,false)
+            lastType = lastType[2]
+            while lastType[1] == "customType" do lastType = getType(mod,mod[3],lastType[2]) end
+            text("Load",reg,0,reg)
         elseif val[1] == "number" then
             text("LoadImmediate",reg,val[2])
         elseif val[1] == "string" then
             if not strings[val[2]] then
-                rodata("__okameronString"..strCount,val[2])
+                rodata("__okameronString"..strCount,"string",val[2])
                 string[val[2]] = strCount
                 strCount = strCount + 1
             end
@@ -496,14 +533,14 @@ return function(tree)
                     text("Move",{"frame"},reg)
                     text("Add",reg,{"number",varSpace[val[2]]})
                 else
-                    lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
                     text(getLoadType(lastType),reg,varSpace[val[2]],{"frame"})
                 end
+                lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
             else
                 assertGlobalVar(mod,mod[3],val[2])
                 text("LoadAddr",reg,val[2])
+                lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
                 if not getAddr then
-                    lastType = getVarType(mod,mod[3],getProcVars(proc),lastSym[2])
                     text(getLoadType(lastType),reg,0,reg)
                 end
             end
@@ -537,6 +574,13 @@ return function(tree)
         for _,var in ipairs(mod[5]) do
             if var[1] == "var" then
                 bss(var[2],getSize(mod,mod[3],var[3]))
+            elseif var[1] == "const" then
+                if var[3][1] == "set" then
+                    table.remove(var[3],1)
+                    rodata(var[2],"set",var[3])
+                else
+                    rodata(var[2],"set",{var[3]})
+                end
             end
         end
     end

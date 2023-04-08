@@ -1,16 +1,16 @@
 MODULE Window;
     IMPORT Framebuffer;
     (* 12x19x2 1-bit images w/ alignment = 76 bytes *)
-    EXTERN CursorBitmaps: ARRAY 76 OF BYTE;
+    EXTERN CursorBitmaps: ARRAY 76 OF CHAR;
     (* Windows must have an extra 2 pixels on the width, and an extra 22 pixels on the height *)
     TYPE
         WindowPtr = POINTER TO WindowRec;
         WindowRec = RECORD
-            x: USHORT;
-            y: USHORT;
-            w: USHORT;
-            h: USHORT;
-            flags: UINT;
+            x: SHORT;
+            y: SHORT;
+            w: SHORT;
+            h: SHORT;
+            flags: INT;
             name: ARRAY 32 OF CHAR;
         END;
     VAR SysConWindow: WindowRec;
@@ -25,6 +25,6 @@ MODULE Window;
 
     PROCEDURE DrawWin(win: WindowPtr;);
     BEGIN
-        
+        FBDrawRect(win^.x,win^.y,win^.w,win^.h,NativeColor(241));
     END;
 END.

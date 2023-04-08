@@ -1,8 +1,16 @@
+/*
+ *  This program assumes that the Fennec Kernel is loaded on inode 2, DO NOT MAKE THE KERNEL FILE ANYTHING OTHER THAN THAT!
+ */
+
 .text
 .global _start:
     la a0, banner
     mcall 0x101
-    la a0, 
+    li a0, 64 /* Read the Superblock */
+    li a1, 1
+    la a2, blockbuf
+    mcall 0x200
+    
 .halt:
     beq zero, zero, .halt
 .rodata

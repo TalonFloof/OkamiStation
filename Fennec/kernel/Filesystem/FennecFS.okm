@@ -1,4 +1,7 @@
 MODULE FennecFS;
+    CONST
+        FFSStateOK = 0A072A572H;
+        FFSStates = {1,2,3,};
     TYPE
         FennecSuperblock = RECORD
             icount, ibmapcount, journalzone, ztagsize, zone, zones, zonesize, state: UINT;
@@ -18,5 +21,8 @@ MODULE FennecFS;
             name: ARRAY 60 OF CHAR;
         END;
     
-    
+    PROCEDURE test(): INT;
+    BEGIN
+        RETURN(FFSStates[1]);
+    END;
 END.

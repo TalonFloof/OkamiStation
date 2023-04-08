@@ -1,6 +1,7 @@
 MODULE Target;
-    (*ASM "targets/okami/string.S";*)
-    EXTERN PROCEDURE memset, memcpy: CHAR;
+    ASM "targets/okami/startup.S";
+    ASM "targets/okami/string.S";
+    EXTERN PROCEDURE memset, memcpy, invert: CHAR;
 
     PROCEDURE targetinit();
     BEGIN
@@ -9,7 +10,7 @@ MODULE Target;
 
     PROCEDURE halt();
     BEGIN
-        Put(0b0000000H,0ffffffffH); (* Mask Every Interrupt on the HTC *)
+        PUTINT(0b0000000H,0ffffffffH); (* Mask Every Interrupt on the HTC *)
         WHILE 1 DO END;
     END;
 

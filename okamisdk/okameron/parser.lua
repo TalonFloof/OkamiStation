@@ -20,7 +20,7 @@ return function(tokens)
             {"+",8,LEFT,false,function(x,y) return x + y end},
             {"-",8,LEFT,false,function(x,y) return x - y end},
             {"_",10,RIGHT,true,function(x) return 0 - x end}, -- Unary -
-            {"^",10,LEFT,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
+            {"^",0,NONE,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
             {"*",9,LEFT,false,function(x,y) return x * y end},
             {"/",9,LEFT,false,function(x,y) return x // y end},
             {"DIV",9,LEFT,false,function(x,y) return x // y end},
@@ -113,6 +113,8 @@ return function(tokens)
                 table.insert(outStack,popOp())
             elseif tokens[cursor].type == "dot" then
                 lastOp = {".",0,NONE,false}
+            elseif tokens[cursor].type == "caret" then
+                table.insert(outStack,{"^",0,NONE,true})
             elseif tokens[cursor].type == "assign" then
                 while #opStack > 0  do
                     local pop = popOp()
@@ -219,17 +221,11 @@ return function(tokens)
     local function parseType()
         if tokens[cursor].type == "identifier" then
             if tokens[cursor].txt == "CHAR" then
-                return {"numType",1,true}
-            elseif tokens[cursor].txt == "BYTE" then
-                return {"numType",1,false}
+                return {"numType",1}
             elseif tokens[cursor].txt == "SHORT" then
-                return {"numType",2,true}
-            elseif tokens[cursor].txt == "USHORT" then
-                return {"numType",2,false}
+                return {"numType",2}
             elseif tokens[cursor].txt == "INT" or tokens[cursor].txt == "LONG" or tokens[cursor].txt == "PTR" then
-                return {"numType",4,true}
-            elseif tokens[cursor].txt == "UINT" or tokens[cursor].txt == "ULONG" or tokens[cursor].txt == "UPTR" then
-                return {"numType",4,false}
+                return {"numType",4}
             else
                 return {"customType",tokens[cursor].txt}
             end
@@ -294,6 +290,34 @@ return function(tokens)
             expectToken("semicolon")
             cursor = cursor + 1
             table.insert(out,{name,t})
+        end
+        return out
+    end
+    local function parseConstSection()
+        local out = {}
+        while tokens[cursor].type == "identifier" do
+            local name = tokens[cursor].txt
+            cursor = cursor + 1
+            expectToken("eq")
+            cursor = cursor + 1
+            if tokens[cursor].type == "lbrace" then --Set
+                cursor = cursor + 1
+                local vals = {}
+                while tokens[cursor].type ~= "rbrace" do
+                    table.insert(vals,shunt("comma"))
+                    cursor = cursor + 1
+                end
+                cursor = cursor + 1
+                expectToken("semicolon")
+                cursor = cursor + 1
+                table.insert(vals,1,"set")
+                table.insert(out,{"const",name,vals})
+            elseif tokens[cursor].type == "number" then
+                table.insert(out,{"const",name,shunt("semicolon")})
+                cursor = cursor + 1
+            else
+                parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Invalid Assignment for Constant")
+            end
         end
         return out
     end
@@ -397,6 +421,12 @@ return function(tokens)
                         local tab = {"var",table.unpack(i)}
                         table.insert(module[5],tab)
                     end
+                end
+            elseif tokens[cursor].type == "constKw" then
+                cursor = cursor + 1
+                local t = parseConstSection()
+                for _,i in ipairs(t) do
+                    table.insert(module[5],i)
                 end
             elseif tokens[cursor].type == "procedureKw" then
                 cursor = cursor + 1

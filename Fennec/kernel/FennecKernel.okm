@@ -6,6 +6,7 @@ MODULE FennecKernel;
     PROCEDURE main();
     BEGIN
         targetinit();
+        FBClear(NativeColor());
         InitWin();
         halt();
     END;
