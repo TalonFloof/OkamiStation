@@ -1,8 +1,8 @@
 # Fennec File System
 
 ## Layout
-| OkamiBoot Metadata | Bootloader (optional) | Superblock | Journal (optional) | Inodes | Zone Tag Table | Zones |
-|--------------------|-----------------------|------------|--------------------|--------|----------------|-------|
+| OkamiBoot Metadata | Bootloader (optional) | Superblock | Journal (optional) | Inode Bitmap | Inodes | Zone Tag Table | Zones |
+|--------------------|-----------------------|------------|--------------------|--------------|--------|----------------|-------|
 
 ## Superblock
 ```c
@@ -16,10 +16,9 @@ typedef struct {
     uint32_t icount; /* Inode Count */
     uint32_t journalsize; /* Journal Log Size (excludes metadata) */
     uint32_t ztagsize; /* Zone Tag Table Size (in Zones) */
-    uint32_t zone; /* First block in zone */
     uint32_t zones; /* Number of zones */
+    uint64_t zone; /* First block in zone */
     uint32_t zonesize; /* Zone Size (must be at least 1024) */
-    uint32_t reserved;
     FennecFSState state; /* Filesystem State */
     uint64_t magic; /* "\x80Fennec\x80" */
     uint32_t revision; /* 1 */
@@ -29,8 +28,8 @@ typedef struct {
 ## Zone Tag
 ```
 0x00000000: Free Zone
-0x00000001: Damaged Zone (Bad Block(s))
-0x00000002-0xfffffffe: Used Zone (points to next zone, this forms a linked chain)
+0x00000001-0xfffffffd: Used Zone (points to next zone, this forms a linked chain)
+0xfffffffe: Bad Zone (Damaged Block(s) contained within the zone)
 0xffffffff: End of Zone Chain
 ```
 
