@@ -146,10 +146,6 @@ uint32_t* getZoneTag(FennecSuperblock* super, uint32_t index) {
     return (uint32_t*)(((uintptr_t)super)+(zttStart*512)+(index*4));
 }
 
-uint8_t* getZone(FennecSuperblock* super) {
-    return (uint8_t*)(super->zone);
-}
-
 uint32_t getFreeZone(FennecSuperblock* super) {
     for(int i=0; i < super->zones; i++) {
         if((*getZoneTag(super,i)) == 0) {
@@ -189,18 +185,14 @@ uint8_t* readInode(FennecSuperblock* super, FennecInode* inode) {
         return NULL;
     }
     uint8_t* data = malloc(size);
-    memset(data,0,size);
     uint32_t i = 0;
     uint32_t entry = inode->firstzone;
-    uint32_t* nextEntry = getZoneTag(super,inode->firstzone);
     uint8_t* zoneBegin = ((uint8_t*)super)+(super->zone*512);
-    while(entry != 0xffffffff) {
-        memcpy(data+i,zoneBegin+(entry*super->zonesize),((size>(super->zonesize))?(super->zonesize):size));
+    while(entry != 0xfffffffe) {
+        memcpy(&data[i],zoneBegin+(entry*super->zonesize),((size>(super->zonesize))?(super->zonesize):size));
         i += ((size>(super->zonesize))?(super->zonesize):size);
-        entry = *nextEntry;
-        if(*nextEntry != 0xffffffff) {
-            nextEntry = getZoneTag(super,entry-1);
-        }
+        size -= ((size>(super->zonesize))?(super->zonesize):size);
+        entry = (*getZoneTag(super,entry))-1;
     }
     return data;
 }
@@ -217,7 +209,7 @@ void writeInode(FennecSuperblock* super, FennecInode* inode, uint8_t* data, uint
             if(val == 0xFFFFFFFF) {
                 break;
             }
-            entry = getZoneTag(super,(*entry)-1);
+            entry = getZoneTag(super,val-1);
         }
     }
     if(data == NULL || size == 0) {
@@ -230,12 +222,13 @@ void writeInode(FennecSuperblock* super, FennecInode* inode, uint8_t* data, uint
     uint32_t zone;
     while(size > super->zonesize) {
         zone = getFreeZone(super);
+        *(getZoneTag(super,zone)) = 0xffffffff; /* Temporary */
         if(prev != NULL) {
             *prev = zone+1;
         } else {
             inode->firstzone = zone;
         }
-        memcpy(zoneBegin+(zone*super->zonesize),data+i,super->zonesize);
+        memcpy(zoneBegin+(zone*(super->zonesize)),data+i,super->zonesize);
         prev = getZoneTag(super,zone);
         size -= super->zonesize;
         i += super->zonesize;
@@ -251,7 +244,6 @@ void writeInode(FennecSuperblock* super, FennecInode* inode, uint8_t* data, uint
 }
 
 uint32_t findFile(FennecSuperblock* super, char* path) {
-    fprintf(stderr,"%s\n",path);
     if(path == NULL || strcmp(path,"/") == 0 || strlen(path) == 0) {return 1;}
     char* token = strtok(path,"/");
     uint32_t inode = 1;
@@ -400,7 +392,40 @@ int main(int argc, char** argv) {
             if(strcmp(argv[3],"bootldr") == 0) {
 
             } else if(strcmp(argv[3],"copy") == 0) {
-                
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                char* dirName;
+                uint32_t parentInode = findParent(super,argv[5],&dirName);
+                if(parentInode == 0) {
+                    fprintf(stderr,"Unable to retrieve parent Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                uint32_t newInode = getFreeInode(super);
+                if(newInode == 0) {
+                    fprintf(stderr,"Out of Inodes!\n");
+                    free(data);
+                    exit(3);
+                }
+                setBitmapEntry(super,newInode,1);
+                FennecInode* inode = getInode(super,newInode);
+                inode->mode = 0100644;
+                inode->links = 1;
+                inode->uid = 0;
+                inode->gid = 0;
+                inode->atime = (int64_t)time(NULL);
+                inode->mtime = inode->atime;
+                inode->ctime = inode->atime;
+                inode->iconcolor = 0;
+                inode->firstzone = 0xffffffff;
+                inode->size = 0;
+                addDirEntry(super,getInode(super,parentInode),newInode,dirName);
+                size_t srcSize;
+                uint8_t* img = readImage(argv[4],&srcSize);
+                writeInode(super,inode,img,srcSize);
+                free(img);
+                writeImage(argv[1],data,fileSize);
+                free(data);
             } else if(strcmp(argv[3],"mkdir") == 0) {
                 uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
                 FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
@@ -455,9 +480,48 @@ int main(int argc, char** argv) {
                 free(entries);
                 free(data);
             } else if(strcmp(argv[3],"cat") == 0) {
-
+                uint8_t* data = readImageAndValidate(argv[1],NULL,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                uint32_t inode = findFile(super,argv[4]);
+                if(inode == 0) {
+                    fprintf(stderr,"Unable to retrieve Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                uint8_t* img = readInode(super,getInode(super,inode));
+                fwrite(img,getInode(super,inode)->size,1,stdout);
+                free(img);
+                free(data);
             } else if(strcmp(argv[3],"delete") == 0) {
-
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                char* name;
+                uint32_t parent = findParent(super,argv[4],&name);
+                FennecDirEntry* entries = (FennecDirEntry*)readInode(super,getInode(super,parent));
+                uint32_t entryCount = getInode(super,parent)->size/sizeof(FennecDirEntry);
+                for(int i=0; i < entryCount; i++) {
+                    if(entries[i].inodeid != 0 && strcmp(name,entries[i].name) == 0) {
+                        FennecInode* inode = getInode(super,entries[i].inodeid);
+                        if((inode->mode & 0170000) == 0040000 && inode->size > 0) {
+                            fprintf(stderr, "Directory is not empty\n");
+                            free(entries);
+                            free(data);
+                            exit(4);
+                        }
+                        writeInode(super,inode,NULL,0);
+                        setBitmapEntry(super,entries[i].inodeid,false);
+                        entries[i].inodeid = 0;
+                        writeInode(super,getInode(super,parent),(uint8_t*)entries,entryCount*sizeof(FennecDirEntry));
+                        writeImage(argv[1],data,fileSize);
+                        free(entries);
+                        free(data);
+                        exit(0);
+                    }
+                }
+                fprintf(stderr, "File not found\n");
+                free(entries);
+                free(data);
+                return 0;
             } else if(strcmp(argv[3],"chmod") == 0) {
 
             } else if(strcmp(argv[3],"chown") == 0) {
