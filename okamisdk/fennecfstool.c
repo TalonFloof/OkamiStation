@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
         printf("delete [path]\n");
         printf("chmod [path] [mode]\n");
         printf("chown [path] [user] [group]\n");
-        printf("seticon [path] [color (Specify \"current\" to retain the current color)] [icon]\n");
+        printf("seticon [path] [color (Specify \"current\" to retain the current color)] -\n");
         printf("geticon [path]\n");
         return 1;
     } else {
@@ -480,7 +480,7 @@ int main(int argc, char** argv) {
                 free(entries);
                 free(data);
             } else if(strcmp(argv[3],"cat") == 0) {
-                uint8_t* data = readImageAndValidate(argv[1],NULL,startOffset);
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
                 FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
                 uint32_t inode = findFile(super,argv[4]);
                 if(inode == 0) {
@@ -523,11 +523,61 @@ int main(int argc, char** argv) {
                 free(data);
                 return 0;
             } else if(strcmp(argv[3],"chmod") == 0) {
-
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                uint32_t inode = findFile(super,argv[4]);
+                if(inode == 0) {
+                    fprintf(stderr,"Unable to retrieve Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                uint32_t perm = strtoul(argv[5],NULL,8);
+                getInode(super,inode)->mode = ((getInode(super,inode)->mode) & 0170000) | (perm & 07777);
+                writeImage(argv[1],data,fileSize);
+                free(data);
             } else if(strcmp(argv[3],"chown") == 0) {
-
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                uint32_t inode = findFile(super,argv[4]);
+                if(inode == 0) {
+                    fprintf(stderr,"Unable to retrieve Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                uint32_t uid = strtoul(argv[5],NULL,10);
+                uint32_t gid = strtoul(argv[6],NULL,10);
+                getInode(super,inode)->uid = uid;
+                getInode(super,inode)->gid = gid;
+                writeImage(argv[1],data,fileSize);
+                free(data);
             } else if(strcmp(argv[3],"seticon") == 0) {
-
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                uint32_t inode = findFile(super,argv[4]);
+                if(inode == 0) {
+                    fprintf(stderr,"Unable to retrieve Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                if(strcmp(argv[5],"current") != 0) {
+                    getInode(super,inode)->iconcolor = (strtoull(argv[5],NULL,0) & 0xFFFFFF) | 0x01000000;
+                }
+                if(argc > 5 && strcmp(argv[6],"-") == 0) {
+                    fread((uint8_t*)(&(getInode(super,inode)->icon)),128,1,stdin);
+                }
+                writeImage(argv[1],data,fileSize);
+                free(data);
+            } else if(strcmp(argv[3],"geticon") == 0) {
+                uint8_t* data = readImageAndValidate(argv[1],&fileSize,startOffset);
+                FennecSuperblock* super = (FennecSuperblock*)(data+startOffset);
+                uint32_t inode = findFile(super,argv[4]);
+                if(inode == 0) {
+                    fprintf(stderr,"Unable to retrieve Inode\n");
+                    free(data);
+                    exit(3);
+                }
+                fwrite((uint8_t*)(&(getInode(super,inode)->icon)),128,1,stdout);
+                free(data);
             }
         }
     }
