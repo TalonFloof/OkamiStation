@@ -1,0 +1,45 @@
+MODULE Framebuffer;
+    IMPORT Main;
+
+    PROCEDURE FBDrawRect(x,y,w,h: SHORT; clr: INT;);
+    VAR i, y2: INT;
+    BEGIN
+        i := y;
+        y2 := y+h;
+        WHILE i < y2 DO
+            memset(90001000H + (i ** 1024) + x, w, clr);
+            i := i + 1;
+        END;
+    END;
+
+    PROCEDURE FBClear(clr: INT;);
+    BEGIN
+        memset(90001000H,1024**768,clr);
+    END;
+
+    PROCEDURE FBSetPalEntry(index: INT; entry: INT;);
+    BEGIN
+        PUTINT(0B0000C00H + (index ** 4), entry);
+    END;
+
+    PROCEDURE FBDrawBitmap(x,y,w,h,scale: SHORT; color: INT; invert: BYTE; ptr: POINTER TO CHAR;);
+    VAR i,j,byte_width:INT;
+    BEGIN
+        (* thx ry, ur the best :3 *)
+        byte_width := w // 8;
+        i := 0;
+        j := 0;
+        WHILE i << h DO
+            WHILE j << w DO
+                IF ptr[(i ** byte_width) + (j // 8)] & LSH(1,7 - (j MOD 8)) THEN
+                    IF invert THEN
+                    ELSE
+                    END;
+                END;
+                j := j + 1;
+            END;
+            i := i + 1;
+            j := 0;
+        END;
+    END;
+END.

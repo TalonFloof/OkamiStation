@@ -15,10 +15,10 @@
     This is why we can execute code, even with this stuff not working.
     Addresses 0x80000000-0x9fffffff (known as kernel1) is the same as kernel2 but it uses the L1 Caches.
     */
-    la a0, EarlyHandler
+    /*la a0, EarlyHandler
     lui t1, 0x2000
     add a0, a0, t1
-    mtex a0, 5
+    mtex a0, 5*/
     /* We must clear the caches */
     bl ClearICache
     bl ClearDCache
@@ -32,10 +32,11 @@
     /* Caches are now cleared, clear the TLB next */
     bl ClearTLB
     /* Setup Stack */
-    la sp, __BSS_END__
+    la sp, FWstack
+    addi sp, sp, 0x1000
     /* Clear the BSS segment */
     la a0, 0xa0000000
-    la a1, FWstack
+    la a1, __BSS_END__
     lui t0, 0x8000
     sub a1, a1, t0
     li a2, 0
@@ -87,12 +88,11 @@ halt:
     blr zero, ra
 
 .global Jump:
-    la sp, __BSS_END__
+    la sp, FWstack
+    addi sp, sp, 0x1000
     la t0, ClearICache
     lui t1, 0x2000
     add t0, t0, t1
     mv a0, ra
     br t0
     b halt /* This should never happen, but just in case */
-
-.rodata Secret: .text

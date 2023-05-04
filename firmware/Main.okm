@@ -1,0 +1,27 @@
+MODULE Main;
+    ASM "Startup.s";
+    ASM "Traps.s";
+    ASM "Memory.s";
+    EXTERN PROCEDURE memset, memcpy: CHAR;
+    IMPORT Framebuffer, Console;
+
+    VAR FWstack: ARRAY 4096 OF CHAR;
+
+    PROCEDURE main();
+    BEGIN
+        PUTINT(0B0000000H, 1);
+        FBSetPalEntry(240, 01E1E2EH);
+        FBClear(240);
+        WHILE 1 DO END;
+    END;
+
+    PROCEDURE exception();
+    BEGIN
+        WHILE 1 DO END;
+    END;
+
+    PROCEDURE earlyException();
+    BEGIN
+        WHILE 1 DO END;
+    END;
+END.

@@ -40,7 +40,7 @@
     mfex a1, 1
     mfex a2, 2
     mfex a3, 3
-    bl Exception
+    bl exception
     lw ra, 76(sp)
     lw s9, 72(sp)
     lw s8, 68(sp)
@@ -73,12 +73,12 @@
     la sp, 0x80004000
     addi sp, sp, -4
     mfex a0, 3
-    bl EarlyException
+    bl earlyException
 .halt:
     beq zero, zero, .halt
 
 .global RAMTestHandler:
-    la kr, RAMTestFaulted
+/*    la kr, RAMTestFaulted
     li t7, 2
-    sb t7, 0(kr)
+    sb t7, 0(kr)*/
     rft

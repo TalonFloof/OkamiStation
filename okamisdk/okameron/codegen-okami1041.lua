@@ -31,7 +31,7 @@ return function(ir,asm)
     end
     local function loadImm(r,i)
         if i & 0xFFFF == 0 then
-            io.stdout:write("    lui "..r..", "..i.."\n")
+            io.stdout:write("    lui "..r..", "..((i & 0xffff0000) >> 16).."\n")
         elseif i & 0xFFFF0000 == 0 then
             io.stdout:write("    li "..r..", "..i.."\n")
         else
@@ -56,7 +56,9 @@ return function(ir,asm)
         end,
         ["PushVariables"]=function(space,args)
             varSpace = space
-            io.stdout:write("    addi sp, sp, -"..varSpace.."\n")
+            if varSpace ~= 0 then
+                io.stdout:write("    addi sp, sp, -"..varSpace.."\n")
+            end
             for i=args,1,-1 do
                 io.stdout:write("    sw a"..(i-1)..", "..(i*4).."(sp)\n")
             end
@@ -64,7 +66,9 @@ return function(ir,asm)
         end,
         ["PopVariables"]=function()
             io.stdout:write(".Lret:\n")
-            io.stdout:write("    addi sp, sp, "..varSpace.."\n")
+            if varSpace ~= 0 then
+                io.stdout:write("    addi sp, sp, "..varSpace.."\n")
+            end
         end,
         ["PopRet"]=function()
             for i=savedRegs,1,-1 do
@@ -72,7 +76,7 @@ return function(ir,asm)
             end
             io.stdout:write("    lw ra, 8(sp)\n")
             io.stdout:write("    lw fp, 4(sp)\n")
-            io.stdout:write("    addi sp, sp, 8\n")
+            io.stdout:write("    addi sp, sp, "..(8+(savedRegs*4)).."\n")
         end,
         ["Return"]=function()
             io.stdout:write("    br ra\n")
@@ -316,11 +320,14 @@ return function(ir,asm)
         ["Branch"]=function(l)
             io.stdout:write("    b "..l.."\n")
         end,
+        ["BranchIfZero"]=function(r,l)
+            io.stdout:write("    beq "..getReg(r)..", zero, "..l.."\n")
+        end,
         ["BranchIfNotZero"]=function(r,l)
             io.stdout:write("    bne "..getReg(r)..", zero, "..l.."\n")
         end,
     }
-    while cursor < #ir[1] do
+    while cursor <= #ir[1] do
         local insn = ir[1][cursor]
         if not ops[insn[1]] then
             error("Unknown IR Instruction: "..insn[1])
