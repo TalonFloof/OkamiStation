@@ -1,0 +1,46 @@
+MODULE Console;
+    IMPORT Framebuffer, Main;
+
+    VAR cursorX, cursorY: INT;
+
+    PROCEDURE ConsoleInit();
+    BEGIN
+        cursorX := 0;
+        cursorY := 0;
+        PUTCHAR(0B0000000H, 0); (* Set karasuFB to 1-bit 1024x768 mode *)
+        FBSetPalEntry(0, 01E1E2EH);
+        FBSetPalEntry(255, 0CDD6F4H);
+        FBClear(0);
+    END;
+
+    PROCEDURE ConsolePutc(c: CHAR;);
+    VAR i: INT;
+    BEGIN
+        IF c = 0AH THEN
+            FBDrawRect(cursorX,cursorY,0);
+            cursorX := 0;
+            IF cursorY = 47 THEN
+                (* Scroll *)
+                i := 16;
+                WHILE i <| 768 DO
+                    memcpy((i-16) *| 128,i *| 128,128);
+                END;
+            ELSE
+                cursorY := cursorY + 1;
+            END;
+            FBDrawRect(cursorX,cursorY,0FFH);
+        ELSE
+            FBDrawChar(cursorX,cursorY,c);
+            cursorX := cursorX + 1;
+            FBDrawRect(cursorX,cursorY,0FFH);
+        END;
+    END;
+
+    PROCEDURE ConsolePrint(c: POINTER TO CHAR;);
+    BEGIN
+        WHILE GETCHAR(c) # 0 DO
+            ConsolePutc(GETCHAR(c));
+            c := c + 1;
+        END;
+    END;
+END.

@@ -2,16 +2,24 @@ MODULE Main;
     ASM "Startup.s";
     ASM "Traps.s";
     ASM "Memory.s";
+    ASM "Framebuffer.s";
     EXTERN PROCEDURE memset, memcpy: CHAR;
+    EXTERN OkamiLogo: CHAR;
     IMPORT Framebuffer, Console;
 
     VAR FWstack: ARRAY 4096 OF CHAR;
 
     PROCEDURE main();
+    VAR i: INT;
     BEGIN
-        PUTINT(0B0000000H, 1);
-        FBSetPalEntry(240, 01E1E2EH);
-        FBClear(240);
+        ConsoleInit();
+        ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ??? MB memory installed\n\n\n\n");
+        (* Copy the Logo *)
+        i := 0;
+        WHILE i <| 128 DO
+            memcpy(90001000H + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
+            i := i + 1;
+        END;
         WHILE 1 DO END;
     END;
 

@@ -14,22 +14,13 @@ uint32_t FBMode = 0;
 
 bool Dirty = false;
 
-uint64_t DirtyX1 = 0;
-uint64_t DirtyX2 = 0;
-uint64_t DirtyY1 = 0;
-uint64_t DirtyY2 = 0;
-
-static inline void MarkDirty(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2) {
+static inline void MarkDirty() {
 	Dirty = true;
-
-	if (x1 < DirtyX1)
-		DirtyX1 = x1;
-	if (y1 < DirtyY1)
-		DirtyY1 = y1;
-	if (x2 > DirtyX2)
-		DirtyX2 = x2;
-	if (y2 > DirtyY2)
-		DirtyY2 = y2;
+    /*for(int i=y1;i <= y2;i++) {
+        for(int j=x1;j <= x2;j++) {
+            DirtyTiles[((i/8)*128)+(j/8)] = true;
+        }
+    }*/
 }
 
 int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
@@ -46,12 +37,8 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
         addr -= 0x1000;
         if (addr+len > 1024*768)
 			return 0;
-		uint32_t x = addr%1024;
-		uint32_t y = addr/1024;
-        uint32_t x1 = (addr+len-1)%1024;
-		uint32_t y1 = (addr+len-1)/1024;
         memcpy(framebuffer+addr, (uint8_t*)buf, len);
-        MarkDirty(x,y,x1,y1);
+        MarkDirty();
         return 1;
     }
     return 0;
@@ -94,46 +81,34 @@ void KarasuInit() {
         fprintf(stderr, "\n");
         exit(1);
     }
-    DirtyX2 = 1023;
-	DirtyY2 = 767;
-    Dirty = true;
+    //Dirty = true;
 }
 
 void KarasuUploadFrame() {
     if (!Dirty)
         return;
-    uint64_t dirty_index = (DirtyY1*1024)+DirtyX1;
-    uint64_t pixbuf_index = 0;
-    int w = DirtyX2-DirtyX1+1;
-	int h = DirtyY2-DirtyY1+1;
     if(FBMode == 0) {
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                outputTexture[pixbuf_index++] = KarasuPalette[((framebuffer[dirty_index+(x/8)]>>(7-(x%8))) & 1)?255:0];
+        for(int y=0; y < 768; y++) {
+            for(int x=0;x < 1024; x++) {
+                outputTexture[(y*1024)+x] = KarasuPalette[(framebuffer[(y*128)+(x/8)] & (1<<(7-(x%8)))) ? 255 : 0];
             }
-            dirty_index += 128;
         }
     } else if(FBMode == 1) {
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                outputTexture[pixbuf_index++] = KarasuPalette[framebuffer[dirty_index+x]];
+        for(int y=0; y < 768; y++) {
+            for(int x=0;x < 1024; x++) {
+                outputTexture[(y*1024)+x] = KarasuPalette[framebuffer[y*1024+x]];
             }
-            dirty_index += 1024;
-        }
+        }     
     }
     SDL_Rect rect = {
-		.x = DirtyX1,
-		.y = DirtyY1,
-		.w = w,
-		.h = h,
+		.x = 0,
+		.y = 0,
+		.w = 1024,
+		.h = 768,
 	};
     if(SDL_UpdateTexture(FBTexture, &rect, outputTexture, rect.w * 4) != 0) {
         fprintf(stderr, "Texture Upload Error: %s\n", SDL_GetError());
         abort();
     }
-    DirtyX1 = -1;
-	DirtyX2 = 0;
-	DirtyY1 = -1;
-	DirtyY2 = 0;
 	Dirty = false;
 }

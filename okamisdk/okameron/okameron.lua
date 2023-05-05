@@ -67,5 +67,5 @@ for _,i in ipairs(args) do
 end
 local tree, asm = parse(tokens)
 local ircode = irgen(tree)
-io.stderr:write(serialize_list(ircode[1],true,false));
+--io.stderr:write(serialize_list(ircode[1],true,false).."\n")
 codegen(ircode,asm)

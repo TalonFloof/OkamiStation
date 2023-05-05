@@ -115,6 +115,14 @@ return function(tree)
                     local ret = j[3]
                     while ret[1] == "customType" do ret = getType(mod,imports,ret[2]) end
                     return ret
+                elseif j[1] == "extern" and not j[2] then
+                    for k=3,#j do
+                        if j[k][1] == var then
+                            local ret = j[k][2]
+                            while ret[1] == "customType" do ret = getType(mod,imports,ret[2]) end
+                            return ret
+                        end
+                    end
                 elseif j[1] == "const" and j[2] == var then
                     if j[3][1] == "number" then
                         return {"numType",4}
@@ -143,6 +151,12 @@ return function(tree)
             for _,j in ipairs(m[5]) do
                 if (j[1] == "var" or j[1] == "const") and j[2] == name then
                     return
+                elseif j[1] == "extern" and not j[2] then
+                    for k=3,#j do
+                        if j[k][1] == name then
+                            return
+                        end
+                    end
                 end
             end
         end
@@ -206,8 +220,9 @@ return function(tree)
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                if lastType[1] == "numType" and lastType[2] == 1 then text("StoreByte",r,varSpace[val[2][2]],{"frame"})
-                elseif lastType[1] == "numType" and lastType[2] == 2 then text("StoreHalf",r,varSpace[val[2][2]],{"frame"})
+                local typ = getVarType(mod,mod[3],getProcVars(proc),val[2][2]);
+                if typ[1] == "numType" and typ[2] == 1 then text("StoreByte",r,varSpace[val[2][2]],{"frame"})
+                elseif typ[1] == "numType" and typ[2] == 2 then text("StoreHalf",r,varSpace[val[2][2]],{"frame"})
                 else
                     text("Store",r,varSpace[val[2][2]],{"frame"})
                 end
@@ -257,7 +272,7 @@ return function(tree)
                     rfree(r)
                     text("Ash",reg,r)
                 end
-            elseif val[2] == "PUTBYTE" then
+            elseif val[2] == "PUTCHAR" then
                 local r1 = ralloc()
                 local r2 = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r2)
@@ -281,6 +296,21 @@ return function(tree)
                 rfree(r1)
                 rfree(r2)
                 text("Store",r1,0,r2)
+            elseif val[2] == "GETCHAR" then
+                local r = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r)
+                rfree(r)
+                text("LoadByte",reg,0,r)
+            elseif val[2] == "GETSHORT" then
+                local r = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r)
+                rfree(r)
+                text("LoadHalf",reg,0,r)
+            elseif val[2] == "GETINT" then
+                local r = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r)
+                rfree(r)
+                text("Load",reg,0,r)
             elseif val[2] == "RETURN" then
                 evaluate(mod,proc,varSpace,val[3],{"arg",0},false)
                 text("Branch",".Lret")
@@ -297,38 +327,42 @@ return function(tree)
                 end
             end
         elseif val[1] == "if" then
-            for i=1,#val do
+            local id = ifCount
+            ifCount = ifCount + 1
+            for i=2,#val do
                 if val[i][1] ~= "else" then
                     local r = ralloc()
                     evaluate(mod,proc,varSpace,val[i][2],r)
-                    text("BranchIfNotZero",r,".Lif"..ifCount.."_"..i)
+                    text("BranchIfNotZero",r,".Lif"..id.."_"..(i-2))
                     rfree(r)
                 end
             end
             if val[#val][1] == "else" then
-                text("Branch",".Lif"..ifCount.."_"..(#val))
+                text("Branch",".Lif"..id.."_"..(#val-2))
             else
-                text("Branch",".Lif"..ifCount.."_after")
+                text("Branch",".Lif"..id.."_after")
             end
-            for i=1,#val do
-                text("LocalLabel",".Lif"..ifCount.."_"..i)
-                evaluate(mod,proc,varSpace,val[i][3])
-                text("Branch",".Lif"..ifCount.."_after")
+            for i=2,#val do
+                text("LocalLabel",".Lif"..id.."_"..(i-2))
+                for _,arg in ipairs(val[i][3]) do
+                    evaluate(mod,proc,varSpace,arg)
+                end
+                text("Branch",".Lif"..id.."_after")
             end
-            text("LocalLabel",".Lif"..ifCount.."_after")
-            ifCount = ifCount + 1
+            text("LocalLabel",".Lif"..id.."_after")
         elseif val[1] == "while" then
-            text("LocalLabel",".Lwhile"..whileCount)
+            local id = whileCount
+            whileCount = whileCount + 1
+            text("LocalLabel",".Lwhile"..id)
             local r = ralloc()
             evaluate(mod,proc,varSpace,val[2],r)
             rfree(r)
-            text("BranchIfZero",r,".Lwhile"..whileCount.."_after")
+            text("BranchIfZero",r,".Lwhile"..id.."_after")
             for _,arg in ipairs(val[3]) do
                 evaluate(mod,proc,varSpace,arg)
             end
-            text("Branch",".Lwhile"..whileCount)
-            text("LocalLabel",".Lwhile"..whileCount.."_after")
-            whileCount = whileCount + 1
+            text("Branch",".Lwhile"..id)
+            text("LocalLabel",".Lwhile"..id.."_after")
         elseif val[1] == "+" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
@@ -349,25 +383,25 @@ return function(tree)
                 rfree(r)
                 text("Sub",reg,r)
             end
-        elseif val[1] == "*" or val[1] == "**" then
+        elseif val[1] == "*" or val[1] == "*|" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Mul",reg,val[3],val[1] ~= "**")
+                text("Mul",reg,val[3],val[1] ~= "*|")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Mul",reg,r,val[1] ~= "**")
+                text("Mul",reg,r,val[1] ~= "*|")
             end
-        elseif val[1] == "/" or val[1] == "DIV" or val[1] == "//" then
+        elseif val[1] == "/" or val[1] == "DIV" or val[1] == "/|" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Div",reg,val[3],val[1] ~= "//")
+                text("Div",reg,val[3],val[1] ~= "/|")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Div",reg,r,val[1] ~= "//")
+                text("Div",reg,r,val[1] ~= "/|")
             end
         elseif val[1] == "MOD" then
             evaluate(mod,proc,varSpace,val[2],reg)
@@ -432,45 +466,45 @@ return function(tree)
                 rfree(r)
                 text("Neq",reg,r)
             end
-        elseif val[1] == ">" or val[1] == ">>" then
+        elseif val[1] == ">" or val[1] == ">|" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Gt",reg,val[3],val[1] ~= ">>")
+                text("Gt",reg,val[3],val[1] ~= ">|")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Gt",reg,r,val[1] ~= ">>")
+                text("Gt",reg,r,val[1] ~= ">|")
             end
-        elseif val[1] == "<" or val[1] == "<<" then
+        elseif val[1] == "<" or val[1] == "<|" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Lt",reg,val[3],val[1] ~= "<<")
+                text("Lt",reg,val[3],val[1] ~= "<|")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Lt",reg,r,val[1] ~= "<<")
+                text("Lt",reg,r,val[1] ~= "<|")
             end
-        elseif val[1] == ">=" or val[1] == ">>=" then
+        elseif val[1] == ">=" or val[1] == ">|=" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Ge",reg,val[3],val[1] ~= ">>=")
+                text("Ge",reg,val[3],val[1] ~= ">|=")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Ge",reg,r,val[1] ~= ">>=")
+                text("Ge",reg,r,val[1] ~= ">|=")
             end
-        elseif val[1] == "<=" or val[1] == "<<=" then
+        elseif val[1] == "<=" or val[1] == "<|=" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
-                text("Le",reg,val[3],val[1] ~= "<<=")
+                text("Le",reg,val[3],val[1] ~= "<|=")
             else
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
-                text("Le",reg,r,val[1] ~= "<<=")
+                text("Le",reg,r,val[1] ~= "<|=")
             end
         elseif val[1] == "~" then
             evaluate(mod,proc,varSpace,val[2],reg)
@@ -516,16 +550,18 @@ return function(tree)
             evaluate(mod,proc,varSpace,val[2],reg,false)
             lastType = lastType[2]
             while lastType[1] == "customType" do lastType = getType(mod,mod[3],lastType[2]) end
-            text("Load",reg,0,reg)
+            if lastType[1] == "numType" and lastType[2] == 1 then text("LoadByte",reg,0,reg)
+            elseif lastType[1] == "numType" and lastType[2] == 2 then text("LoadHalf",reg,0,reg)
+            else text("Load",reg,0,reg) end
         elseif val[1] == "number" then
             text("LoadImmediate",reg,val[2])
         elseif val[1] == "string" then
             if not strings[val[2]] then
-                rodata("__okameronString"..strCount,"string",val[2])
-                string[val[2]] = strCount
+                rodata("__okameronString"..strCount,"string",load("return "..val[2])())
+                strings[val[2]] = strCount
                 strCount = strCount + 1
             end
-            text("LoadAddr","__okameronString"..strings[val[2]])
+            text("LoadAddr",reg,"__okameronString"..strings[val[2]])
         elseif val[1] == "symbol" then
             lastSym = val
             if varSpace[val[2]] ~= nil then
@@ -557,12 +593,20 @@ return function(tree)
             local argUsage = 0
             for _,a in ipairs(proc[3]) do
                 varSpace[a[1]] = stackUsage
-                stackUsage = stackUsage + getSize(mod,mod[3],a[2])
+                local size = getSize(mod,mod[3],a[2])
+                if size < 4 then
+                    size = 4;
+                end
+                stackUsage = stackUsage + size
                 argUsage = argUsage + 4
             end
             for _,a in ipairs(proc[5]) do
                 varSpace[a[2]] = stackUsage
-                stackUsage = stackUsage + getSize(mod,mod[3],a[3])
+                local size = getSize(mod,mod[3],a[3])
+                if (size % 4) ~= 0 then
+                    size = ((size // 4) + 1) * 4;
+                end
+                stackUsage = stackUsage + size;
             end
             text("PushVariables",stackUsage-4,argUsage//4)
             for _,a in ipairs(proc[6]) do

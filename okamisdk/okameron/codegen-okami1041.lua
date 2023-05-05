@@ -38,7 +38,8 @@ return function(ir,asm)
             io.stdout:write("    la "..r..", "..i.."\n")
         end
     end
-    local ops = {
+    local ops = {}
+    ops = {
         ["DefSymbol"]=function(name)
             io.stdout:write(".global "..name..":\n")
             savedRegs = getSavedRegs(cursor)
@@ -254,7 +255,7 @@ return function(ir,asm)
         ["Lt"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -283,7 +284,7 @@ return function(ir,asm)
         ["Ge"]=function(r1,r2,sign)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    "..(sign and "slti" or "sltiu").." "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    "..(sign and "slt" or "sltu").." "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -339,7 +340,11 @@ return function(ir,asm)
     io.stdout:write(".rodata\n")
     for _,i in ipairs(ir[2]) do
         if i[2] == "string" then
-            io.stdout:write(i[1]..": .string \""..i[3].."\"\n")
+            io.stdout:write(i[1]..": ")
+            for j=1,#i[3] do
+                io.stdout:write(".byte "..tostring(string.byte(string.sub(i[3],j,j))).." ")
+            end
+            io.stdout:write(".byte 0\n")
         elseif i[2] == "set" then
             io.stdout:write(i[1]..":\n")
             for _,j in ipairs(i[3]) do

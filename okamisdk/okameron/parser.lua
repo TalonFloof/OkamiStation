@@ -21,9 +21,9 @@ return function(tokens)
             {"-",8,LEFT,false,function(x,y) return x - y end},
             {"_",10,RIGHT,true,function(x) return 0 - x end}, -- Unary -
             {"^",0,NONE,true,function(x) parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Attempt to decast immediate value") end},
-            {"**",9,LEFT,false,function(x,y) return x * y end},
+            {"*|",9,LEFT,false,function(x,y) return x * y end},
             {"*",9,LEFT,false,function(x,y) return x * y end},
-            {"//",9,LEFT,false,function(x,y) return x // y end},
+            {"/|",9,LEFT,false,function(x,y) return x // y end},
             {"/",9,LEFT,false,function(x,y) return x // y end},
             {"DIV",9,LEFT,false,function(x,y) return x // y end},
             {"MOD",9,LEFT,false,function(x,y) return x % y end},
@@ -37,10 +37,10 @@ return function(tokens)
             {">",7,LEFT,false,function(x,y) return x > y end},
             {"<=",7,LEFT,false,function(x,y) return x <= y end},
             {">=",7,LEFT,false,function(x,y) return x >= y end},
-            {"<<",7,LEFT,false,function(x,y) return x < y end},
-            {">>",7,LEFT,false,function(x,y) return x > y end},
-            {"<<=",7,LEFT,false,function(x,y) return x <= y end},
-            {">>=",7,LEFT,false,function(x,y) return x >= y end},
+            {"<|",7,LEFT,false,function(x,y) return x < y end},
+            {">|",7,LEFT,false,function(x,y) return x > y end},
+            {"<|=",7,LEFT,false,function(x,y) return x <= y end},
+            {">|=",7,LEFT,false,function(x,y) return x >= y end},
         }
         local opStack = {}
         local outStack = {}
@@ -147,10 +147,20 @@ return function(tokens)
                     if tokens[c].type == "lparen" then
                         c = parenSkip(c)
                     end
-                    if tokens[c].type == "comma" and tokens[c+1].type ~= "rparen" then argCount = argCount + 1 end
+                    if tokens[c].type == "comma" and tokens[c+1].type ~= "rparen" then
+                        while #opStack > 0 and opStack[#opStack][1] ~= "(" do
+                            local pop = popOp()
+                            table.insert(outStack,pop)
+                        end
+                        argCount = argCount + 1
+                    end
                     c = c + 1
                 end
-                table.insert(opStack,{"FN",tokens[cursor].txt,argCount})
+                while #opStack > 0 and opStack[#opStack][1] ~= "(" do
+                    local pop = popOp()
+                    table.insert(outStack,pop)
+                end
+                table.insert(opStack,{"FN",999,tokens[cursor].txt,argCount})
                 inFunc = true
             elseif tokens[cursor].type == "identifier" and not getOp(tokens[cursor].txt) then
                 table.insert(outStack,tokens[cursor].txt)
@@ -191,9 +201,9 @@ return function(tokens)
                     table.insert(tempStack,{"string",i[2]})
                 elseif i[1] == "FN" then
                     local arguments = {}
-                    local ind = (#tempStack-i[3])+1
-                    for x=1,i[3] do table.insert(arguments,table.remove(tempStack,ind)) end
-                    table.insert(arguments,1,i[2])
+                    local ind = (#tempStack-i[4])+1
+                    for x=1,i[4] do table.insert(arguments,table.remove(tempStack,ind)) end
+                    table.insert(arguments,1,i[3])
                     table.insert(arguments,1,"call")
                     table.insert(tempStack,arguments)
                 else
@@ -345,7 +355,7 @@ return function(tokens)
                 local expr = shunt("thenKw")
                 cursor = cursor + 1
                 local c = parseCode({["endKw"]=true,["elseKw"]=true,["elsifKw"]=true})
-                local tab = {"if",{expr,c}}
+                local tab = {"if",{"if",expr,c}}
                 while tokens[cursor].type ~= "endKw" do
                     if tokens[cursor].type == "elsifKw" then
                         cursor = cursor + 1
@@ -353,14 +363,16 @@ return function(tokens)
                         c = parseCode({["endKw"]=true,["elseKw"]=true,["elsifKw"]=true})
                         table.insert(tab,{"elseif",expr,c})
                     elseif tokens[cursor].type == "elseKw" then
+                        cursor = cursor + 1
                         c = parseCode({["endKw"]=true})
-                        table.insert(tab,{"else",c})
+                        table.insert(tab,{"else",{},c})
                         break
                     end
                 end
                 cursor = cursor + 1
                 expectToken("semicolon")
                 cursor = cursor + 1
+                table.insert(code,tab)
             else
                 parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Unexpected Token: \""..tokens[cursor].type.."\"")
             end

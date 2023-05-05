@@ -1,10 +1,12 @@
 {
     "files.associations": {
+        "*.okm": "oberon",
         "*.h": "c",
         "*.vos": "plaintext",
         "array": "c",
         "string": "c",
-        "string_view": "c"
+        "string_view": "c",
+        "random": "c"
     },
     "rust-analyzer.linkedProjects": [
         "okamisdk/okas/Cargo.toml"
