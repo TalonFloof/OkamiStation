@@ -1,5 +1,0 @@
-#!/bin/bash
-
-path=$(dirname $0)
-
-lua -W ${path}/../../vosLang/src/vos.lua $1 ./a.s && ${path}/okas ./a.s $2 # && rm -f ./a.s

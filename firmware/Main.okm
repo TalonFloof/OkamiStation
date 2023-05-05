@@ -4,7 +4,7 @@ MODULE Main;
     ASM "Memory.s";
     ASM "Framebuffer.s";
     EXTERN PROCEDURE memset, memcpy: CHAR;
-    EXTERN OkamiLogo: CHAR;
+    EXTERN OkamiLogo, foc: CHAR;
     IMPORT Framebuffer, Console;
 
     VAR FWstack: ARRAY 4096 OF CHAR;
@@ -20,6 +20,7 @@ MODULE Main;
             memcpy(90001000H + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
             i := i + 1;
         END;
+        memcpy(90001000H,PTROF(foc),98304);
         WHILE 1 DO END;
     END;
 

@@ -38,8 +38,8 @@ MODULE Console;
 
     PROCEDURE ConsolePrint(c: POINTER TO CHAR;);
     BEGIN
-        WHILE GETCHAR(c) # 0 DO
-            ConsolePutc(GETCHAR(c));
+        WHILE c^ # 0 DO
+            ConsolePutc(c^);
             c := c + 1;
         END;
     END;
