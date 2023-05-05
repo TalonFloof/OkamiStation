@@ -12,9 +12,7 @@ MODULE Main;
     PROCEDURE main();
     VAR i: INT;
     BEGIN
-        PUTCHAR(0B0000004H, 0);
-        PUTCHAR(0B0000000H, 1);
-        (* ConsoleInit(); *)
+        ConsoleInit();
         ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ??? MB memory installed\n\n\n\n");
         (* Copy the Logo *)
         i := 0;
@@ -22,7 +20,6 @@ MODULE Main;
             memcpy(90001000H + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
             i := i + 1;
         END;
-        (*memcpy(90001000H,PTROF(foc),786432);*)
         WHILE 1 DO END;
     END;
 
