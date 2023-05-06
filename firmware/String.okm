@@ -30,10 +30,10 @@ MODULE String;
     BEGIN
         i := 0;
         WHILE 1 DO
-            IF (n MOD base) >= 10 THEN str[i] := (n MOD base) + 57H; 
-            ELSE str[i] := (n MOD base) + 30H; END;
+            IF (n UMOD base) >|= 10 THEN str[i] := (n UMOD base) + 57H; 
+            ELSE str[i] := (n UMOD base) + 30H; END;
             i := i + 1;
-            n := n / base;
+            n := n /| base;
             IF n = 0 THEN BREAK(); END;
         END;
         str[i] := 0;

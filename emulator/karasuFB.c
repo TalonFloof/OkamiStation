@@ -43,7 +43,7 @@ int KarasuWrite(uint32_t addr, uint32_t len, void *buf) {
         return 1;
     } else {
         addr -= 0x1000;
-        if (addr+len > 1*1024*1024)
+        if (addr+len > (1*1024*1024))
 			return 0;
         memcpy(framebuffer+addr, (uint8_t*)buf, len);
         if(FBMode == 1) {

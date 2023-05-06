@@ -22,4 +22,3 @@ if (#data % 512) > 0 then
     outfile:write(string.rep("\0",512-(#data%512)))
 end
 outfile:close()
-os.rename("Bootloader.bin","../../../emulator/Bootloader.bin")

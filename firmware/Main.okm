@@ -52,8 +52,8 @@ MODULE Main;
         PUTCHAR(0B0000000H, 0);
         PUTCHAR(0B0000004H, 0);
         FBClear(0);
-        itoa(addr,80000000H,16);
-        FBDrawString(60,23,80000000H);
+        itoa(addr,0B0001000H,16);
+        FBDrawString(60,23,0B0001000H);
         FBDrawString(52,24,"Contact Technical Support" + 20000000H);
         i := 0;
         WHILE i <| 128 DO

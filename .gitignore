@@ -17,3 +17,5 @@ fennecfstool
 *.log
 *.pdf
 firmware/OldCode
+okamisdk/okameron/
+okamisdk/okameron/**

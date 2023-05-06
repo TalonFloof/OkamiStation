@@ -69,8 +69,7 @@
     mfex t0, 0
     ori t0, t0, 0xc0
     mtex t0, 0
-    la sp, 0xb0100000
-    addi sp, sp, -4
+    la sp, 0x80000ffc
     mfex a0, 3
     bl earlyException
 .halt:

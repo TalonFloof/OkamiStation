@@ -4,9 +4,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#elif __linux__
+#include <unistd.h>
+#elif __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 uint8_t ROM[128*1024];
 uint8_t NVRAM[0x10000];
 OkamiPort OkamiPorts[256];
+char executablePath[2048];
 
 /*
 Ports: 
@@ -51,6 +60,22 @@ int OkamiBoardWrite(uint32_t addr, uint32_t len, void *buf) {
 }
 
 void OkamiBoardInit() {
+    #if _WIN32
+        int size = GetModuleFileNameA(NULL, executablePath, 2047);
+        executablePath[size] = '\0';
+    #elif __linux__
+        int size = readlink("/proc/self/exe", executablePath, 2047);
+        executablePath[size] = '\0';
+    #elif __APPLE__
+        int size = 2048;
+        _NSGetExecutablePath(executablePath, &size);
+    #else
+        strcpy(executablePath, "./okamistation")
+    #endif
+    int i = strlen(executablePath);
+    while(executablePath[i] != '/') {i--;}
+    executablePath[i+13] = '\0';
+    memcpy((char*)&executablePath[i+1],"Firmware.bin",12);
     KoriBusBanks[15].Used = true;
     KoriBusBanks[15].Read = OkamiBoardRead;
     KoriBusBanks[15].Write = OkamiBoardWrite;
@@ -58,14 +83,16 @@ void OkamiBoardInit() {
         OkamiPorts[i].isPresent = false;
     }
     HTCInit();
-    FILE *firmware = fopen("Firmware.bin", "rb");
+    FILE *firmware = fopen((char*)&executablePath, "rb");
     if(firmware == NULL) {
         fprintf(stderr, "Couldn't open the Boot ROM\n");
         exit(1);
     }
     fread(&ROM, sizeof(ROM), 1, firmware);
     fclose(firmware);
-    FILE *nvramfile = fopen("nvram.nv", "rb");
+    executablePath[i+9] = '\0';
+    memcpy((char*)&executablePath[i+1],"nvram.nv",8);
+    FILE *nvramfile = fopen((char*)&executablePath, "rb");
     if(nvramfile != NULL) {
         fread(&NVRAM,sizeof(NVRAM),1,nvramfile);
         fclose(nvramfile);
@@ -74,7 +101,7 @@ void OkamiBoardInit() {
 
 void OkamiBoardSaveNVRAM() {
     fprintf(stderr, "Flushing NVRAM...\n");
-    FILE* nvramfile = fopen("nvram.nv", "wb");
+    FILE* nvramfile = fopen((char*)&executablePath, "wb");
     fwrite(&NVRAM,sizeof(NVRAM),1,nvramfile);
     fclose(nvramfile);
 }
