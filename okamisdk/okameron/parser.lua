@@ -1,10 +1,15 @@
-return function(tokens)
+return function(tokens,wordSize)
     local cursor = 1;
     local tree = {}
     local asmCode = ""
     local function parseErr(file,line,col,err)
         io.stderr:write("\x1b[1;31m"..file.."("..line..":"..col..") "..err.."\x1b[0m\n")
         os.exit(3)
+    end
+    local function expectToken(type)
+        if tokens[cursor].type ~= type then
+            parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Expected \""..type.."\" token, got \""..tokens[cursor].type.."\" token")
+        end
     end
     local function shunt(ending)
         local NONE = 0
@@ -45,6 +50,7 @@ return function(tokens)
         local opStack = {}
         local outStack = {}
         local lastOp = nil
+        local hasAssign = false;
         local function getOp(c)
             for _,i in ipairs(opTable) do
                 if i[1] == c then
@@ -65,18 +71,21 @@ return function(tokens)
         end
         local function parenSkip(c)
             local val = c
-            val = val + 1
-            local level = 1
-            while level > 0 do
+            if tokens[val].type ~= "lparen" then
+                parseErr(tokens[val].file,tokens[val].line,tokens[val].col,"Expected \"lparen\" token, got \""..tokens[val].type.."\" token")
+            end
+            local level = 0
+            while true do
                 if tokens[val].type == "lparen" then
                     level = level + 1
                 elseif tokens[val].type == "rparen" then
                     level = level - 1
+                    if level <= 0 then
+                        return val
+                    end
                 end
                 val = val + 1
             end
-            val = val - 1
-            return val
         end
         local function addOp(op)
             if op then
@@ -126,7 +135,7 @@ return function(tokens)
                     local pop = popOp()
                     table.insert(outStack,pop)
                 end
-                addOp({":=",0,NONE,false})
+                hasAssign = true;
             elseif tokens[cursor].type == "rparen" then
                 while #opStack > 0 and opStack[#opStack][1] ~= "(" do
                     local pop = popOp()
@@ -146,8 +155,7 @@ return function(tokens)
                     if argCount == 0 then argCount = 1 end
                     if tokens[c].type == "lparen" then
                         c = parenSkip(c)
-                    end
-                    if tokens[c].type == "comma" and tokens[c+1].type ~= "rparen" then
+                    elseif tokens[c].type == "comma" and tokens[c+1].type ~= "rparen" then
                         while #opStack > 0 and opStack[#opStack][1] ~= "(" do
                             local pop = popOp()
                             table.insert(outStack,pop)
@@ -160,7 +168,7 @@ return function(tokens)
                     local pop = popOp()
                     table.insert(outStack,pop)
                 end
-                table.insert(opStack,{"FN",999,tokens[cursor].txt,argCount})
+                table.insert(opStack,{"FN",999,NONE,true,tokens[cursor].txt,argCount})
                 inFunc = true
             elseif tokens[cursor].type == "identifier" and not getOp(tokens[cursor].txt) then
                 table.insert(outStack,tokens[cursor].txt)
@@ -190,6 +198,9 @@ return function(tokens)
                 table.insert(outStack,val)
             else popOp() end
         end
+        if hasAssign then
+            table.insert(outStack,{":=",0,NONE,false})
+        end
         local tempStack = {}
         for _,i in ipairs(outStack) do
             if type(i) == "number" then
@@ -201,9 +212,9 @@ return function(tokens)
                     table.insert(tempStack,{"string",i[2]})
                 elseif i[1] == "FN" then
                     local arguments = {}
-                    local ind = (#tempStack-i[4])+1
-                    for x=1,i[4] do table.insert(arguments,table.remove(tempStack,ind)) end
-                    table.insert(arguments,1,i[3])
+                    local ind = (#tempStack-i[6])+1
+                    for x=1,i[6] do table.insert(arguments,table.remove(tempStack,ind)) end
+                    table.insert(arguments,1,i[5])
                     table.insert(arguments,1,"call")
                     table.insert(tempStack,arguments)
                 else
@@ -229,19 +240,16 @@ return function(tokens)
         end
         return table.remove(tempStack,1)
     end
-    local function expectToken(type)
-        if tokens[cursor].type ~= type then
-            parseErr(tokens[cursor].file,tokens[cursor].line,tokens[cursor].col,"Expected \""..type.."\" token, got \""..tokens[cursor].type.."\" token")
-        end
-    end
     local function parseType()
         if tokens[cursor].type == "identifier" then
             if tokens[cursor].txt == "CHAR" then
                 return {"numType",1}
             elseif tokens[cursor].txt == "SHORT" then
                 return {"numType",2}
-            elseif tokens[cursor].txt == "INT" or tokens[cursor].txt == "LONG" or tokens[cursor].txt == "PTR" then
+            elseif tokens[cursor].txt == "INT" then
                 return {"numType",4}
+            elseif tokens[cursor].txt == "LONG" or tokens[cursor].txt == "PTR" then
+                return {"numType",wordSize}
             else
                 return {"customType",tokens[cursor].txt}
             end
@@ -360,6 +368,7 @@ return function(tokens)
                     if tokens[cursor].type == "elsifKw" then
                         cursor = cursor + 1
                         expr = shunt("thenKw")
+                        cursor = cursor + 1
                         c = parseCode({["endKw"]=true,["elseKw"]=true,["elsifKw"]=true})
                         table.insert(tab,{"elseif",expr,c})
                     elseif tokens[cursor].type == "elseKw" then

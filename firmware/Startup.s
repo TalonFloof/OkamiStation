@@ -15,10 +15,10 @@
     This is why we can execute code, even with this stuff not working.
     Addresses 0x80000000-0x9fffffff (known as kernel1) is the same as kernel2 but it uses the L1 Caches.
     */
-    /*la a0, EarlyHandler
+    la a0, EarlyHandler
     lui t1, 0x2000
     add a0, a0, t1
-    mtex a0, 5*/
+    mtex a0, 5
     /* We must clear the caches */
     bl ClearICache
     bl ClearDCache
@@ -50,14 +50,14 @@ halt:
     lui t1, 0x8000
     la t2, 0x80004000
     mfex t0, 0x00 /* OKAMI_STATUS */
-    ori t0, t0, 0x18
+    ori t0, t0, 0xc0
     mtex t0, 0x00 /* OKAMI_STATUS */
 .icache_loop:
     sw zero, 0(t1)
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .icache_loop
-    andi t0, t0, 0xffe7
+    andi t0, t0, 0xff3f
     mtex t0, 0x00 /* OKAMI_STATUS */
     blr zero, ra
 
@@ -65,14 +65,14 @@ halt:
     lui t1, 0x8000
     la t2, 0x80004000
     mfex t0, 0x00 /* OKAMI_STATUS */
-    ori t0, t0, 0x8
+    ori t0, t0, 0x40
     mtex t0, 0x00 /* OKAMI_STATUS */
 .dcache_loop:
     sw zero, 0(t1)
     sw zero, 4(t1)
     addi t1, t1, 8
     bltu t1, t2, .dcache_loop
-    andi t0, t0, 0xffe7
+    andi t0, t0, 0xff3f
     mtex t0, 0x00 /* OKAMI_STATUS */
     blr zero, ra
 
@@ -96,3 +96,7 @@ halt:
     mv a0, ra
     br t0
     b halt /* This should never happen, but just in case */
+
+.bss
+FWstack: .resb 4096
+.text

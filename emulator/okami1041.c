@@ -113,7 +113,7 @@ uint32_t readICacheLine(uint32_t addr);
 void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
     switch(type) {
         /*case 3: { // TLB Miss
-            extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
             extRegisters[1] = type;
             extRegisters[2] = afterInc ? PC-4 : PC;
             extRegisters[3] = addr;
@@ -121,7 +121,7 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
             break;
         }*/
         case 2: { // MCall/KCall
-            extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
+            extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
             extRegisters[1] = type;
             extRegisters[2] = PC;
             extRegisters[3] = addr & 0x1FFFFFF;
@@ -142,7 +142,7 @@ void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
                 }
                 exit(1);
             } else {
-                extRegisters[0] = (((extRegisters[0] & 1) << 1) | 1) & 0xFFFFFFFB;
+                extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
                 extRegisters[1] = type;
                 extRegisters[2] = afterInc ? PC-4 : PC;
                 extRegisters[3] = addr;
@@ -256,7 +256,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
         if(fetch) {
-            if(extRegisters[0] & 0x8) {
+            if(extRegisters[0] & 0x40) {
                 triggerTrap(8,addr,false); // Fetch Exception
                 return false;
             }
@@ -264,8 +264,8 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
             memcpy(buf,(uint8_t*)&val,len);
             return true;
         } else {
-            if((extRegisters[0] & 0x8) && addr <= 0x90000000) {
-                if(extRegisters[0] & 0x10) {
+            if((extRegisters[0] & 0x40) && addr <= 0x90000000) {
+                if(extRegisters[0] & 0x80) {
                     if(write) {
                         memcpy(((uint8_t*)&iCacheTags)+(addr-0x80000000),buf,len);
                         return true;
@@ -563,7 +563,7 @@ void next() {
                         break;
                     }
                     case 0b111: { // RFT
-                        extRegisters[0] = ((extRegisters[0] & 3) >> 1) | (extRegisters[0] & ~3);
+                        extRegisters[0] = ((extRegisters[0] & 0x3f) >> 2) | (extRegisters[0] & ~(0x3f));
                         PC = extRegisters[2];
                         break;
                     }

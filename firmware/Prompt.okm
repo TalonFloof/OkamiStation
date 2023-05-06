@@ -1,0 +1,10 @@
+MODULE Prompt;
+    IMPORT Console;
+    
+    PROCEDURE DoPrompt();
+    VAR buf: ARRAY 128 OF CHAR;
+    BEGIN
+        ConsolePrint("> ");
+        ConsoleAccept(PTROF(buf),128);
+    END;
+END.

@@ -41,9 +41,9 @@ return function(fileName,module)
         ["+"] = "plus",
         ["-"] = "minus",
         ["*"] = "mul",
-        ["**"] = "umul",
+        ["*|"] = "umul",
         ["/"] = "div",
-        ["//"] = "udiv",
+        ["/|"] = "udiv",
         ["~"] = "not",
         ["&"] = "and",
         ["."] = "dot",
@@ -61,10 +61,10 @@ return function(fileName,module)
         [">"] = "gt",
         ["<="] = "leq",
         [">="] = "geq",
-        ["<<"] = "ult",
-        [">>"] = "ugt",
-        ["<<="] = "uleq",
-        [">>="] = "ugeq",
+        ["<|"] = "ult",
+        [">|"] = "ugt",
+        ["<|="] = "uleq",
+        [">|="] = "ugeq",
         [".."] = "dots",
         [":"] = "colon",
         [")"] = "rparen",
@@ -117,7 +117,7 @@ return function(fileName,module)
             end
         elseif module:sub(cursor,cursor) == "\"" then
             cursor = cursor + 1
-            while module:sub(cursor,cursor) ~= "\"" and cursor < #module+1 do cursor = cursor + 1 end
+            while not (module:sub(cursor,cursor) == "\"" and module:sub(cursor-1,cursor-1) ~= "\\") and cursor < #module+1 do cursor = cursor + 1 end
             addToken("string")
         elseif isDigit(module:sub(cursor,cursor)) then
             while isAlpha(module:sub(cursor,cursor)) or isDigit(module:sub(cursor,cursor)) and cursor < #module+1 do cursor = cursor + 1 end

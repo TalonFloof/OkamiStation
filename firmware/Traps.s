@@ -67,10 +67,9 @@
     mtex zero, 5
     mtex zero, 6
     mfex t0, 0
-    ori t0, t0, 0x18
+    ori t0, t0, 0xc0
     mtex t0, 0
-    /*la sp, 0xb00c1000*/
-    la sp, 0x80004000
+    la sp, 0xb0100000
     addi sp, sp, -4
     mfex a0, 3
     bl earlyException
@@ -78,7 +77,7 @@
     beq zero, zero, .halt
 
 .global RAMTestHandler:
-/*    la kr, RAMTestFaulted
+    la kr, RAMTestFaulted
     li t7, 2
-    sb t7, 0(kr)*/
+    sb t7, 0(kr)
     rft

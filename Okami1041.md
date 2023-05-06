@@ -380,12 +380,14 @@ r31 - ra: Return Address
 ```
 0x00: OKAMI_STATUS
     0x1: Current Mode (0: User, 1: Kernel. Set to 1 on reset)
-    0x2: Previous Mode (Both bit 0 and 1 act as a 2-level stack for processor modes with traps)
-    0x4: Enable External Trap (Toggles the External Trap which allows for external interrupts)
-       NOTE: This is set to zero when a trap is triggered to prevent nesting (it can be reenabled though)
-    0x8: Cache Isolate
+    0x2: Current Interrupt Enable
+    0x4: Previous Mode
+    0x8: Previous Interrupt Enable
+    0x10: Old Mode
+    0x20: Old Interrupt Enable
+    0x40: Cache Isolate
        NOTE: This acts similar to how MIPS-1 does it. It allows the CPU to directly access the L1 Data Cache using the kernel1 segment.
-    0x10: Cache Swap
+    0x80: Cache Swap
        NOTE: This acts similar to how MIPS-1 does it. It swaps the L1 Data and L1 Instruction Caches when isolating them.
     
 0x01: OKAMI_TRAP_CAUSE

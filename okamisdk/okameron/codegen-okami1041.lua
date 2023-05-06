@@ -1,3 +1,4 @@
+systemWordSize = 4
 return function(ir,asm)
     io.stdout:write(asm)
     io.stdout:write(".text\n")
@@ -303,6 +304,9 @@ return function(ir,asm)
         ["Store"]=function(d,offset,s)
             io.stdout:write("    sw "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
+        ["StoreLong"]=function(d,offset,s)
+            io.stdout:write("    sw "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
+        end,
         ["LoadByte"]=function(d,offset,s)
             io.stdout:write("    lbu "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
@@ -310,6 +314,9 @@ return function(ir,asm)
             io.stdout:write("    lhu "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
         ["Load"]=function(d,offset,s)
+            io.stdout:write("    lw "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
+        end,
+        ["LoadLong"]=function(d,offset,s)
             io.stdout:write("    lw "..getReg(d)..", "..offset.."("..getReg(s)..")\n")
         end,
         ["LoadAddr"]=function(r,val)

@@ -25,6 +25,15 @@ MODULE Framebuffer;
         END;
     END;
 
+    PROCEDURE FBDrawString(x,y: INT; s: POINTER TO CHAR;);
+    BEGIN
+        WHILE s^ # 0 DO
+            FBDrawChar(x,y,s^);
+            x := x + 1;
+            s := s + 1;
+        END;
+    END;
+
     PROCEDURE FBDrawRect(x,y: INT; val: CHAR;);
     VAR i: INT;
     BEGIN

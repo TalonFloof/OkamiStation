@@ -1,14 +1,16 @@
 -- Sign of an expression is determined using the first value
 
-return function(tree)
+return function(tree,wordSize)
     local ircode = {{},{},{}}
     local savedReg = {}
     local ifCount = 0
     local whileCount = 0
+    local currentLoop = 0
     local strings = {}
     local strCount = 0
     local lastSym = nil
     local lastType = nil
+    local indexSize = -1
     local function ralloc()
         local i = 0
         while true do
@@ -125,9 +127,9 @@ return function(tree)
                     end
                 elseif j[1] == "const" and j[2] == var then
                     if j[3][1] == "number" then
-                        return {"numType",4}
+                        return {"numType",wordSize}
                     elseif j[3][1] == "set" then
-                        return {"ptrOf",{"numType",4}}
+                        return {"ptrOf",{"numType",wordSize}}
                     end
                 end
             end
@@ -138,7 +140,8 @@ return function(tree)
         if typ[1] == "numType" then
             if typ[2] == 1 then return "LoadByte"
             elseif typ[2] == 2 then return "LoadHalf"
-            else return "Load" end
+            elseif typ[2] == 4 then return "Load"
+            else return "LoadLong" end
         elseif typ[1] == "ptrOf" then
             return "Load"
         end
@@ -166,7 +169,7 @@ return function(tree)
         if typ[1] == "numType" then
             return typ[2]
         elseif typ[1] == "ptrOf" then
-            return 4
+            return wordSize
         elseif typ[1] == "array" then
             return typ[2]*getSize(mod,imports,typ[3])
         elseif typ[1] == "record" then
@@ -174,8 +177,8 @@ return function(tree)
             for i,j in ipairs(typ) do
                 if i ~= 1 then
                     local s = getSize(mod,imports,j[2])
-                    if (offset % math.min(s,4)) > 0 then
-                        offset = (offset + (math.min(s,4)-(offset % math.min(s,4)))) + s
+                    if (offset % math.min(s,wordSize)) > 0 then
+                        offset = (offset + (math.min(s,wordSize)-(offset % math.min(s,wordSize)))) + s
                     else
                         offset = offset + s
                     end
@@ -183,7 +186,7 @@ return function(tree)
             end
             return offset
         elseif typ[1] == "set" then
-            return (#typ-1)*4
+            return (#typ-1)*wordSize
         elseif typ[1] == "customType" then
             return getSize(mod,imports,getType(mod,imports,typ[2]))
         end
@@ -198,14 +201,14 @@ return function(tree)
             if i ~= 1 then
                 if j[1] == val[2] then
                     local s = getSize(mod,imports,j[2])
-                    if (offset % math.min(s,4)) > 0 then
-                        offset = (offset + (math.min(s,4)-(offset % math.min(s,4))))
+                    if (offset % math.min(s,wordSize)) > 0 then
+                        offset = (offset + (math.min(s,wordSize)-(offset % math.min(s,wordSize))))
                     end
                     return offset
                 else
                     local s = getSize(mod,imports,j[2])
-                    if (offset % math.min(s,4)) > 0 then
-                        offset = (offset + (math.min(s,4)-(offset % math.min(s,4)))) + s
+                    if (offset % math.min(s,wordSize)) > 0 then
+                        offset = (offset + (math.min(s,wordSize)-(offset % math.min(s,wordSize)))) + s
                     else
                         offset = offset + s
                     end
@@ -223,8 +226,9 @@ return function(tree)
                 local typ = getVarType(mod,mod[3],getProcVars(proc),val[2][2]);
                 if typ[1] == "numType" and typ[2] == 1 then text("StoreByte",r,varSpace[val[2][2]],{"frame"})
                 elseif typ[1] == "numType" and typ[2] == 2 then text("StoreHalf",r,varSpace[val[2][2]],{"frame"})
+                elseif typ[1] == "numType" and typ[2] == 4 then text("Store",r,varSpace[val[2][2]],{"frame"})
                 else
-                    text("Store",r,varSpace[val[2][2]],{"frame"})
+                    text("StoreLong",r,varSpace[val[2][2]],{"frame"})
                 end
             else
                 local r1 = ralloc()
@@ -233,10 +237,26 @@ return function(tree)
                 evaluate(mod,proc,varSpace,val[2],r2,true)
                 rfree(r2)
                 rfree(r1)
+                if indexSize ~= -1 then
+                    if indexSize > wordSize then
+                        irgenErr(mod[2],"Cannot assign an element to a value greater than the size of our target's word size!")
+                    elseif indexSize == 8 then
+                        text("StoreLong",r1,0,r2)
+                    elseif indexSize == 4 then
+                        text("Store",r1,0,r2)
+                    elseif indexSize == 2 then
+                        text("StoreHalf",r1,0,r2)
+                    elseif indexSize == 1 then
+                        text("StoreByte",r1,0,r2)
+                    end
+                    indexSize = -1
+                    return
+                end
                 if lastType[1] == "numType" and lastType[2] == 1 then text("StoreByte",r1,0,r2)
                 elseif lastType[1] == "numType" and lastType[2] == 2 then text("StoreHalf",r1,0,r2)
+                elseif lastType[1] == "numType" and lastType[2] == 4 then text("Store",r1,0,r2)
                 else
-                    text("Store",r1,0,r2)
+                    text("StoreLong",r1,0,r2)
                 end
             end
         elseif val[1] == "call" then
@@ -296,6 +316,14 @@ return function(tree)
                 rfree(r1)
                 rfree(r2)
                 text("Store",r1,0,r2)
+            elseif val[2] == "PUTLONG" then
+                local r1 = ralloc()
+                local r2 = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r2)
+                evaluate(mod,proc,varSpace,val[4],r1)
+                rfree(r1)
+                rfree(r2)
+                text("StoreLong",r1,0,r2)
             elseif val[2] == "GETCHAR" then
                 local r = ralloc()
                 evaluate(mod,proc,varSpace,val[3],r)
@@ -311,9 +339,16 @@ return function(tree)
                 evaluate(mod,proc,varSpace,val[3],r)
                 rfree(r)
                 text("Load",reg,0,r)
+            elseif val[2] == "GETLONG" then
+                local r = ralloc()
+                evaluate(mod,proc,varSpace,val[3],r)
+                rfree(r)
+                text("LoadLong",reg,0,r)
             elseif val[2] == "RETURN" then
                 evaluate(mod,proc,varSpace,val[3],{"arg",0},false)
                 text("Branch",".Lret")
+            elseif val[2] == "BREAK" then
+                text("Branch",".Lwhile"..currentLoop.."_after")
             else
                 text("BeginCall",reg,#val-2)
                 local args = #val-2
@@ -351,7 +386,9 @@ return function(tree)
             end
             text("LocalLabel",".Lif"..id.."_after")
         elseif val[1] == "while" then
+            local previous = currentLoop
             local id = whileCount
+            currentLoop = id
             whileCount = whileCount + 1
             text("LocalLabel",".Lwhile"..id)
             local r = ralloc()
@@ -363,6 +400,7 @@ return function(tree)
             end
             text("Branch",".Lwhile"..id)
             text("LocalLabel",".Lwhile"..id.."_after")
+            currentLoop = previous
         elseif val[1] == "+" then
             evaluate(mod,proc,varSpace,val[2],reg)
             if val[3][1] == "number" then
@@ -532,6 +570,7 @@ return function(tree)
             local nodeSize = 0
             local nodeType = nil
             if lastType[1] == "ptrOf" then
+                text("Load",reg,0,reg)
                 nodeSize = getSize(mod,mod[3],lastType[2])
                 nodeType = lastType[2]
             else
@@ -539,12 +578,14 @@ return function(tree)
                 nodeType = lastType[3]
             end
             local r = ralloc()
-            evaluate(mod,proc,varSpace,val[3],r,true)
+            evaluate(mod,proc,varSpace,val[3],r,false)
             if nodeSize > 1 then text("Mul",r,{"number",nodeSize}) end
             rfree(r)
             text("Add",reg,r)
             if not getAddr then
                 text(getLoadType(nodeType),reg,0,reg)
+            else
+                indexSize = nodeSize
             end
         elseif val[1] == "^" then
             evaluate(mod,proc,varSpace,val[2],reg,false)
@@ -552,7 +593,8 @@ return function(tree)
             while lastType[1] == "customType" do lastType = getType(mod,mod[3],lastType[2]) end
             if lastType[1] == "numType" and lastType[2] == 1 then text("LoadByte",reg,0,reg)
             elseif lastType[1] == "numType" and lastType[2] == 2 then text("LoadHalf",reg,0,reg)
-            else text("Load",reg,0,reg) end
+            elseif lastType[1] == "numType" and lastType[2] == 4 then text("Load",reg,0,reg)
+            else text("LoadLong",reg,0,reg) end
         elseif val[1] == "number" then
             text("LoadImmediate",reg,val[2])
         elseif val[1] == "string" then
@@ -589,26 +631,26 @@ return function(tree)
             text("DefSymbol",proc[2])
             text("PushRet") -- Includes Saved Registers
             local varSpace = {}
-            local stackUsage = 4
+            local stackUsage = wordSize
             local argUsage = 0
             for _,a in ipairs(proc[3]) do
                 varSpace[a[1]] = stackUsage
                 local size = getSize(mod,mod[3],a[2])
-                if size < 4 then
-                    size = 4;
+                if size < wordSize then
+                    size = wordSize;
                 end
                 stackUsage = stackUsage + size
-                argUsage = argUsage + 4
+                argUsage = argUsage + wordSize
             end
             for _,a in ipairs(proc[5]) do
                 varSpace[a[2]] = stackUsage
                 local size = getSize(mod,mod[3],a[3])
-                if (size % 4) ~= 0 then
-                    size = ((size // 4) + 1) * 4;
+                if (size % wordSize) ~= 0 then
+                    size = ((size // wordSize) + 1) * wordSize;
                 end
                 stackUsage = stackUsage + size;
             end
-            text("PushVariables",stackUsage-4,argUsage//4)
+            text("PushVariables",stackUsage-wordSize,argUsage//wordSize)
             for _,a in ipairs(proc[6]) do
                 evaluate(mod,proc,varSpace,a)
             end

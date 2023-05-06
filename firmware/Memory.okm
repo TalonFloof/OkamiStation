@@ -1,0 +1,24 @@
+MODULE Memory;
+    EXTERN PROCEDURE SetupTrap: CHAR;
+    EXTERN RAMTestHandler, TrapHandler: CHAR;
+
+    VAR RAMTestFaulted: CHAR;
+
+    PROCEDURE stub(val: INT;);
+    BEGIN END;
+
+    PROCEDURE TestMemory(): INT;
+    VAR addr: INT;
+    BEGIN
+        RAMTestFaulted := 0;
+        addr := 9FFFFC00H;
+        SetupTrap(PTROF(RAMTestHandler),0);
+        WHILE RAMTestFaulted = 0 DO
+            addr := addr + 1024;
+            stub(GETCHAR(addr));
+        END;
+        SetupTrap(0,0);
+        SetupTrap(0,1);
+        RETURN(addr - 0A0000000H);
+    END;
+END.

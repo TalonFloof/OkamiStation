@@ -65,7 +65,7 @@ for _,i in ipairs(args) do
     addToTokens(scan(i,file:read("*a")))
     file:close()
 end
-local tree, asm = parse(tokens)
-local ircode = irgen(tree)
+local tree, asm = parse(tokens,systemWordSize)
+local ircode = irgen(tree,systemWordSize)
 --io.stderr:write(serialize_list(ircode[1],true,false).."\n")
 codegen(ircode,asm)

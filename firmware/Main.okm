@@ -5,31 +5,48 @@ MODULE Main;
     ASM "Framebuffer.s";
     EXTERN PROCEDURE memset, memcpy: CHAR;
     EXTERN OkamiLogo, foc: CHAR;
-    IMPORT Framebuffer, Console;
-
-    VAR FWstack: ARRAY 4096 OF CHAR;
+    IMPORT Framebuffer, Console, Memory, String, Prompt;
 
     PROCEDURE main();
-    VAR i: INT;
+    VAR i, ram: INT;
+    strBuf: ARRAY 8 OF CHAR;
     BEGIN
+        
+        ram := TestMemory();
         ConsoleInit();
-        ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ??? MB memory installed\n\n\n\n");
+        ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ");
+        ConsolePrint(itoa(ram /| (1024*1024),PTROF(strBuf),10));
+        ConsolePrint(" MB memory installed\n\n\n\n");
         (* Copy the Logo *)
         i := 0;
         WHILE i <| 128 DO
             memcpy(90001000H + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
             i := i + 1;
         END;
-        WHILE 1 DO END;
+        WHILE 1 DO
+            DoPrompt();
+        END;
     END;
 
     PROCEDURE exception();
     BEGIN
+        ConsolePrint("Exception!");
         WHILE 1 DO END;
     END;
 
-    PROCEDURE earlyException();
+    PROCEDURE earlyException(addr: PTR;);
+    VAR i: INT;
     BEGIN
-        WHILE 1 DO END;
+        PUTCHAR(0B0000000H, 0);
+        PUTCHAR(0B0000004H, 0);
+        FBClear(0);
+        itoa(addr,80000000H,16);
+        FBDrawString(60,23,80000000H);
+        FBDrawString(52,24,"Contact Technical Support" + 20000000H);
+        i := 0;
+        WHILE i <| 128 DO
+            memcpy(90001000H + 56 + (624 *| 128) + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
+            i := i + 1;
+        END;
     END;
 END.

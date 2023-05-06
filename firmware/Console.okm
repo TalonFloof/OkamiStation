@@ -1,7 +1,7 @@
 MODULE Console;
     IMPORT Framebuffer, Main;
 
-    VAR cursorX, cursorY: INT;
+    VAR cursorX, cursorY, kbdShift: INT;
 
     PROCEDURE ConsoleInit();
     BEGIN
@@ -23,7 +23,7 @@ MODULE Console;
                 (* Scroll *)
                 i := 16;
                 WHILE i <| 768 DO
-                    memcpy((i-16) *| 128,i *| 128,128);
+                    memcpy(90001000H + ((i-16) *| 128),90001000H + (i *| 128),128);
                 END;
             ELSE
                 cursorY := cursorY + 1;
@@ -41,6 +41,36 @@ MODULE Console;
         WHILE c^ # 0 DO
             ConsolePutc(c^);
             c := c + 1;
+        END;
+    END;
+
+    PROCEDURE ConsoleGetChar(): CHAR;
+    VAR key: INT;
+    BEGIN
+        WHILE 1 DO
+            key := GETINT(0BE000040H);
+            IF key = 3CH THEN
+                kbdShift := 1;
+            ELSIF key = 0C4H THEN
+                kbdShift := 0;
+            ELSIF (key # 0) & (key <| 80H) THEN BREAK(); END;
+        END;
+        IF key = 33H THEN RETURN(8);
+        ELSIF key = 32H THEN RETURN(10);
+        ELSIF kbdShift XOR 1 THEN RETURN(GETCHAR("0123456789abcdefghijklmnopqrstuvwxyz;  -=[]\\/.',`" + (key - 1)));
+        ELSE RETURN(GETCHAR(")!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ:  _+{}|?>\"<~" + (key - 1)));
+        END;
+    END;
+
+    PROCEDURE ConsoleAccept(buf: POINTER TO CHAR; bufLen: INT;): INT;
+    VAR len, chr: INT;
+    BEGIN
+        WHILE 1 DO
+            chr := ConsoleGetChar();
+            IF chr = 10 THEN BREAK();
+            ELSIF (chr # 8) OR ((chr = 8) & (len >| 0)) THEN
+                
+            END;
         END;
     END;
 END.

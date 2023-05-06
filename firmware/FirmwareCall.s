@@ -2,10 +2,10 @@
 Firmware Calls:
     0x0100: ConsolePutChar (a0: Char | No Output)
     0x0101: ConsolePrint (a0: String | No Output)
-    0x0102: ConsoleSetColor (a0: Color | No Output)
+    0x0102: ConsoleSetColor (a0: Color | No Output) (Obsolete, this now does nothing)
     0x0103: ConsoleGetChar (No Input | a1: Character)
-    0x0104: ConsoleShow (a0: (1: Render Shade Only, 2: Render Console Only, 3: Render Shade and Console) | No Output)
-    0x01ff: FramebufferRenderBackground (No Input | No Output)
+    0x0104: ConsoleShow (a0: (1: Render Shade Only, 2: Render Console Only, 3: Render Shade and Console) | No Output) (Shade cannot be rendered anymore)
+    0x01ff: FramebufferRenderBackground (No Input | No Output) (Obsolete, this now does nothing)
     0x0200: SCSISelect (a0: Physical SCSI ID | No Output)
     0x0201: SCSIRead (a0: LBA, a1: Blocks, a2: Address | No Output)
     0x0202: SCSIWrite (a0: LBA, a1: Blocks, a2: Address | No Output)
@@ -49,8 +49,11 @@ Status Codes (a0):
     b .success
     li t0, 2
     bne kr, t0, 4
-    la kr, consoleTextColor
-    sw a0, 0(kr)
+    /*la kr, consoleTextColor
+    sw a0, 0(kr)*/
+    nop
+    nop
+    nop
     b .success
     li t0, 3
     bne kr, t0, 3
@@ -62,14 +65,15 @@ Status Codes (a0):
     mv a0, kr
     andi a0, a0, 1
     beq a0, zero, 1
-    bl FramebufferDither
+    nop /*bl FramebufferDither*/
     andi kr, kr, 2
     beq kr, zero, 1
     bl ConsoleInit
     b .success
     li t0, 0xff
     bne kr, t0, .invalid
-    bl FramebufferRenderBackground
+    /*bl FramebufferRenderBackground*/
+    nop
     b .success
 .section2:
     mfex kr, 3
