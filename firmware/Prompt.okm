@@ -1,10 +1,48 @@
 MODULE Prompt;
-    IMPORT Console;
-    
+    IMPORT Console, Framebuffer, String, Memory, Main;
+    EXTERN image: CHAR;
+    EXTERN PROCEDURE halt: CHAR;
+
     PROCEDURE DoPrompt();
-    VAR buf: ARRAY 128 OF CHAR;
+    VAR buf: ARRAY 96 OF CHAR;
+        cmdName: POINTER TO CHAR;
     BEGIN
         ConsolePrint("> ");
-        ConsoleAccept(PTROF(buf),128);
+        ConsoleAccept(PTROF(buf),96);
+        ConsolePutc(0AH);
+        cmdName := strsep(PTROF(buf));
+        IF memcmp(cmdName,"help",5) = 0 THEN
+            ConsolePrint("Consult the OkamiStation Operation Manual for further information on using the OkamiBoot shell.\n\n");
+            ConsolePrint("Basic Commands:\n  help - Shows this message\n");
+            ConsolePrint("  boot [device] - Boots from the given device\n");
+            ConsolePrint("  config - Configures NVRAM\n");
+            ConsolePrint("  reset - Preforms a soft reboot on your OkamiStation\n");
+        ELSIF memcmp(cmdName,"boot",5) = 0 THEN
+            DoBoot(strsep(strsep(0)));
+        ELSIF memcmp(cmdName,"config",7) = 0 THEN
+            ConsolePrint("To be implemented...\n");
+        ELSIF memcmp(cmdName,"reset",6) = 0 THEN
+            Jump(0BFF00000H);
+        ELSE
+            IF strlen(cmdName) >| 0 THEN
+                ConsolePrint(cmdName);
+                ConsolePrint("?\n");
+            END;
+        END;
+    END;
+
+    PROCEDURE DoBoot(device: POINTER TO CHAR;);
+    VAR i: PTR;
+    BEGIN
+        IF device = 0 THEN
+            ConsolePrint("usage: boot [device]\n");
+        ELSIF strcmp(device,"ryfox") = 0 THEN
+            memcpy(90001000H,PTROF(image),128 *| 768);
+            i := "Thank you Ry for creating fox32. OkamiStation wouldn't exist unless I found fox32 on that late spring night in 2022.";
+            FBDrawString(64 - (strlen(i) /| 2),47,i);
+            halt();
+        ELSE
+            TryBoot(device);
+        END;
     END;
 END.

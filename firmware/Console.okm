@@ -1,5 +1,5 @@
 MODULE Console;
-    IMPORT Framebuffer, Main;
+    IMPORT Framebuffer, Memory, Main;
 
     VAR cursorX, cursorY, kbdShift: INT;
 
@@ -19,15 +19,21 @@ MODULE Console;
         IF c = 0AH THEN
             FBDrawRect(cursorX,cursorY,0);
             cursorX := 0;
-            IF cursorY = 47 THEN
+            IF cursorY >|= 47 THEN
                 (* Scroll *)
                 i := 16;
                 WHILE i <| 768 DO
-                    memcpy(90001000H + ((i-16) *| 128),90001000H + (i *| 128),128);
+                    memcpy32(90001000H + ((i-16) *| 128),90001000H + (i *| 128),128);
+                    i := i + 1;
                 END;
+                memset(90018800H,2048,0);
             ELSE
                 cursorY := cursorY + 1;
             END;
+            FBDrawRect(cursorX,cursorY,0FFH);
+        ELSIF c = 8H THEN
+            FBDrawRect(cursorX,cursorY,0H);
+            cursorX := cursorX - 1;
             FBDrawRect(cursorX,cursorY,0FFH);
         ELSE
             FBDrawChar(cursorX,cursorY,c);
@@ -65,12 +71,23 @@ MODULE Console;
     PROCEDURE ConsoleAccept(buf: POINTER TO CHAR; bufLen: INT;): INT;
     VAR len, chr: INT;
     BEGIN
+        len := 0;
         WHILE 1 DO
             chr := ConsoleGetChar();
             IF chr = 10 THEN BREAK();
             ELSIF (chr # 8) OR ((chr = 8) & (len >| 0)) THEN
-                
+                IF chr = 8 THEN
+                    len := len - 1;
+                    buf[len] := 0;
+                    ConsolePutc(chr);
+                ELSIF (len+1) <| bufLen THEN
+                    buf[len] := chr;
+                    ConsolePutc(chr);
+                    len := len + 1;
+                END;
             END;
         END;
+        buf[len] := 0;
+        RETURN(len);
     END;
 END.

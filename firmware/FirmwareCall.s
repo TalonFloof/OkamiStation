@@ -10,7 +10,8 @@ Firmware Calls:
     0x0201: SCSIRead (a0: LBA, a1: Blocks, a2: Address | No Output)
     0x0202: SCSIWrite (a0: LBA, a1: Blocks, a2: Address | No Output)
     0x0203: SCSIGetCapacity (No Input | a1: Blocks)
-    0x0204: SCSIGetCondition (No Input | a1: KCQ)
+    0x0204: SCSIStartStop (a0: Start | No Output)
+    0x0205: SCSIGetCondition (No Input | a1: KCQ)
     0x0300: OkamiBootGetRAMCapacity (No Input | a1: RAM Size (in bytes))
     0x0301: OkamiBootGetRevision (No Input | a1: Version)
 
@@ -89,7 +90,20 @@ Status Codes (a0):
     bne kr, t0, 2
     bl SCSIWriteBlocks
     b .ret
+    li t0, 3
+    bne kr, t0, 7
+    addi sp, sp, -4
+    mv sp, a0
+    addi a0, a0, 4
+    bl SCSIGetCapacity
+    lw a1, 4(sp)
+    addi sp, sp, 4
+    b .ret
     li t0, 4
+    bne kr, t0, 2
+    bl SCSIStartStop
+    b .ret
+    li t0, 5
     bne kr, t0, .invalid
     addi sp, sp, -8
     mv sp, a0
@@ -110,7 +124,7 @@ Status Codes (a0):
     lw a1, 0(kr)
     b .success
     bne kr, t0, .invalid
-    li a1, 0x0001 /* Revision 0.1 */
+    li a1, 0x0002 /* Revision 0.2 */
     beq zero, zero, .success
 .invalid:
     li a0, 4

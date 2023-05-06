@@ -112,14 +112,14 @@ uint32_t readICacheLine(uint32_t addr);
 
 void triggerTrap(uint32_t type, uint32_t addr, bool afterInc) {
     switch(type) {
-        /*case 3: { // TLB Miss
+        case 3: { // TLB Miss
             extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
             extRegisters[1] = type;
             extRegisters[2] = afterInc ? PC-4 : PC;
             extRegisters[3] = addr;
             PC = extRegisters[6];
             break;
-        }*/
+        }
         case 2: { // MCall/KCall
             extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
             extRegisters[1] = type;

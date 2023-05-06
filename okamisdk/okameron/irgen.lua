@@ -347,9 +347,12 @@ return function(tree,wordSize)
             elseif val[2] == "RETURN" then
                 evaluate(mod,proc,varSpace,val[3],{"arg",0},false)
                 text("Branch",".Lret")
+            elseif val[2] == "CONTINUE" then
+                text("Branch",".Lwhile"..currentLoop)
             elseif val[2] == "BREAK" then
                 text("Branch",".Lwhile"..currentLoop.."_after")
             else
+                getProcedure(mod,mod[3],val[2])
                 text("BeginCall",reg,#val-2)
                 local args = #val-2
                 for i=1,args do
@@ -591,6 +594,7 @@ return function(tree,wordSize)
             evaluate(mod,proc,varSpace,val[2],reg,false)
             lastType = lastType[2]
             while lastType[1] == "customType" do lastType = getType(mod,mod[3],lastType[2]) end
+            if getAddr then return end
             if lastType[1] == "numType" and lastType[2] == 1 then text("LoadByte",reg,0,reg)
             elseif lastType[1] == "numType" and lastType[2] == 2 then text("LoadHalf",reg,0,reg)
             elseif lastType[1] == "numType" and lastType[2] == 4 then text("Load",reg,0,reg)

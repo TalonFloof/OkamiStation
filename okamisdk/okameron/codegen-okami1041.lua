@@ -86,10 +86,10 @@ return function(ir,asm)
         ["BeginCall"]=function(r,argCount)
             callDepth = callDepth + 1
             if callDepth > 1 then
-                if argCount > 0 and r ~= {"arg",0} then
+                if argCount > 0 and not (r[1] == "arg" and r[2] == 0) then
                     io.stdout:write("    addi sp, sp, -"..(argCount*4).."\n")
                     for i=1,argCount do
-                        io.stdout:write("    sw a"..(i-1)..", "..(argCount*4).."(sp)\n")
+                        io.stdout:write("    sw a"..(i-1)..", "..(i*4).."(sp)\n")
                     end
                 end
             end
@@ -99,15 +99,15 @@ return function(ir,asm)
             if r ~= nil then
                 io.stdout:write("    mv a0, "..getReg(r).."\n")
             end
-            callDepth = callDepth - 1
             if callDepth > 1 then
-                if argCount > 0 and r ~= {"arg",0} then
+                if argCount > 0 and not (r[1] == "arg" and r[2] == 0) then
                     for i=1,argCount do
-                        io.stdout:write("    lw a"..(i-1)..", "..(argCount*4).."(sp)\n")
+                        io.stdout:write("    lw a"..(i-1)..", "..(i*4).."(sp)\n")
                     end
                     io.stdout:write("    addi sp, sp, "..(argCount*4).."\n")
                 end
             end
+            callDepth = callDepth - 1
         end,
         ["Move"]=function(r1,r2)
             io.stdout:write("    mv "..getReg(r1)..", "..getReg(r2).."\n")
@@ -127,7 +127,9 @@ return function(ir,asm)
         ["Sub"]=function(r1,r2)
             if r2[1] == "number" then
                 if r2[2] <= 32768 then
-                    io.stdout:write("    addi "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    if r2[2] ~= 0 then
+                        io.stdout:write("    addi "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    end
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    sub "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -163,7 +165,7 @@ return function(ir,asm)
         ["And"]=function(r1,r2)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    andi "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    andi "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    and "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -175,7 +177,7 @@ return function(ir,asm)
         ["Or"]=function(r1,r2)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    ori "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    ori "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    or "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -187,7 +189,7 @@ return function(ir,asm)
         ["Xor"]=function(r1,r2)
             if r2[1] == "number" then
                 if r2[2] < 65536 then
-                    io.stdout:write("    xori "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    xori "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    xor "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -201,7 +203,7 @@ return function(ir,asm)
                 if r2[2] > 31 then
                     io.stdout:write("    lui "..getReg(r1)..", 0\n")
                 elseif r2[2] < 65536 then
-                    io.stdout:write("    slli "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    slli "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    sll "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -215,7 +217,7 @@ return function(ir,asm)
                 if r2[2] > 31 then
                     io.stdout:write("    lui "..getReg(r1)..", 0\n")
                 elseif r2[2] < 65536 then
-                    io.stdout:write("    srli "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    srli "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    srl "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -229,7 +231,7 @@ return function(ir,asm)
                 if r2[2] > 31 then
                     io.stdout:write("    lui "..getReg(r1)..", 0\n")
                 elseif r2[2] < 65536 then
-                    io.stdout:write("    srai "..getReg(r1)..", "..getReg(r1)..", -"..r2[2].."\n")
+                    io.stdout:write("    srai "..getReg(r1)..", "..getReg(r1)..", "..r2[2].."\n")
                 else
                     loadImm("t0",r2[2])
                     io.stdout:write("    sra "..getReg(r1)..", "..getReg(r1)..", t0\n")
@@ -353,6 +355,7 @@ return function(ir,asm)
             end
             io.stdout:write(".byte 0\n")
         elseif i[2] == "set" then
+            io.stdout:write(".align 4\n")
             io.stdout:write(i[1]..":\n")
             for _,j in ipairs(i[3]) do
                 io.stdout:write("    .word "..j[2].."\n")
@@ -361,6 +364,7 @@ return function(ir,asm)
     end
     io.stdout:write(".bss\n")
     for _,i in ipairs(ir[3]) do
+        io.stdout:write(".align 4\n")
         io.stdout:write(i[1]..": .resb "..i[2].."\n")
     end
 end

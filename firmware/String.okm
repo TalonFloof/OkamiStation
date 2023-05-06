@@ -1,4 +1,8 @@
 MODULE String;
+    IMPORT Memory;
+
+    VAR strPrev: POINTER TO CHAR;
+
     PROCEDURE strlen(str: POINTER TO CHAR;): INT;
     VAR len: INT;
     BEGIN
@@ -21,19 +25,53 @@ MODULE String;
         END;
     END;
 
-    PROCEDURE itoa(n: INT; str: POINTER TO CHAR; base: INT;): POINTER TO CHAR;
+    PROCEDURE itoa(n: LONG; str: POINTER TO CHAR; base: INT;): POINTER TO CHAR;
     VAR i: INT;
     BEGIN
         i := 0;
         WHILE 1 DO
-            IF (n MOD base) >|= 10 THEN str[i] := (n MOD base) + 57H; 
+            IF (n MOD base) >= 10 THEN str[i] := (n MOD base) + 57H; 
             ELSE str[i] := (n MOD base) + 30H; END;
             i := i + 1;
-            n := n /| base;
+            n := n / base;
             IF n = 0 THEN BREAK(); END;
         END;
         str[i] := 0;
         reverse(str);
         RETURN(str);
+    END;
+
+    PROCEDURE isDelim(c: CHAR; delim: POINTER TO CHAR;): CHAR;
+    BEGIN
+        WHILE delim^ # 0 DO
+            IF c = delim^ THEN RETURN(1); END;
+            delim := delim + 1;
+        END;
+        RETURN(0);
+    END;
+
+    PROCEDURE strsep(src: POINTER TO CHAR;): POINTER TO CHAR;
+    VAR ret: POINTER TO CHAR;
+    BEGIN
+        IF src = 0 THEN
+            src := strPrev;
+            IF src = 0 THEN RETURN(0); END;
+        END;
+        ret := src;
+        WHILE (src^ # 20H) & (src^ # 0) DO src := src + 1; END;
+        IF src^ = 0 THEN
+            strPrev := 0;
+        ELSE
+            strPrev := src + 1;
+        END;
+        src^ := 0;
+        RETURN(ret);
+    END;
+
+    PROCEDURE strcmp(a, b: POINTER TO CHAR;): INT;
+    VAR len: INT;
+    BEGIN
+        len := strlen(a);
+        RETURN(memcmp(a,b,len));
     END;
 END.

@@ -29,11 +29,11 @@
     la a1, 786432
     li a2, 0
     bl memset
-    /* Caches are now cleared, clear the TLB next */
+    /* Clear the TLB next */
     bl ClearTLB
     /* Setup Stack */
     la sp, FWstack
-    addi sp, sp, 0x1000
+    addi sp, sp, 0xffc
     /* Clear the BSS segment */
     la a0, 0xa0000000
     la a1, __BSS_END__
@@ -59,7 +59,7 @@ halt:
     bltu t1, t2, .icache_loop
     andi t0, t0, 0xff3f
     mtex t0, 0x00 /* OKAMI_STATUS */
-    blr zero, ra
+    br ra
 
 .global ClearDCache:
     lui t1, 0x8000
@@ -74,7 +74,7 @@ halt:
     bltu t1, t2, .dcache_loop
     andi t0, t0, 0xff3f
     mtex t0, 0x00 /* OKAMI_STATUS */
-    blr zero, ra
+    br ra
 
 .global ClearTLB:
     li t0, 0
@@ -85,11 +85,11 @@ halt:
     mtex zero, 0x12 /* OKAMI_TLB_VALUE_HIGH */
     addi t0, t0, 1
     bltu t0, t1, .loop
-    blr zero, ra
+    br ra
 
 .global Jump:
     la sp, FWstack
-    addi sp, sp, 0x1000
+    addi sp, sp, 0xffc
     la t0, ClearICache
     lui t1, 0x2000
     add t0, t0, t1

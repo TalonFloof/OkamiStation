@@ -10,7 +10,6 @@
     li a1, 1
     la a2, blockbuf
     mcall 0x200
-    
 .halt:
     beq zero, zero, .halt
 .rodata

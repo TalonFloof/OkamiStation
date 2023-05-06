@@ -1,6 +1,8 @@
 MODULE Memory;
     EXTERN PROCEDURE SetupTrap: CHAR;
-    EXTERN RAMTestHandler, TrapHandler: CHAR;
+    EXTERN RAMTestHandler, TrapHandler, exception: CHAR;
+
+    EXTERN PROCEDURE memset, memcpy, memcpy32: CHAR;
 
     VAR RAMTestFaulted: CHAR;
 
@@ -17,8 +19,22 @@ MODULE Memory;
             addr := addr + 1024;
             stub(GETCHAR(addr));
         END;
-        SetupTrap(0,0);
-        SetupTrap(0,1);
+        SetupTrap(PTROF(exception),0);
+        SetupTrap(PTROF(exception),1);
         RETURN(addr - 0A0000000H);
+    END;
+
+    PROCEDURE memcmp(a, b: POINTER TO CHAR; len: LONG;): INT;
+    BEGIN
+        IF a = b THEN RETURN(0); END;
+        WHILE len >| 0 DO
+            IF (a^) # (b^) THEN
+                IF (a^) > (b^) THEN RETURN(1); ELSE RETURN(0FFFFFFFFH); END;
+            END;
+            len := len - 1;
+            a := a + 1;
+            b := b + 1;
+        END;
+        RETURN(0);
     END;
 END.

@@ -225,7 +225,7 @@ int SCSIPortRead(uint32_t port, uint32_t length, uint32_t *value) {
                     return 1;
                 }
                 default: {
-                    return 0;
+                    return 1;
                 }
             }
             return 1;
@@ -274,7 +274,7 @@ int SCSIPortWrite(uint32_t port, uint32_t length, uint32_t value) {
                     return 1;
                 }
                 default: {
-                    return 0;
+                    return 1;
                 }
             }
             break;

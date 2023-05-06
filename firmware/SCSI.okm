@@ -1,0 +1,102 @@
+MODULE SCSI;
+    VAR id: INT;
+
+    CONST SCSIReg_Data     = 0BE000080H;
+          SCSIReg_Phase    = 0BE000084H;
+          SCSIReg_IDs      = 0BE000088H;
+          SCSIReg_ContStat = 0BE00008CH;
+          SCSIReg_DMAStart = 0BE000090H;
+          SCSIReg_DMALen   = 0BE000094H;
+
+    PROCEDURE SCSISelect(target: INT;);
+    BEGIN
+        id := target;
+    END;
+    PROCEDURE SCSIGetPhase(): INT;
+    BEGIN
+        RETURN(GETINT(SCSIReg_Phase) & 3);
+    END;
+
+    PROCEDURE SCSIRead(addr: PTR; len: INT;);
+    VAR end: PTR;
+    BEGIN
+        end := addr + len;
+        WHILE addr <| end DO
+            PUTCHAR(addr,GETCHAR(SCSIReg_Data));
+            addr := addr + 1;
+        END;
+    END;
+    PROCEDURE SCSIWrite(addr: PTR; len: INT;);
+    VAR end: PTR;
+    BEGIN
+        end := addr + len;
+        WHILE addr <| end DO
+            PUTCHAR(SCSIReg_Data,GETCHAR(addr));
+            addr := addr + 1;
+        END;
+    END;
+
+    PROCEDURE SCSIReadBlocks(lba: LONG; blocks: INT; addr: POINTER TO CHAR;): CHAR;
+    VAR len: LONG;
+        cdb: ARRAY 6 OF CHAR;
+    BEGIN
+        len := blocks *| 512;
+        cdb[0] := 008H; (* READ(6) *)
+        cdb[1] := RSH(lba,16);
+        cdb[2] := RSH(lba,8);
+        cdb[3] := lba & 0FFH;
+        cdb[4] := blocks;
+        cdb[5] := 0;
+        PUTINT(SCSIReg_IDs,70H OR id);
+        IF SCSIGetPhase() # 2 THEN RETURN(3); END;
+        SCSIWrite(PTROF(cdb),6);
+        WHILE SCSIGetPhase() # 1 DO END; (* Wait for disk to seek *)
+        SCSIRead(addr,len);
+        RETURN(GETCHAR(SCSIReg_Data));
+    END;
+    PROCEDURE SCSIWriteBlocks(lba: LONG; blocks: INT; addr: POINTER TO CHAR;): CHAR;
+    VAR len: LONG;
+        cdb: ARRAY 6 OF CHAR;
+    BEGIN
+        len := blocks *| 512;
+        cdb[0] := 00AH; (* WRITE(6) *)
+        cdb[1] := RSH(lba,16);
+        cdb[2] := RSH(lba,8);
+        cdb[3] := lba & 0FFH;
+        cdb[4] := blocks;
+        cdb[5] := 0;
+        PUTINT(SCSIReg_IDs,70H OR id);
+        IF SCSIGetPhase() # 2 THEN RETURN(3); END;
+        SCSIWrite(PTROF(cdb),6);
+        WHILE SCSIGetPhase() # 0 DO END; (* Wait for disk to seek *)
+        SCSIWrite(addr,len);
+        RETURN(GETCHAR(SCSIReg_Data));
+    END;
+    PROCEDURE SCSIGetCapacity(blocks: POINTER TO LONG;): CHAR;
+    VAR cdb: ARRAY 10 OF CHAR;
+    BEGIN
+        cdb[0] := 25H; (* READ CAPACITY(10) *)
+        PUTINT(SCSIReg_IDs,70H OR id);
+        IF SCSIGetPhase() # 2 THEN RETURN(3); END;
+        SCSIWrite(PTROF(cdb),10);
+        WHILE SCSIGetPhase() # 1 DO END;
+        SCSIRead(PTROF(cdb),8);
+        blocks^ := GETINT(PTROF(cdb));
+        RETURN(GETCHAR(SCSIReg_Data));
+    END;
+    PROCEDURE SCSIStartStop(start: CHAR;): CHAR;
+    VAR cdb: ARRAY 6 OF CHAR;
+    BEGIN
+        cdb[0] := 01BH; (* START STOP UNIT *)
+        cdb[1] := 0;
+        cdb[2] := 0;
+        cdb[3] := 0;
+        cdb[4] := start;
+        cdb[5] := 0;
+        PUTINT(SCSIReg_IDs,70H OR id);
+        IF SCSIGetPhase() # 2 THEN RETURN(3); END;
+        SCSIWrite(PTROF(cdb),6);
+        WHILE SCSIGetPhase() # 3 DO END;
+        RETURN(GETCHAR(SCSIReg_Data));
+    END;
+END.

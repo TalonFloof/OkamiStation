@@ -3,19 +3,31 @@ MODULE Main;
     ASM "Traps.s";
     ASM "Memory.s";
     ASM "Framebuffer.s";
-    EXTERN PROCEDURE memset, memcpy: CHAR;
-    EXTERN OkamiLogo, foc: CHAR;
-    IMPORT Framebuffer, Console, Memory, String, Prompt;
+    ASM "FirmwareCall.s";
+    EXTERN OkamiLogo, DoFirmwareCall: CHAR;
+    EXTERN PROCEDURE Jump, SetupTrap: CHAR;
+    IMPORT Framebuffer, Console, Memory, String, Prompt, SCSI;
+
+    TYPE
+        BootRecord = RECORD
+            magic: ARRAY 8 OF CHAR; (* "OkmiBRcd" *)
+            osName: ARRAY 16 OF CHAR;
+            bootldrStart: INT;
+            bootldrSize: INT;
+            osIcon: ARRAY 512 OF CHAR;
+        END;
+
+    VAR RAMSize: LONG;
 
     PROCEDURE main();
-    VAR i, ram: INT;
+    VAR i: INT;
     strBuf: ARRAY 8 OF CHAR;
     BEGIN
-        
-        ram := TestMemory();
+        RAMSize := TestMemory();
+        SetupTrap(PTROF(DoFirmwareCall),2);
         ConsoleInit();
         ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ");
-        ConsolePrint(itoa(ram /| (1024*1024),PTROF(strBuf),10));
+        ConsolePrint(itoa(RAMSize /| (1024*1024),PTROF(strBuf),10));
         ConsolePrint(" MB memory installed\n\n\n\n");
         (* Copy the Logo *)
         i := 0;
@@ -47,6 +59,44 @@ MODULE Main;
         WHILE i <| 128 DO
             memcpy(90001000H + 56 + (624 *| 128) + (i *| 128),PTROF(OkamiLogo) + ((127-i) *| 16),16);
             i := i + 1;
+        END;
+    END;
+
+    PROCEDURE TryBoot(device: POINTER TO CHAR;);
+    VAR status: CHAR;
+        bootRec: POINTER TO BootRecord;
+        buf: ARRAY 16 OF CHAR;
+    BEGIN
+        ConsolePrint("booting: ");
+        ConsolePrint(device);
+        ConsolePrint("\n\n");
+        IF (memcmp(device,"scsi",4) = 0) & (strlen(device) = 5) THEN
+            SCSISelect(device[4] - 30H);
+            status := SCSIStartStop(1);
+            IF status = 3 THEN
+                ConsolePrint("No response from SCSI Drive! (ensure connection is good)\n");
+                RETURN(0);
+            ELSIF status = 2 THEN
+                ConsolePrint("SCSI Drive returned Check Status! (ensure drive is okay)\n");
+                RETURN(0);
+            END;
+            bootRec := 80010000H;
+            SCSIReadBlocks(0,2,bootRec);
+            IF memcmp(PTROF(bootRec^.magic),"OkmiBRcd",8) # 0 THEN
+                ConsolePrint("Bad Magic Number on Boot Record\n");
+                RETURN(0);
+            END;
+            ConsolePrint("Booting ");
+            ConsolePrint(PTROF(bootRec^.osName));
+            ConsolePrint(" (start: 0x");
+            ConsolePrint(itoa(bootRec^.bootldrStart,PTROF(buf),16));
+            ConsolePrint(", size: ");
+            ConsolePrint(itoa((bootRec^.bootldrSize) *| 512,PTROF(buf),10));
+            ConsolePrint(")\n");
+            SCSIReadBlocks((bootRec^.bootldrStart),(bootRec^.bootldrSize),80010000H);
+            Jump(80010000H);
+        ELSE
+            ConsolePrint("Unknown Boot Device!\n");
         END;
     END;
 END.
