@@ -1,7 +1,0 @@
-MODULE Filesystem;
-    TYPE
-        UNIXInode = RECORD
-
-        END;
-    
-END.

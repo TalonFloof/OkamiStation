@@ -1,12 +1,12 @@
 (* The Main Module for the Fennec Kernel *)
 
 MODULE FennecKernel;
-    IMPORT Target, Window;
+    IMPORT Target;
 
     PROCEDURE main();
     BEGIN
         targetinit();
-        FBClear(NativeColor());
+        FBClear(NativeColor(0));
         InitWin();
         halt();
     END;

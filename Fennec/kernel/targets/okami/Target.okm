@@ -5,12 +5,13 @@ MODULE Target;
 
     PROCEDURE targetinit();
     BEGIN
-
+        PUTINT(0B0000000H,1); (* Switch Framebuffer to 8-bit 1024x768 *)
+        PUTINT(0B0000004H,0);
     END;
 
     PROCEDURE halt();
     BEGIN
-        PUTINT(0b0000000H,0ffffffffH); (* Mask Every Interrupt on the HTC *)
+        PUTINT(0B0000000H,0FFFFFFFFH); (* Mask Every Interrupt on the HTC *)
         WHILE 1 DO END;
     END;
 
