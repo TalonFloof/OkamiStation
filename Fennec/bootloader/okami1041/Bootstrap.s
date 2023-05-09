@@ -28,10 +28,10 @@
     addi sp, sp, -4
     sw a0, 4(sp)
     lw t0, 24(t7)
+    srli t0, t0, 9
 
     lw t0, 16(t7)
     addi t0, t0, 64
-    
 
     addi sp, sp, 4
     lw a0, 0(sp)

@@ -23,9 +23,9 @@ MODULE Main;
     VAR i: INT;
     strBuf: ARRAY 8 OF CHAR;
     BEGIN
+        ConsoleInit();
         RAMSize := TestMemory();
         SetupTrap(PTROF(DoFirmwareCall),2);
-        ConsoleInit();
         ConsolePrint("\n\n\n                 OkamiStation 1000 (Okami1041, 25 MHz), Keyboard Present\n                 OkamiBoot 0.2, ");
         ConsolePrint(itoa(RAMSize /| (1024*1024),PTROF(strBuf),10));
         ConsolePrint(" MB memory installed\n\n\n\n");
