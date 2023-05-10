@@ -1,17 +1,18 @@
 MODULE Target;
-    ASM "targets/okami/startup.S";
-    ASM "targets/okami/string.S";
-    EXTERN PROCEDURE memset, memcpy, invert: CHAR;
+    ASM "string.s";
+    EXTERN PROCEDURE memset, memcpy: CHAR;
+    ASM "fwcalls.s";
+    EXTERN PROCEDURE okbootClear, okbootPrint: CHAR;
 
-    PROCEDURE targetinit();
+    PROCEDURE TargetInit();
     BEGIN
-        PUTINT(0B0000000H,1); (* Switch Framebuffer to 8-bit 1024x768 *)
-        PUTINT(0B0000004H,0);
+        (*PUTINT(0B0000000H,1);*) (* Switch Framebuffer to 8-bit 1024x768 *)
+        (*PUTINT(0B0000004H,0);*)
+        okbootPrint("Hello! This message is being printed from the FENNEC Kernel\nIf you're seeing this, then the bootloader works!\n");
     END;
 
-    PROCEDURE halt();
+    PROCEDURE Halt();
     BEGIN
-        PUTINT(0B0000000H,0FFFFFFFFH); (* Mask Every Interrupt on the HTC *)
         WHILE 1 DO END;
     END;
 

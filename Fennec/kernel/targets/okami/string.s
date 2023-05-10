@@ -40,12 +40,3 @@
     addi a2, a2, -1
     bne a2, zero, memcpy
     br ra
-
-.global invert: /* (dest: a0, len: a1) */
-    lbu t0, 0(a0)
-    xori t0, t0, 0xFF
-    sb t0, 0(a0)
-    addi a0, a0, 1
-    addi a1, a1, -1
-    bne a1, zero, invert
-    br ra

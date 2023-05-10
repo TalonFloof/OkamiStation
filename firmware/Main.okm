@@ -80,7 +80,7 @@ MODULE Main;
                 ConsolePrint("SCSI Drive returned Check Status! (ensure drive is okay)\n");
                 RETURN(0);
             END;
-            bootRec := 80010000H;
+            bootRec := 80004000H;
             SCSIReadBlocks(0,2,bootRec);
             IF memcmp(PTROF(bootRec^.magic),"OkmiBRcd",8) # 0 THEN
                 ConsolePrint("Bad Magic Number on Boot Record\n");
@@ -93,8 +93,8 @@ MODULE Main;
             ConsolePrint(", size: ");
             ConsolePrint(itoa((bootRec^.bootldrSize) *| 512,PTROF(buf),10));
             ConsolePrint(")\n");
-            SCSIReadBlocks((bootRec^.bootldrStart),(bootRec^.bootldrSize),80010000H);
-            Jump(80010000H);
+            SCSIReadBlocks((bootRec^.bootldrStart),(bootRec^.bootldrSize),bootRec);
+            Jump(bootRec);
         ELSE
             ConsolePrint("Unknown Boot Device!\n");
         END;

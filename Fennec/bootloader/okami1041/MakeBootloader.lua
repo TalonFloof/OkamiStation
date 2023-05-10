@@ -6,7 +6,7 @@ local function check(success,_,num)
 end
 
 check(os.execute("../../../okamisdk/okas Bootstrap.s Bootloader.o"))
-check(os.execute("../../../okamisdk/okrotool reloc -noalign 0x80010000 0 Bootloader.o"))
+check(os.execute("../../../okamisdk/okrotool reloc -noalign 0x80004000 0 Bootloader.o"))
 check(os.execute("../../../okamisdk/okrotool dump Bootloader.o Bootloader.bin"))
 local file = io.open("Bootloader.bin","rb")
 local data = file:read("*all")

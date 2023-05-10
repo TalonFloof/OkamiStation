@@ -88,8 +88,7 @@ halt:
     br ra
 
 .global Jump:
-    la sp, FWstack
-    addi sp, sp, 0xffc
+    la sp, 0x80000ffc
     la t0, ClearICache
     lui t1, 0x2000
     add t0, t0, t1

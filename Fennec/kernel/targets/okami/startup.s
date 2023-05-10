@@ -1,3 +1,3 @@
 .text
 __start:
-    b main
+    b Main

@@ -3,11 +3,9 @@
 MODULE FennecKernel;
     IMPORT Target;
 
-    PROCEDURE main();
+    PROCEDURE Main();
     BEGIN
-        targetinit();
-        FBClear(NativeColor(0));
-        InitWin();
-        halt();
+        TargetInit();
+        Halt();
     END;
 END.
