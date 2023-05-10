@@ -15,7 +15,8 @@ $ cd ../firmware
 $ make
 $ cd ../emulator
 $ make
-$ ./okamistation
+$ cd ../Fennec
+$ make run
 ```
 That's it...
 

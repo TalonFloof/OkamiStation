@@ -23,8 +23,9 @@
     la a2, 0x80005000
 .loop:
     bl ReadZone
-    bltu a0, t1, .loop
+    bne a0, t1, .loop
     la t0, 0x80005000
+    la sp, 0x80000ffc
     br t0
 
 .global ReadZone: /* (a0: Zone, a2: Address) | (a0: Next Zone, a2: Next Address) Clobers: t0 */
