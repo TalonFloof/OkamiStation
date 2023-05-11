@@ -732,6 +732,29 @@ unsigned int GenObject(char* out) {
       }
       free(index->labelName);
       free(index);
+    } else if(index->type == BRANCH28 && index->dstSegment != SEG_EXTERN) {
+      relocSize--;
+      if(index->prev != NULL)
+        ((IntRelocEntry*)index->prev)->next = index->next;
+      if(index->next != NULL)
+        ((IntRelocEntry*)index->next)->prev = index->prev;
+      if(index == relocHead)
+        relocHead = index->next;
+      Label* lind = labelHead;
+      while(lind != NULL) {
+        if(strcmp(lind->name,index->labelName) == 0) {
+          int jump = (((lind->offset)-((index->offset)+4))/4);
+          unsigned int final = ((unsigned int)(jump << 6)) >> 6;
+          text[index->offset/4] = text[index->offset/4] | final;
+          break;
+        }
+        lind = lind->next;
+      }
+      if(lind == NULL) {
+        Error(index->labelName,0,0,"Label has no matching definition");
+      }
+      free(index->labelName);
+      free(index);
     }
     index = next;
   }

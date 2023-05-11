@@ -485,15 +485,15 @@ void next() {
             uint32_t rs = rs1;
             uint32_t rd = (instr & 0xf800) >> 11;
             int32_t jumpOffset = ((int32_t)((int16_t)(instr & 0xFFFF)))*4;
-            uint32_t jumpAddr = (instr & 0x3FFFFFF) << 2;
+            int32_t jumpAddr = (((int32_t)((instr & 0x3FFFFFF) << 6)) >> 6) * 4;
             switch((opcode & 0b1111)) {
                 case 0: { // B
-                    PC = (PC & 0xF0000000) | jumpAddr;
+                    PC += jumpAddr;
                     break;
                 }
                 case 1: { // BL
                     setRegister(31,PC);
-                    PC = (PC & 0xF0000000) | jumpAddr;
+                    PC += jumpAddr;
                     break;
                 }
                 case 2: { // BLR

@@ -150,8 +150,9 @@ void preformRelocation(uint8_t* image, uint32_t base, uint32_t dataBase) {
         }
         switch(relocation[i].type) {
             case BRANCH28: {
-                uint32_t op = (*dstPtr) & 0xFC000000;
-                *dstPtr = (((labelAddr >> 2) & 0x3FFFFFF) | op);
+                /*uint32_t op = (*dstPtr) & 0xFC000000;
+                *dstPtr = (((labelAddr >> 2) & 0x3FFFFFF) | op);*/
+                fprintf(stderr, "The new BRANCH28 relocation is not supported yet\n");
                 break;
             }
             case PTR32:

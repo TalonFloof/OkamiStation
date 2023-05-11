@@ -2,7 +2,6 @@ MODULE Target;
     ASM "string.s";
     EXTERN PROCEDURE memset, memcpy: CHAR;
     ASM "fwcalls.s";
-    EXTERN PROCEDURE okbootClear, okbootPrint: CHAR;
 
     PROCEDURE TargetInit();
     BEGIN

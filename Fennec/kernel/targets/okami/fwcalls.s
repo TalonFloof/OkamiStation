@@ -1,8 +1,12 @@
-okbootClear:
-    li a0, 2
-    mcall 0x104
+OKB_SCSISelect:
+    mcall 0x200
     br ra
 
-okbootPrint:
-    mcall 0x101
+OKB_SCSIRead:
+    mcall 0x201
     br ra
+
+OKB_SCSIWrite:
+    mcall 0x202
+    br ra
+

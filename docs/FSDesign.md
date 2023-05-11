@@ -1,8 +1,8 @@
 # Fennec File System
 
 ## Layout
-| OkamiBoot Metadata | Bootloader (optional) | Superblock | Journal (optional) | Inode Bitmap | Inodes | Zone Tag Table | Zones |
-|--------------------|-----------------------|------------|--------------------|--------------|--------|----------------|-------|
+| Bootloader (optional) | Superblock | Journal (optional) | Inode Bitmap | Inodes | Zone Tag Table | Zones |
+|-----------------------|------------|--------------------|--------------|--------|----------------|-------|
 
 ## Superblock
 ```c

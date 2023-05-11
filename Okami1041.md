@@ -192,16 +192,16 @@
 ## Branching
 ```
     b addr
-        [0:25]: addr
+        [0:25]: offset
         [26:31] 0b100000
     
-        PC[0:27] = addr << 2;
+        PC[0:31] += offset * 4;
     bl addr
-        [0:25]: addr
+        [0:25]: offset
         [26:31] 0b100001
 
         ra = PC+4;
-        PC[0:27] = addr << 2;
+        PC[0:31] += offset * 4;
     blr rs, rd
         [11:15]: rd
         [16:30]: rs
@@ -216,7 +216,7 @@
         [26:31] 0b100011
         
         if(rs1[0:31] == rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
     bne rs1, rs2, offset
         [0:15]: offset
@@ -225,7 +225,7 @@
         [26:31] 0b100100
         
         if(rs1[0:31] != rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
     bge rs1, rs2, offset
         [0:15]: offset
@@ -234,7 +234,7 @@
         [26:31] 0b100101
         
         if(rs1[0:31] >= rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
     blt rs1, rs2, offset
         [0:15]: offset
@@ -243,7 +243,7 @@
         [26:31] 0b100110
         
         if(rs1[0:31] < rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
     bgeu rs1, rs2, offset
         [0:15]: offset
@@ -252,7 +252,7 @@
         [26:31] 0b100111
         
         if(rs1[0:31] >= rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
     bltu rs1, rs2, offset
         [0:15]: offset
@@ -261,7 +261,7 @@
         [26:31]: 0b101000
         
         if(rs1[0:31] < rs2[0:31]) {
-            PC[0:31] += offset << 2;
+            PC[0:31] += offset * 4;
         }
 ```
 ## Memory
