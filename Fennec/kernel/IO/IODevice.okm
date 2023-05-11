@@ -1,0 +1,30 @@
+(*
+IODevice Dispatch Table:
+
+CONST DevDispatchTable = {
+    "TestDevice", // name
+
+
+    0, // read
+    0, // write
+    0, // readblock
+    0, // writeblock
+    0, // getaddr
+    0, // getsize
+    0, // ioctl
+};
+*)
+
+MODULE IODevice;
+    CONST DevDispatchTable = {
+        "TestDevice",
+        
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    };
+END.
