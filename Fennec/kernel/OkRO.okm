@@ -1,0 +1,4 @@
+MODULE OkRO;
+    PROCEDURE OkRO();
+    BEGIN END;
+END.

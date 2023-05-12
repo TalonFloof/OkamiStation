@@ -1,0 +1,63 @@
+MODULE KarasuFB;
+    IMPORT IODevice, IOFBDev, KConsole, Target;
+
+    CONST KarasuFBDriver = {
+        0,               (*prev*)
+        0,               (*next*)
+        "KarasuFB",      (*name*)
+        "Framebuffer",   (*category*)
+        0,               (*IO version minor*)
+        1,               (*IO version major*)
+    
+        KarasuFBRead,    (* read(offset,size,buf) *)
+        KarasuFBWrite,   (* write(offset,size,buf) *)
+        0,               (* readblock(offset,blocks,buf) *)
+        0,               (* writeblock(offset,blocks,buf) *)
+        0,               (* getblocksize() *)
+        KarasuFBGetSize, (* getsize() *)
+        KarasuFBGetAddr, (* getaddr() *)
+        KarasuFBIOCtl,   (* ioctl() *)
+    };
+
+    PROCEDURE KarasuFBRead(offset, size: LONG; buf: POINTER TO CHAR;);
+    BEGIN
+        memcpy(buf, 90001000H + offset, size);
+    END;
+    PROCEDURE KarasuFBWrite(offset, size: LONG; buf: POINTER TO CHAR;);
+    BEGIN
+        memcpy(90001000H + offset, buf, size);
+    END;
+    PROCEDURE KarasuFBGetAddr(): PTR; BEGIN RETURN(90001000H); END;
+    PROCEDURE KarasuFBGetSize(): PTR; BEGIN RETURN(1 *| 1024 *| 1024); END;
+    PROCEDURE KarasuFBIOCtl(cmd,a,b,c,d,e,f,g: PTR;): PTR;
+    VAR i,j,k,offset: LONG;
+    BEGIN
+        IF cmd = FB_NATIVECOLOR THEN
+            RETURN(a);
+        ELSIF cmd = FB_DRAW_CHAR THEN
+            offset := (c - 32) *| 8;
+            i := b;
+            WHILE i <| (b+8) DO
+                j := a;
+                k := KConGetFontByte(offset);
+                WHILE j <| (a+8) DO
+                    IF (k & 80H) # 0 THEN
+                        PUTCHAR(90001000H+(i*|1024)+j,d);
+                    ELSE
+                        PUTCHAR(90001000H+(i*|1024)+j,e);
+                    END;
+                    j := j + 1;
+                    k := LSH(k,1);
+                END;
+                i := i + 1;
+                offset := offset + 1;
+            END;
+        ELSIF cmd = FB_GET_RESOLUTION THEN
+            IF a # 0 THEN PUTINT(a,1024); END;
+            IF b # 0 THEN PUTINT(b,768); END;
+            IF c # 0 THEN PUTINT(c,1); END;
+            IF d # 0 THEN PUTINT(d,1024); END;
+        END;
+        RETURN(0);
+    END;
+END.

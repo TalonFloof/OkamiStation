@@ -19,8 +19,8 @@ MODULE Memory;
             addr := addr + 1024;
             stub(GETCHAR(addr));
         END;
-        SetupTrap(PTROF(exception),0);
-        SetupTrap(PTROF(exception),1);
+        SetupTrap(PTROF(TrapHandler),0);
+        SetupTrap(PTROF(TrapHandler),1);
         RETURN(addr - 0A0000000H);
     END;
 

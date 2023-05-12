@@ -40,9 +40,14 @@ MODULE Main;
         END;
     END;
 
-    PROCEDURE exception();
+    PROCEDURE exception(context: POINTER TO LONG; cause, pc, vaddr: LONG;);
+    VAR buf: ARRAY 16 OF CHAR;
     BEGIN
-        ConsolePrint("Exception!");
+        ConsoleInit();
+        ConsolePrint("Exception - PC: 0x");
+        ConsolePrint(itoa(pc,PTROF(buf),16));
+        ConsolePrint(" Cause: 0x");
+        ConsolePrint(itoa(cause,PTROF(buf),16));
         WHILE 1 DO END;
     END;
 

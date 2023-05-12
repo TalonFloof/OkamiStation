@@ -1,30 +1,47 @@
-(*
-IODevice Dispatch Table:
-
-CONST DevDispatchTable = {
-    "TestDevice", // name
-
-
-    0, // read
-    0, // write
-    0, // readblock
-    0, // writeblock
-    0, // getaddr
-    0, // getsize
-    0, // ioctl
-};
-*)
-
 MODULE IODevice;
-    CONST DevDispatchTable = {
-        "TestDevice",
-        
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-    };
+    IMPORT String;
+
+    TYPE Driver = POINTER TO PTR;
+
+    VAR devHead, devTail, devIter: Driver;
+
+    PROCEDURE IOAddDevice(info: POINTER TO PTR;);
+    BEGIN
+        IF devHead = 0 THEN
+            devHead := info;
+            devTail := info;
+        ELSE
+            devTail[1] := info;
+            info[0] := devTail;
+            devTail := info;
+        END;
+    END;
+
+    PROCEDURE IOFindDeviceByName(name: POINTER TO CHAR;): Driver;
+    VAR dev: Driver;
+    BEGIN
+        dev := devHead;
+        WHILE dev # 0 DO
+            IF strcmp(dev[2],name) = 0 THEN RETURN(dev); END;
+            dev := dev[1];
+        END;
+        RETURN(0);
+    END;
+
+    PROCEDURE IOFindDeviceByCat(iter: CHAR; cat: POINTER TO CHAR;): Driver;
+    VAR prev: Driver;
+    BEGIN
+        IF iter = 0 THEN
+            devIter := devHead;
+        END;
+        WHILE devIter # 0 DO
+            IF strcmp(devIter[3],cat) = 0 THEN
+                prev := devIter;
+                devIter := devIter[1];
+                RETURN(prev);
+            END;
+            devIter := devIter[1];
+        END;
+        RETURN(0);
+    END;
 END.

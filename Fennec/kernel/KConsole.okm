@@ -1,0 +1,156 @@
+MODULE KConsole;
+    IMPORT IODevice, IOFBDev, Target;
+
+    CONST Font = {
+        000000000H, 000000000H,
+        0183C3C18H, 000180018H,
+        0006C6C6CH, 000000000H,
+        0367F3636H, 00036367FH,
+        03E683F0CH, 000187E0BH,
+        0180C6660H, 000066630H,
+        0386C6C38H, 0003B666DH,
+        000181818H, 000000000H,
+        03030180CH, 0000C1830H,
+        00C0C1830H, 00030180CH,
+        03C7E1800H, 00000187EH,
+        07E181800H, 000001818H,
+        000000000H, 030181800H,
+        07E000000H, 000000000H,
+        000000000H, 000181800H,
+        0180C0600H, 000006030H,
+        07E6E663CH, 0003C6676H,
+        018183818H, 0007E1818H,
+        00C06663CH, 0007E3018H,
+        01C06663CH, 0003C6606H,
+        06C3C1C0CH, 0000C0C7EH,
+        0067C607EH, 0003C6606H,
+        07C60301CH, 0003C6666H,
+        0180C067EH, 000303030H,
+        03C66663CH, 0003C6666H,
+        03E66663CH, 000380C06H,
+        018180000H, 000181800H,
+        018180000H, 030181800H,
+        06030180CH, 0000C1830H,
+        0007E0000H, 00000007EH,
+        0060C1830H, 00030180CH,
+        0180C663CH, 000180018H,
+        06A6E663CH, 0003C606EH,
+        07E66663CH, 000666666H,
+        07C66667CH, 0007C6666H,
+        06060663CH, 0003C6660H,
+        066666C78H, 000786C66H,
+        07C60607EH, 0007E6060H,
+        07C60607EH, 000606060H,
+        06E60663CH, 0003C6666H,
+        07E666666H, 000666666H,
+        01818187EH, 0007E1818H,
+        00C0C0C3EH, 000386C0CH,
+        070786C66H, 000666C78H,
+        060606060H, 0007E6060H,
+        06B7F7763H, 00063636BH,
+        07E766666H, 00066666EH,
+        06666663CH, 0003C6666H,
+        07C66667CH, 000606060H,
+        06666663CH, 000366C6AH,
+        07C66667CH, 00066666CH,
+        03C60663CH, 0003C6606H,
+        01818187EH, 000181818H,
+        066666666H, 0003C6666H,
+        066666666H, 000183C66H,
+        06B6B6363H, 00063777FH,
+        0183C6666H, 00066663CH,
+        03C666666H, 000181818H,
+        0180C067EH, 0007E6030H,
+        06060607CH, 0007C6060H,
+        018306000H, 00000060CH,
+        00606063EH, 0003E0606H,
+        00000663CH, 000000000H,
+        000000000H, 0FF000000H,
+        000001830H, 000000000H,
+        0063C0000H, 0003E663EH,
+        0667C6060H, 0007C6666H,
+        0663C0000H, 0003C6660H,
+        0663E0606H, 0003E6666H,
+        0663C0000H, 0003C607EH,
+        07C30301CH, 000303030H,
+        0663E0000H, 03C063E66H,
+        0667C6060H, 000666666H,
+        018380018H, 0003C1818H,
+        018380018H, 070181818H,
+        06C666060H, 000666C78H,
+        018181838H, 0003C1818H,
+        07F360000H, 000636B6BH,
+        0667C0000H, 000666666H,
+        0663C0000H, 0003C6666H,
+        0667C0000H, 060607C66H,
+        0663E0000H, 007063E66H,
+        0766C0000H, 000606060H,
+        0603E0000H, 0007C063CH,
+        0307C3030H, 0001C3030H,
+        066660000H, 0003E6666H,
+        066660000H, 000183C66H,
+        06B630000H, 000367F6BH,
+        03C660000H, 000663C18H,
+        066660000H, 03C063E66H,
+        00C7E0000H, 0007E3018H,
+        07018180CH, 0000C1818H,
+        018181818H, 000181818H,
+        00E181830H, 000301818H,
+        000466B31H, 000000000H,
+        0FFFFFFFFH, 0FFFFFFFFH,
+    };
+    VAR kconFB: Driver;
+        fbPtr, fbWidth, fbHeight, fbDepth: PTR;
+        cursorX, cursorY, bgColor, fgColor: INT;
+
+    PROCEDURE KConGetFontByte(offset: LONG;): CHAR;
+    BEGIN
+        RETURN(RSH(Font[offset /| 4],(offset UMOD 4) *| 8) & 0FFH);
+    END;
+
+    PROCEDURE KConPutc(c: CHAR;);
+    VAR i: LONG;
+    BEGIN
+        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,32,fgColor,bgColor);
+        IF c = 10 THEN
+            cursorX := 0;
+            IF cursorY = (fbHeight /| 8)-1 THEN
+                i := 8;
+                WHILE i <| fbHeight DO
+                    memcpy(fbPtr+((i-8) *| (fbWidth *| fbDepth)),fbPtr+(i *| (fbWidth *| fbDepth)),fbWidth *| fbDepth);
+                    i := i + 1;
+                END;
+            ELSE
+                cursorY := cursorY + 1;
+            END;
+        ELSE
+            CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,c,fgColor,bgColor);
+            cursorX := cursorX + 1;
+        END;
+        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,127,fgColor,bgColor);
+    END;
+
+    PROCEDURE KConPrint(s: POINTER TO CHAR;);
+    BEGIN
+        WHILE s^ DO
+            KConPutc(s^);
+            s := s + 1;
+        END;
+    END;
+
+    PROCEDURE KConInit();
+    BEGIN
+        cursorX := 0;
+        cursorY := 0;
+        kconFB := IOFindDeviceByCat(0,"Framebuffer");
+        IF kconFB = 0 THEN
+            Halt();
+        END;
+        fbPtr := CALL(kconFB[12]);
+        CALL(kconFB[13],FB_GET_RESOLUTION,PTROF(fbWidth),PTROF(fbHeight),0,PTROF(fbDepth));
+        bgColor := CALL(kconFB[13],FB_NATIVECOLOR,46);
+        fgColor := CALL(kconFB[13],FB_NATIVECOLOR,255);
+        memset(fbPtr,fbWidth*|fbHeight,bgColor);
+        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,127,fgColor,bgColor);
+    END;
+END.

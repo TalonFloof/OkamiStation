@@ -1,0 +1,49 @@
+MODULE String;
+    PROCEDURE strlen(str: POINTER TO CHAR;): INT;
+    VAR len: INT;
+    BEGIN
+        len := 0;
+        WHILE str[len] # 0 DO len := len + 1; END;
+        RETURN(len);
+    END;
+
+    PROCEDURE strcmp(x,y: POINTER TO CHAR;): LONG;
+    BEGIN
+        WHILE x^ DO
+            IF (x^) # (y^) THEN BREAK(); END;
+            x := x + 1;
+            y := y + 1;
+        END;
+        RETURN((x^)-(y^));
+    END;
+
+    PROCEDURE reverse(str: POINTER TO CHAR;);
+    VAR i,j: INT; c: CHAR;
+    BEGIN
+        i := 0;
+        j := strlen(str) - 1;
+        WHILE i <| j DO
+            c := str[i];
+            str[i] := str[j];
+            str[j] := c;
+            i := i + 1;
+            j := j - 1;
+        END;
+    END;
+
+    PROCEDURE itoa(n: LONG; str: POINTER TO CHAR; base: INT;): POINTER TO CHAR;
+    VAR i: INT;
+    BEGIN
+        i := 0;
+        WHILE 1 DO
+            IF (n UMOD base) >|= 10 THEN str[i] := (n UMOD base) + 57H; 
+            ELSE str[i] := (n UMOD base) + 30H; END;
+            i := i + 1;
+            n := n /| base;
+            IF n = 0 THEN BREAK(); END;
+        END;
+        str[i] := 0;
+        reverse(str);
+        RETURN(str);
+    END;
+END.

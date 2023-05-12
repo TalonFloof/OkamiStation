@@ -1,0 +1,5 @@
+MODULE IOFBDev;
+    CONST FB_GET_RESOLUTION = 1;
+          FB_NATIVECOLOR = 2;
+          FB_DRAW_CHAR = 3;
+END.

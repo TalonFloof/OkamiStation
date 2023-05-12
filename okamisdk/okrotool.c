@@ -132,21 +132,13 @@ void preformRelocation(uint8_t* image, uint32_t base, uint32_t dataBase) {
             labelAddr = bssAddr+relocation[i].dstOffset;
         }
         if(relocation[i].srcSegment == TEXT) {
-            dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((textAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            dstPtr = (uint32_t*)((uintptr_t)header+sizeof(OkROHeader)+relocation[i].srcOffset);
         } else if(relocation[i].srcSegment == RODATA) {
-            dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((rodataAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
+            dstPtr = (uint32_t*)((uintptr_t)header+sizeof(OkROHeader)+getSize(header->text)+relocation[i].srcOffset);
         } else if(relocation[i].srcSegment == DATA) {
-            if(dataBase != 0) {
-                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((dataAddr-dataBase+sizeof(OkROHeader))+relocation[i].srcOffset));
-            } else {
-                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((dataAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
-            }
+            dstPtr = (uint32_t*)((uintptr_t)header+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+relocation[i].srcOffset);
         } else if(relocation[i].srcSegment == BSS) {
-            if(dataBase != 0) {
-                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((bssAddr-dataBase+sizeof(OkROHeader))+relocation[i].srcOffset));
-            } else {
-                dstPtr = (uint32_t*)((uintptr_t)header+(uintptr_t)((bssAddr-base+sizeof(OkROHeader))+relocation[i].srcOffset));
-            }
+            dstPtr = (uint32_t*)((uintptr_t)header+sizeof(OkROHeader)+getSize(header->text)+getSize(header->rodata)+getSize(header->data)+relocation[i].srcOffset);
         }
         switch(relocation[i].type) {
             case BRANCH28: {
