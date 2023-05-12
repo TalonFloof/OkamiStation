@@ -98,7 +98,7 @@ void KarasuInit() {
         1024,
         768
     );
-    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeNearest);
+    SDL_SetTextureScaleMode(FBTexture, SDL_ScaleModeLinear);
     if(FBTexture == 0) {
         fprintf(stderr, SDL_GetError());
         fprintf(stderr, "\n");

@@ -1,0 +1,58 @@
+MODULE Crash;
+    IMPORT Target, KConsole, String;
+
+    CONST UNKNOWN_KCRASH = 0;
+          KERNEL_BREAKPOINT_HIT = 1;
+          ON_FIRE = 2;
+          TLB_MISS_ON_UNPAGED_SECTION = 3;
+          StopTable = {
+            "UNKNOWN_KCRASH",
+            "KERNEL_BREAKPOINT_HIT",
+            "OKAMISTATION_ON_FIRE", (* Double Fault *)
+            "TLB_MISS_ON_UNPAGED_SECTION", (* Page Fault *)
+            "BUS_FAULT", (* Data/Fetch Exception *)
+            "UNKNOWN_OPCODE",
+            "PROTECTION_FAULT",
+            "",
+          };
+
+    PROCEDURE KCrash(stopCode,a,b,c,d: LONG;);
+    VAR strSize: INT;
+        buf: ARRAY 17 OF CHAR;
+    BEGIN
+        KConPrint("\n*** STOP 0x");
+        itoa(stopCode,PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint(" (0x");
+        itoa(a,PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint(", 0x");
+        itoa(b,PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint(", 0x");
+        itoa(c,PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint(", 0x");
+        itoa(d,PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint(")\n");
+        KConPrint(StopTable[stopCode]);
+        KConPrint("\n\nBIN BASE  NAME\n");
+        itoa(PTROF(__TEXT_BEGIN__),PTROF(buf),16);
+        strSize := 8 - strlen(PTROF(buf));
+        WHILE strSize >| 0 DO KConPutc(30H); strSize := strSize - 1; END;
+        KConPrint(PTROF(buf));
+        KConPrint("  FENNECKernel\n\nReboot your computer if you've never seen this Stop Error Code before.\nIf it persists, please open an issue on GitHub at: https://github.com/TalonFox/OkamiStation\n");
+        Halt();
+    END;
+END.

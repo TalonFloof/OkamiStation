@@ -3,6 +3,7 @@ MODULE Target;
     EXTERN PROCEDURE memset, memcpy: CHAR;
     ASM "fwcalls.s";
     EXTERN PROCEDURE TargetRAMSize: LONG;
+    EXTERN __TEXT_BEGIN__: CHAR;
     IMPORT KarasuFB, IODevice;
 
     PROCEDURE TargetInit();

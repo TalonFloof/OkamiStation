@@ -1,7 +1,7 @@
 (* The Main Module for the Fennec Kernel *)
 
 MODULE FennecKernel;
-    IMPORT Target, KConsole, String;
+    IMPORT Target, KConsole, String, Crash;
 
     PROCEDURE Main();
     VAR buf: ARRAY 16 OF CHAR;
@@ -11,6 +11,6 @@ MODULE FennecKernel;
         KConPrint("ZorroSoft (R) FENNEC (TM) Version 0.1 (INTERNAL BUILD)\n1 System Processor [");
         KConPrint(itoa(TargetRAMSize() /| (1024*1024),PTROF(buf),10));
         KConPrint(" MB Memory]\n");
-        Halt();
+        KCrash(KERNEL_BREAKPOINT_HIT,0,0,0,0);
     END;
 END.
