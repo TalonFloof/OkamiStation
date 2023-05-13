@@ -1,0 +1,14 @@
+MODULE HALMain;
+    IMPORT HALArch, HALConsole, HALCrash, String;
+
+    PROCEDURE HALMain();
+    VAR buf: ARRAY 16 OF CHAR;
+    BEGIN
+        HALArchInit();
+        HALConInit();
+        HALConPrint("ZorroSoft (R) FENNEC (TM) Version 0.1 (INTERNAL BUILD)\n1 System Processor [");
+        HALConPrint(itoa(HALRAMSize() /| (1024*1024),PTROF(buf),10));
+        HALConPrint(" MB Memory]\n");
+        HALCrash(HAL_INITIALIZATION_FAILURE,0,0,0,0);
+    END;
+END.

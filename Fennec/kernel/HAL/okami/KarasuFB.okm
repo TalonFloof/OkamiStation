@@ -1,5 +1,5 @@
 MODULE KarasuFB;
-    IMPORT IODevice, IOFBDev, KConsole, Target;
+    IMPORT IODevice, IOFBDev, HALConsole, HALArch;
 
     CONST KarasuFBDriver = {
         0,               (*prev*)
@@ -39,7 +39,7 @@ MODULE KarasuFB;
             i := b;
             WHILE i <| (b+8) DO
                 j := a;
-                k := KConGetFontByte(offset);
+                k := HALConGetFontByte(offset);
                 WHILE j <| (a+8) DO
                     IF (k & 80H) # 0 THEN
                         PUTCHAR(90001000H+(i*|1024)+j,d);

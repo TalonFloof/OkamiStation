@@ -1,0 +1,21 @@
+MODULE OkamiSCSI;
+    IMPORT IODevice;
+
+    CONST KarasuFBDriver = {
+        0,               (*prev*)
+        0,               (*next*)
+        "KarasuFB",      (*name*)
+        "Framebuffer",   (*category*)
+        0,               (*IO version minor*)
+        1,               (*IO version major*)
+    
+        KarasuFBRead,    (* read(offset,size,buf) *)
+        KarasuFBWrite,   (* write(offset,size,buf) *)
+        0,               (* readblock(offset,blocks,buf) *)
+        0,               (* writeblock(offset,blocks,buf) *)
+        0,               (* getblocksize() *)
+        KarasuFBGetSize, (* getsize() *)
+        KarasuFBGetAddr, (* getaddr() *)
+        KarasuFBIOCtl,   (* ioctl() *)
+    };
+END.

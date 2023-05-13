@@ -1,3 +1,3 @@
 .text
 __start:
-    b Main
+    b HALMain

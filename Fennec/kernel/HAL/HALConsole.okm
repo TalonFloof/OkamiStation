@@ -1,5 +1,5 @@
-MODULE KConsole;
-    IMPORT IODevice, IOFBDev, Target;
+MODULE HALConsole;
+    IMPORT IODevice, IOFBDev, HALArch;
 
     CONST Font = {
         000000000H, 000000000H,
@@ -99,58 +99,67 @@ MODULE KConsole;
         000466B31H, 000000000H,
         0FFFFFFFFH, 0FFFFFFFFH,
     };
-    VAR kconFB: Driver;
-        fbPtr, fbWidth, fbHeight, fbDepth: PTR;
-        cursorX, cursorY, bgColor, fgColor: INT;
+    VAR halConFB: Driver;
+        halConPtr, halConWidth, halConHeight, halConDepth: PTR;
+        halCursorX, halCursorY, halBgColor, halFgColor: INT;
 
-    PROCEDURE KConGetFontByte(offset: LONG;): CHAR;
+    PROCEDURE HALConGetFontByte(offset: LONG;): CHAR;
     BEGIN
         RETURN(RSH(Font[offset /| 4],(offset UMOD 4) *| 8) & 0FFH);
     END;
 
-    PROCEDURE KConPutc(c: CHAR;);
+    PROCEDURE HALConNewline();
     VAR i: LONG;
     BEGIN
-        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,32,fgColor,bgColor);
-        IF c = 10 THEN
-            cursorX := 0;
-            IF cursorY = (fbHeight /| 8)-1 THEN
-                i := 8;
-                WHILE i <| fbHeight DO
-                    memcpy(fbPtr+((i-8) *| (fbWidth *| fbDepth)),fbPtr+(i *| (fbWidth *| fbDepth)),fbWidth *| fbDepth);
-                    i := i + 1;
-                END;
-            ELSE
-                cursorY := cursorY + 1;
+        halCursorX := 0;
+        IF halCursorY = (halConHeight /| 8)-1 THEN
+            i := 8;
+            WHILE i <| halConHeight DO
+                memcpy(halConPtr+((i-8) *| (halConWidth *| halConDepth)),halConPtr+(i *| (halConWidth *| halConDepth)),halConWidth *| halConDepth);
+                i := i + 1;
             END;
         ELSE
-            CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,c,fgColor,bgColor);
-            cursorX := cursorX + 1;
+            halCursorY := halCursorY + 1;
         END;
-        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,127,fgColor,bgColor);
     END;
 
-    PROCEDURE KConPrint(s: POINTER TO CHAR;);
+    PROCEDURE HALConPutc(c: CHAR;);
+    VAR i: LONG;
+    BEGIN
+        CALL(halConFB[13],FB_DRAW_CHAR,halCursorX *| 8,halCursorY *| 8,32,halFgColor,halBgColor);
+        IF c = 10 THEN
+            HALConNewline();
+        ELSE
+            CALL(halConFB[13],FB_DRAW_CHAR,halCursorX *| 8,halCursorY *| 8,c,halFgColor,halBgColor);
+            halCursorX := halCursorX + 1;
+            IF halCursorX >|= (halConWidth /| 8) THEN
+                HALConNewline();
+            END;
+        END;
+        CALL(halConFB[13],FB_DRAW_CHAR,halCursorX *| 8,halCursorY *| 8,127,halFgColor,halBgColor);
+    END;
+
+    PROCEDURE HALConPrint(s: POINTER TO CHAR;);
     BEGIN
         WHILE s^ DO
-            KConPutc(s^);
+            HALConPutc(s^);
             s := s + 1;
         END;
     END;
 
-    PROCEDURE KConInit();
+    PROCEDURE HALConInit();
     BEGIN
-        cursorX := 0;
-        cursorY := 0;
-        kconFB := IOFindDeviceByCat(0,"Framebuffer");
-        IF kconFB = 0 THEN
-            Halt();
+        halCursorX := 0;
+        halCursorY := 0;
+        halConFB := IOFindDeviceByCat(0,"Framebuffer");
+        IF halConFB = 0 THEN
+            HALHalt();
         END;
-        fbPtr := CALL(kconFB[12]);
-        CALL(kconFB[13],FB_GET_RESOLUTION,PTROF(fbWidth),PTROF(fbHeight),0,PTROF(fbDepth));
-        bgColor := CALL(kconFB[13],FB_NATIVECOLOR,46);
-        fgColor := CALL(kconFB[13],FB_NATIVECOLOR,255);
-        memset(fbPtr,fbWidth*|fbHeight,bgColor);
-        CALL(kconFB[13],FB_DRAW_CHAR,cursorX *| 8,cursorY *| 8,127,fgColor,bgColor);
+        halConPtr := CALL(halConFB[12]);
+        CALL(halConFB[13],FB_GET_RESOLUTION,PTROF(halConWidth),PTROF(halConHeight),0,PTROF(halConDepth));
+        halBgColor := CALL(halConFB[13],FB_NATIVECOLOR,46);
+        halFgColor := CALL(halConFB[13],FB_NATIVECOLOR,255);
+        memset(halConPtr,halConWidth*|halConHeight,halBgColor);
+        CALL(halConFB[13],FB_DRAW_CHAR,halCursorX *| 8,halCursorY *| 8,127,halFgColor,halBgColor);
     END;
 END.
