@@ -438,7 +438,6 @@ r31 - ra: Return Address
 0x02: OKAMI_TRAP_PC
 0x03: OKAMI_TRAP_BAD_VADDR
 0x04: OKAMI_TRAP_KERNEL_SCRATCH
-    Intended for storing the page table
 0x05: OKAMI_TRAP_VECTOR_OFFSET
 0x06: OKAMI_TLB_MISS_VECTOR_OFFSET
     NOTE: DO NOT USE THE user SEGMENT or the kernel3 SEGMENT UNTIL THIS HAS BEEN SET!
@@ -451,12 +450,19 @@ r31 - ra: Return Address
     Starts from 63 and decrements every cpu tick, it wraps around after trying to decrement 8.
     Useful if you just want to fill a random TLB entry.
 0x14: OKAMI_TLB_ADDRSPACE_ID
+0x15: OKAMI_TLB_CONTEXT
+    0-1: 0
+    2-20: (OKAMI_TRAP_BAD_VADDR >> 12) << 2
+    21-31: PTEBase
+0x16: OKAMI_TLB_PAGE_DIRECTORY
+    A scratch register for storing the base address of a page directory.
+    Useful for Nested TLB Miss routines.
 ```
 
 # Cache Line Layout
 | <sub>63</sub><br>Valid | <sub>62</sub><br>Reserved | <sub>61-32</sub><br>Address | <sub>0-31</sub><br>Word |
 |-|-|-|-|
 # TLB Line Layout
-| <sub>63-44</sub><br>VirtualAddress | <sub>43-32</sub><br>AddrSpaceID | <sub>12-31</sub><br>PhysicalAddress | <sub>3-11</sub><br>Reserved | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
-|-|-|-|-|-|-|-|
+| <sub>63-44</sub><br>VirtualAddress | <sub>43-32</sub><br>AddrSpaceID | <sub>12-31</sub><br>PhysicalAddress | <sub>4-11</sub><br>Reserved | <sub>3</sub><br>Global | <sub>2</sub><br>Dirty | <sub>1</sub><br>NonCacheable | <sub>0</sub><br>Valid |
+|-|-|-|-|-|-|-|-|
 > You might notice that TLB Entries don't have a flag for making pages read-only. This is because the behavior of the Dirty Flag acts as a form of write-protection; Okami can't write if the dirty flag is cleared. However, when it is set, write-access is allowed.

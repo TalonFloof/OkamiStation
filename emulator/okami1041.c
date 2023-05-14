@@ -17,13 +17,14 @@ bool afterInc = false;
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
 
-uint32_t extRegisters[0x15];
+uint32_t extRegisters[0x17];
 
 typedef struct {
     uint64_t isValid : 1;
     uint64_t nonCacheable : 1;
     uint64_t isDirty : 1;
-    uint64_t reserved : 9;
+    uint64_t isGlobal : 1;
+    uint64_t reserved : 8;
     uint64_t paddr : 20;
     uint64_t addrSpaceID : 12;
     uint64_t vaddr : 20;
@@ -57,61 +58,13 @@ void setRegister(int index, uint32_t value) {
     }
 }
 
-uint32_t getExtRegister(int index) {
-    switch(index) {
-        case 0x00:
-        case 0x01:
-        case 0x02:
-        case 0x03:
-        case 0x04:
-        case 0x05:
-        case 0x06:
-        case 0x07:
-        case 0x14: {
-            return extRegisters[index];
-        }
-        case 0x10: {
-            return (extRegisters[index] & 0x3f) << 12;
-        }
-        case 0x11: {
-            return ((uint64_t*)&TLB)[extRegisters[0x10]] & 0xFFFFFFFF;
-        }
-        case 0x12: {
-            return ((uint64_t*)&TLB)[extRegisters[0x10]] >> 32;
-        }
-        case 0x13: {
-            return ((random()%56)+8) << 12; // Doesn't comply with my documentation but whatever, it's for debugging purposes anyway.
-        }
-    }
-    return 0;
+int32_t getExtRegister(int index) {
+    return extRegisters[index];
 }
 
 void setExtRegister(int index, uint32_t val) {
-    switch(index) {
-        case 0x00:
-        case 0x01:
-        case 0x02:
-        case 0x03:
-        case 0x04:
-        case 0x05:
-        case 0x06:
-        case 0x07:
-        case 0x14: {
-            extRegisters[index] = val;
-            break;
-        }
-        case 0x10: {
-            extRegisters[index] = (val & 0x3f000) >> 12;
-            break;
-        }
-        case 0x11: {
-            ((uint32_t*)&TLB)[extRegisters[0x10]*2] = val;
-            break;
-        }
-        case 0x12: {
-            ((uint32_t*)&TLB)[(extRegisters[0x10]*2)+1] = val;
-            break;
-        }
+    if(index != 0x13) {
+        extRegisters[index] = val;
     }
 }
 
@@ -134,6 +87,10 @@ void triggerTrap(uint32_t type, uint32_t addr) {
             break;
         }
         default: {
+            if(type == 3) {
+                extRegisters[0x15] = (extRegisters[0x15] & 0xffe00000) | ((extRegisters[3] >> 10) & 0x1FFFFC);
+                extRegisters[0x12] = (addr & 0xFFFFF000) | extRegisters[0x14];
+            }
             if(type == 3 && extRegisters[1] != 3) { // Non-nested TLB Miss
                 extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
                 extRegisters[1] = type;
@@ -164,7 +121,7 @@ int TLBLookup(uint32_t addr) {
     int i;
     uint32_t vaddr = addr & 0xFFFFF000;
     for(i=0; i < 64; i++) {
-        if(TLB[i].isValid && (TLB[i].vaddr == (vaddr >> 12)) && (TLB[i].addrSpaceID == extRegisters[0x14] || (TLB[i].addrSpaceID == 0xFFF))) {
+        if(TLB[i].isValid && (TLB[i].vaddr == (vaddr >> 12)) && ((TLB[i].addrSpaceID == extRegisters[0x14]) || TLB[i].isGlobal)) {
             return i;
         }
     }
@@ -330,6 +287,7 @@ void reset() {
     memset((void*)registers,0,sizeof(registers));
     memset((void*)extRegisters,0,sizeof(extRegisters));
     extRegisters[0] = 1;
+    extRegisters[0x13] = 8;
     for(int i=0; i < 2048; i++) {
         ((uint64_t*)&iCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         ((uint64_t*)&dCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
@@ -349,6 +307,7 @@ void next() {
         HTCPending = false;
     }
     cycle_count += 1;
+    extRegisters[0x13] = (((extRegisters[0x13] - 8) + 1) % 56) + 8;
     uint32_t instr = 0;
     if(!memAccess(PC,(uint8_t*)&instr,4,false,true)) {
         return;
@@ -556,17 +515,59 @@ void next() {
             }
             break;
         }
-        case 3: { // Memory/Extended Registers/Traps
+        case 3: { // Memory/TLB/Extended Registers/Traps
             if(opcode & 0b1000) {
+                uint32_t operation = (instr & 0x7);
                 uint32_t rs = (instr & 0x1F0000) >> 16;
                 uint32_t rd = (instr & 0x3E00000) >> 21;
                 uint32_t offset = (instr & 0xFFFF);
                 switch(opcode & 0b111) {
+                    case 0b011: { // TLBRI/TLBWI/TLBWR/TLBP
+                        if(!(extRegisters[0] & 1)) {
+                            triggerTrap(11,0);
+                        }
+                        switch(operation) {
+                            case 0b000: { // TLBRI
+                                extRegisters[0x11] = (((uint32_t*)&TLB)[extRegisters[0x10]*2]);
+                                extRegisters[0x12] = (((uint32_t*)&TLB)[(extRegisters[0x10]*2)+1]);
+                                break;
+                            }
+                            case 0b010: { // TLBWI
+                                (((uint32_t*)&TLB)[extRegisters[0x10]*2]) = extRegisters[0x11];
+                                (((uint32_t*)&TLB)[(extRegisters[0x10]*2)+1]) = extRegisters[0x12];
+                                break;
+                            }
+                            case 0b011: { // TLBWR
+                                uint32_t rand = extRegisters[0x13];
+                                (((uint32_t*)&TLB)[rand*2]) = extRegisters[0x11];
+                                (((uint32_t*)&TLB)[(rand*2)+1]) = extRegisters[0x12];
+                                break;
+                            }
+                            case 0b100: { // TLBP
+                                for(int i=0; i < 64; i++) {
+                                    if((((uint32_t*)&TLB)[(i*2)+1]) == extRegisters[0x12]) {
+                                        extRegisters[0x10] = i;
+                                        goto after;
+                                    }
+                                }
+                                extRegisters[0x10] = 0x80000000;
+after:
+                                break;
+                            }
+                        }
+                        break;
+                    }
                     case 0b100: { // MFEX
+                        if(!(extRegisters[0] & 1)) {
+                            triggerTrap(11,0);
+                        }
                         setRegister(rd,getExtRegister(offset));
                         break;
                     }
                     case 0b101: { // MTEX
+                    if(!(extRegisters[0] & 1)) {
+                            triggerTrap(11,0);
+                        }
                         setExtRegister(offset,getRegister(rs));
                         break;
                     }
@@ -575,6 +576,9 @@ void next() {
                         break;
                     }
                     case 0b111: { // RFT
+                        if(!(extRegisters[0] & 1)) {
+                            triggerTrap(11,0);
+                        }
                         extRegisters[0] = ((extRegisters[0] & 0x3f) >> 2) | (extRegisters[0] & ~(0x3f));
                         PC = extRegisters[2];
                         break;
