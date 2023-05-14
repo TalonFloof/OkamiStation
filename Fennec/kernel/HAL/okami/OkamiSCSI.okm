@@ -1,21 +1,46 @@
 MODULE OkamiSCSI;
-    IMPORT IODevice;
+    IMPORT IODevice, IODksDev, HALArch;
+    EXTERN PROCEDURE OKB_SCSISelect, OKB_SCSIStartStop, OKB_SCSIGetCapacity: LONG;
 
-    CONST KarasuFBDriver = {
-        0,               (*prev*)
-        0,               (*next*)
-        "KarasuFB",      (*name*)
-        "Framebuffer",   (*category*)
-        0,               (*IO version minor*)
-        1,               (*IO version major*)
+    CONST OkamiSCSIDriver = {
+        0,                (*prev*)
+        0,                (*next*)
+        "OkamiSCSI",      (*name*)
+        "DiskController", (*category*)
+        0,                (*IO version minor*)
+        1,                (*IO version major*)
     
-        KarasuFBRead,    (* read(offset,size,buf) *)
-        KarasuFBWrite,   (* write(offset,size,buf) *)
-        0,               (* readblock(offset,blocks,buf) *)
-        0,               (* writeblock(offset,blocks,buf) *)
-        0,               (* getblocksize() *)
-        KarasuFBGetSize, (* getsize() *)
-        KarasuFBGetAddr, (* getaddr() *)
-        KarasuFBIOCtl,   (* ioctl() *)
+        0,                (* read(offset,size,buf) *)
+        0,                (* write(offset,size,buf) *)
+        OKB_SCSIRead,     (* readblock(offset,blocks,buf) *)
+        OKB_SCSIWrite,    (* writeblock(offset,blocks,buf) *)
+        OkamiSCSIBlockSz, (* getblocksize() *)
+        OkamiSCSIGetCapa, (* getsize() *)
+        0,                (* getaddr() *)
+        OkamiSCSIIOCtl,   (* ioctl() *)
     };
+
+    PROCEDURE OkamiSCSIBlockSz(): LONG;
+    BEGIN
+        RETURN(512);
+    END;
+    PROCEDURE OkamiSCSIGetCapa(): LONG;
+    VAR blocks: LONG;
+    BEGIN
+        blocks := -1;
+        OKB_SCSIGetCapacity(PTROF(blocks));
+        RETURN(blocks);
+    END;
+
+    PROCEDURE OkamiSCSIIOCtl(cmd,a,b,c,d,e,f,g: PTR;): PTR;
+    BEGIN
+        IF cmd = DKS_SELECT THEN
+            OKB_SCSISelect(a);
+        ELSIF cmd = DKS_START_STOP THEN
+            OKB_SCSIStartStop(a);
+        ELSIF cmd = DKS_GET_PORT_COUNT THEN
+            RETURN(7);
+        END;
+        RETURN(0);
+    END;
 END.

@@ -25,73 +25,72 @@ Status Codes (a0):
 */
 
 .global DoFirmwareCall:
-    addi sp, sp, -8
+    addi sp, sp, -4
     sw ra, 4(sp)
-    sw t0, 8(sp)
-    mfex kr, 3
-    andi kr, kr, 0xff00
-    srli kr, kr, 8
-    li t0, 1
-    beq kr, t0, .section1
-    li t0, 2
-    beq kr, t0, .section2
-    li t0, 3
-    beq kr, t0, .section3
+    mfex k0, 3
+    andi k0, k0, 0xff00
+    srli k0, k0, 8
+    li k1, 1
+    beq k0, k1, .section1
+    li k1, 2
+    beq k0, k1, .section2
+    li k1, 3
+    beq k0, k1, .section3
     b .invalid
 .section1:
-    mfex kr, 3
-    andi kr, kr, 0xff
-    bne kr, zero, 2
+    mfex k0, 3
+    andi k0, k0, 0xff
+    bne k0, zero, 2
     bl ConsolePutc
     b .success
-    li t0, 1
-    bne kr, t0, 2
+    li k1, 1
+    bne k0, k1, 2
     bl ConsolePrint
     b .success
-    li t0, 2
-    bne kr, t0, 4
-    /*la kr, consoleTextColor
-    sw a0, 0(kr)*/
+    li k1, 2
+    bne k0, k1, 4
+    /*la k0, consoleTextColor
+    sw a0, 0(k0)*/
     nop
     nop
     nop
     b .success
-    li t0, 3
-    bne kr, t0, 3
+    li k1, 3
+    bne k0, k1, 3
     bl ConsoleGetChar
     mv a0, a1
     b .success
-    li t0, 4
-    bne kr, t0, 8
-    mv a0, kr
+    li k1, 4
+    bne k0, k1, 8
+    mv a0, k0
     andi a0, a0, 1
     beq a0, zero, 1
     nop /*bl FramebufferDither*/
-    andi kr, kr, 2
-    beq kr, zero, 1
+    andi k0, k0, 2
+    beq k0, zero, 1
     bl ConsoleInit
     b .success
-    li t0, 0xff
-    bne kr, t0, .invalid
+    li k1, 0xff
+    bne k0, k1, .invalid
     /*bl FramebufferRenderBackground*/
     nop
     b .success
 .section2:
-    mfex kr, 3
-    andi kr, kr, 0xff
-    bne kr, zero, 2
+    mfex k0, 3
+    andi k0, k0, 0xff
+    bne k0, zero, 2
     bl SCSISelect
     b .success
-    li t0, 1
-    bne kr, t0, 2
+    li k1, 1
+    bne k0, k1, 2
     bl SCSIReadBlocks
     b .ret
-    li t0, 2
-    bne kr, t0, 2
+    li k1, 2
+    bne k0, k1, 2
     bl SCSIWriteBlocks
     b .ret
-    li t0, 3
-    bne kr, t0, 7
+    li k1, 3
+    bne k0, k1, 7
     addi sp, sp, -4
     mv sp, a0
     addi a0, a0, 4
@@ -99,12 +98,12 @@ Status Codes (a0):
     lw a1, 4(sp)
     addi sp, sp, 4
     b .ret
-    li t0, 4
-    bne kr, t0, 2
+    li k1, 4
+    bne k0, k1, 2
     bl SCSIStartStop
     b .ret
-    li t0, 5
-    bne kr, t0, .invalid
+    li k1, 5
+    bne k0, k1, .invalid
     addi sp, sp, -8
     mv sp, a0
     mv sp, a1
@@ -116,14 +115,14 @@ Status Codes (a0):
     lw a2, -4(sp)
     b .success
 .section3:
-    mfex kr, 3
-    andi kr, kr, 0xff
-    li t0, 1
-    bne kr, zero, 4
-    la kr, RAMSize
-    lw a1, 0(kr)
+    mfex k0, 3
+    andi k0, k0, 0xff
+    li k1, 1
+    bne k0, zero, 4
+    la k0, RAMSize
+    lw a1, 0(k0)
     b .success
-    bne kr, t0, .invalid
+    bne k0, k1, .invalid
     li a1, 0x0002 /* Revision 0.2 */
     beq zero, zero, .success
 .invalid:
@@ -133,6 +132,5 @@ Status Codes (a0):
     li a0, 0
 .ret:
     lw ra, 4(sp)
-    lw t0, 8(sp)
-    addi sp, sp, 8
+    addi sp, sp, 4
     rft

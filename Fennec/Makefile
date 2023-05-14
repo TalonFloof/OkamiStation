@@ -8,7 +8,7 @@ build:
 	../okamisdk/okrotool reloc -noalign 0x80005000 0 Kernel.o
 	../okamisdk/okrotool strip Kernel.o
 	../okamisdk/okrotool dump Kernel.o Kernel.bin
-	rm -f Kernel.o a.s
+	rm -f Kernel.o
 	$(FSTOOL) fennec.hd 4 copy Kernel.bin /FENNECKernel
 	rm -f bootloader/okami1041/Bootloader.bin bootloader/okami1041/Bootloader.o Kernel.bin
 

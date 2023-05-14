@@ -1,0 +1,6 @@
+MODULE IODksDev;
+    CONST DKS_SELECT = 1;
+          DKS_START_STOP = 2;
+          DKS_EJECT = 3;
+          DKS_GET_PORT_COUNT = 4;
+END.

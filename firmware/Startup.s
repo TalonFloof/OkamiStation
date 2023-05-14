@@ -27,7 +27,7 @@
     sw zero, 0(a0)
     addi a0, a0, 0x1000
     la a1, 786432
-    li a2, 0
+    mv zero, a2
     bl memset
     /* Clear the TLB next */
     bl ClearTLB
@@ -39,7 +39,7 @@
     la a1, __BSS_END__
     lui t0, 0x8000
     sub a1, a1, t0
-    li a2, 0
+    mv zero, a2
     bl memset
     la t0, main
     br t0
@@ -77,7 +77,7 @@ halt:
     br ra
 
 .global ClearTLB:
-    li t0, 0
+    mv zero, t0
     li t1, 64
 .loop:
     mtex t0, 0x10 /* OKAMI_TLB_INDEX */

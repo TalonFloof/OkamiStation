@@ -2,6 +2,7 @@
 #include "okami1041.h"
 
 uint32_t HTCRegisters[2];
+bool HTCPending = false;
 
 /*
 Interrupt Layout:
@@ -11,7 +12,7 @@ Interrupt Layout:
 void HTCInterrupt(int irq) {
     if(!(HTCRegisters[0] & (1 << (irq&0x1F)))) {
         if(HTCRegisters[1] == 0) {
-            triggerTrap(1,0,false);
+            HTCPending = true;
         }
         HTCRegisters[1] = HTCRegisters[1] | (1 << (irq&0x1f));
     }

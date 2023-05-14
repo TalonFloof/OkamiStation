@@ -1,16 +1,21 @@
 MODULE HALArch;
     ASM "string.s";
-    EXTERN PROCEDURE memset, memcpy: CHAR;
     ASM "fwcalls.s";
-    EXTERN PROCEDURE HALRAMSize: LONG;
+    ASM "exception.s";
+    EXTERN PROCEDURE memset, memcpy, HALRAMSize: LONG;
     EXTERN __TEXT_BEGIN__: CHAR;
-    IMPORT KarasuFB, IODevice;
+    EXTERN HalPrevContext: ARRAY 23 OF LONG;
+    IMPORT KarasuFB, OkamiSCSI, IODevice, HALCrash;
+
+    VAR okamiInException: CHAR;
 
     PROCEDURE HALArchInit();
     BEGIN
+        okamiInException := 0;
         (* Init Framebuffer *)
         PUTINT(0B0000000H,1); (* Switch Framebuffer to 8-bit 1024x768 *)
         PUTINT(0B0000004H,0);
+        IOAddDevice(PTROF(OkamiSCSIDriver));
         IOAddDevice(PTROF(KarasuFBDriver));
     END;
 
@@ -19,4 +24,20 @@ MODULE HALArch;
         WHILE 1 DO END;
     END;
 
+    PROCEDURE HALArchException(cause, pc, vaddr, status: LONG;);
+    BEGIN
+        IF okamiInException THEN HALCrash(ON_FIRE,cause,pc,status,vaddr); END;
+        okamiInException := 1;
+        IF (status & 04H) # 0 THEN
+            IF cause = 4 THEN
+                HALCrash(UNKNOWN_OPCODE,pc,GETLONG(pc),0,0);
+            ELSIF (cause = 6) OR (cause = 7) OR (cause = 8) OR (cause = 9) THEN
+                HALCrash(BUS_FAULT,pc,vaddr,0,0);
+            ELSIF cause = 10 THEN
+                HALCrash(DIVIDE_BY_ZERO,pc,0,0,0);
+            END;
+            HALCrash(UNKNOWN_EXCEPTION,pc,0,0);
+        END;
+        okamiInException := 0;
+    END;
 END.

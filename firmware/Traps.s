@@ -66,9 +66,9 @@
 .global EarlyHandler:
     mtex zero, 5
     mtex zero, 6
-    mfex t0, 0
-    ori t0, t0, 0xc0
-    mtex t0, 0
+    mfex k0, 0
+    ori k0, k0, 0xc0
+    mtex k0, 0
     la sp, 0x80000ffc
     mfex a0, 3
     bl earlyException
@@ -76,7 +76,10 @@
     beq zero, zero, .halt
 
 .global RAMTestHandler:
-    la kr, RAMTestFaulted
-    li t7, 2
-    sb t7, 0(kr)
+    la k0, RAMTestFaulted
+    li k1, 1
+    sb k1, 0(k0)
+    mfex k0, 2
+    addi k0, k0, 4
+    mtex k0, 2
     rft

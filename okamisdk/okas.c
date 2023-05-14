@@ -107,7 +107,7 @@ struct OkamiOpcode {
   OpType type;
 };
 
-const char* OkamiRegisters[] = {"zero","a0","a1","a2","a3","a4","a5","a6","a7","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","gp","kr","fp","sp","ra"};
+const char* OkamiRegisters[] = {"zero","a0","a1","a2","a3","a4","a5","a6","a7","t0","t1","t2","t3","t4","t5","t6","s0","s1","s2","s3","s4","s5","s6","s7","s8","s9","k0","k1","gp","fp","sp","ra"};
 
 const struct OkamiOpcode OkamiInstructions[] = {
   /* SECTION 1 */
@@ -155,12 +155,17 @@ const struct OkamiOpcode OkamiInstructions[] = {
   {53,"sb",OP_LOADSTORE},
   {54,"sh",OP_LOADSTORE},
   {55,"sw",OP_LOADSTORE},
+  /* MMU */
+  {59,"tlbri",OP_NONE},
+  {59,"tlbwi",OP_NONE}, /* 42 */
+  {59,"tlbwr",OP_NONE}, /* 43 */
+  {59,"tlbp",OP_NONE}, /* 44 */
   /* EXTENDED REGISTERS */
   {60,"mfex",OP_LOADIMM},
   {61,"mtex",OP_LOADIMM},
   /* TRAPS */
   {62,"kcall",OP_KMCALL},
-  {62,"mcall",OP_KMCALL},
+  {62,"mcall",OP_KMCALL}, /* 48 */
   {63,"rft",OP_NONE},
   /* PSEUDO-INSTRUCTIONS */
   { 0,"nop",OP_NONE},
@@ -543,6 +548,13 @@ void Assemble(char* name, char* data) {
             switch(OkamiInstructions[index].type) {
               case OP_NONE: {
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26);
+                if(index == 42) {
+                  opcode |= 0b010;
+                } else if(index == 43) {
+                  opcode |= 0b011;
+                } else if(index == 44) {
+                  opcode |= 0b100;
+                }
                 addToSegment(&opcode,4);
                 break;
               }
@@ -625,7 +637,7 @@ void Assemble(char* name, char* data) {
               case OP_KMCALL: {
                 unsigned int imm = parseImm(OkamiInstructions[index].type,data,&i);
                 unsigned int opcode = (((unsigned int)OkamiInstructions[index].opcode) << 26)
-                                      | (index == 44 ? 0x2000000 : 0)
+                                      | (index == 48 ? 0x2000000 : 0)
                                       | imm;
                 addToSegment(&opcode,4);
                 break;

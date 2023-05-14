@@ -307,6 +307,38 @@
         [21:25]: rd
         [26:31]: 0b110111
 ```
+## MMU
+```
+    tlbri
+        [0:2]: 0b000
+        [26:31]: 0b111011
+
+        OKAMI_TLB_VALUE_LOW = MMU_TLBLOW[OKAMI_TLB_INDEX];
+        OKAMI_TLB_VALUE_HIGH = MMU_TLBHIGH[OKAMI_TLB_INDEX];
+    tlbwi
+        [0:2]: 0b010
+        [26:31]: 0b111011
+
+        MMU_TLBLOW[OKAMI_TLB_INDEX] = OKAMI_TLB_VALUE_LOW;
+        MMU_TLBHIGH[OKAMI_TLB_INDEX] = OKAMI_TLB_VALUE_HIGH;
+    tlbwr
+        [0:2]: 0b011
+        [26:31]: 0b111011
+
+        MMU_TLBLOW[OKAMI_TLB_RANDOM] = OKAMI_TLB_VALUE_LOW;
+        MMU_TLBHIGH[OKAMI_TLB_RANDOM] = OKAMI_TLB_VALUE_HIGH;
+    tlbp
+        [0:2]: 0b100
+        [26:31]: 0b111011
+
+        for(i=0;i < 64;i++) {
+            if(MMU_TLBHIGH[i] == OKAMI_TLB_VALUE_HIGH) {
+                OKAMI_TLB_INDEX = i;
+                return;
+            }
+        }
+        OKAMI_TLB_INDEX = 0x80000000;
+```
 ## Extended Registers
 ```
     mfex rd, regnum
@@ -367,10 +399,10 @@
 ```
 r0 - zero: Hardwired Zero
 r1-r8 - a0-a7: Arguments/Return Values
-r9-r16 - t0-t7: Temporary/Scratchpad Values
-r17-r26 - s0-s9: Saved Values
-r27 - gp: Global Pointer
-r28 - kr: Kernel Register (For interrupt handlers)
+r9-r15 - t0-t6: Temporary/Scratchpad Values
+r16-r25 - s0-s9: Saved Values
+r26-r27 - k0-k1: Kernel Registers (For interrupt handlers)
+r28 - gp: Global Pointer
 r29 - fp: Frame Pointer
 r30 - sp: Stack Pointer
 r31 - ra: Return Address
@@ -395,7 +427,8 @@ r31 - ra: Return Address
     1: External Trap
     2: KCall/MCall
     3: TLB Miss
-    4: Unknown Opcode
+    4: TLB Modify
+    5: Unknown Opcode
     6: Misaligned Read
     7: Misaligned Write
     8: Fetch Exception
@@ -404,17 +437,16 @@ r31 - ra: Return Address
     11: Permission Exception
 0x02: OKAMI_TRAP_PC
 0x03: OKAMI_TRAP_BAD_VADDR
-0x04: OAMKI_TRAP_KERNEL_SCRATCH
+0x04: OKAMI_TRAP_KERNEL_SCRATCH
     Intended for storing the page table
 0x05: OKAMI_TRAP_VECTOR_OFFSET
-    NOTE: DO NOT ENABLE EXTERNAL TRAPS UNTIL THIS HAS BEEN SET!
 0x06: OKAMI_TLB_MISS_VECTOR_OFFSET
     NOTE: DO NOT USE THE user SEGMENT or the kernel3 SEGMENT UNTIL THIS HAS BEEN SET!
 0x07: OKAMI_MCALL_VECTOR_OFFSET
     Intended for interacting with the system firmware
 0x10: OKAMI_TLB_INDEX
 0x11: OKAMI_TLB_VALUE_LOW
-0x12: OAMKI_TLB_VALUE_HIGH
+0x12: OKAMI_TLB_VALUE_HIGH
 0x13: OKAMI_TLB_RANDOM_INDEX
     Starts from 63 and decrements every cpu tick, it wraps around after trying to decrement 8.
     Useful if you just want to fill a random TLB entry.

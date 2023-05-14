@@ -1,12 +1,18 @@
 MODULE HALCrash;
     IMPORT HALArch, HALConsole, String;
 
-    CONST UNKNOWN_KCRASH = 0;
-          HAL_INITIALIZATION_FAILURE = 1;
-          ON_FIRE = 2;
-          TLB_MISS_ON_UNPAGED_SECTION = 3;
+    CONST UNKNOWN_HALCRASH = 0;
+          UNKNOWN_EXCEPTION = 1;
+          HAL_INITIALIZATION_FAILURE = 2;
+          ON_FIRE = 3;
+          TLB_MISS_ON_UNPAGED_SECTION = 4;
+          BUS_FAULT = 5;
+          UNKNOWN_OPCODE = 6;
+          DIVIDE_BY_ZERO = 7;
+          PROTECTION_FAULT = 8;
           StopTable = {
-            "UNKNOWN_KCRASH",
+            "UNKNOWN_HALCRASH",
+            "UNKNOWN_EXCEPTION",
             "HAL_INITIALIZATION_FAILURE",
             "OKAMISTATION_ON_FIRE", (* Double Fault *)
             "TLB_MISS_ON_UNPAGED_SECTION", (* Page Fault *)
