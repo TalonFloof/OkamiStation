@@ -428,13 +428,14 @@ r31 - ra: Return Address
     2: KCall/MCall
     3: TLB Miss
     4: TLB Modify
-    5: Unknown Opcode
+    5: TLB Invalid
     6: Misaligned Read
     7: Misaligned Write
     8: Fetch Exception
     9: Data Exception
     10: Arithmetic Exception (Divide by zero)
     11: Permission Exception
+    12: Unknown Opcode
 0x02: OKAMI_TRAP_PC
 0x03: OKAMI_TRAP_BAD_VADDR
 0x04: OKAMI_TRAP_KERNEL_SCRATCH
@@ -454,9 +455,6 @@ r31 - ra: Return Address
     0-1: 0
     2-20: (OKAMI_TRAP_BAD_VADDR >> 12) << 2
     21-31: PTEBase
-0x16: OKAMI_TLB_PAGE_DIRECTORY
-    A scratch register for storing the base address of a page directory.
-    Useful for Nested TLB Miss routines.
 ```
 
 # Cache Line Layout

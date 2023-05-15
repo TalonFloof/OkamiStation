@@ -28,15 +28,22 @@ MODULE HALArch;
     BEGIN
         IF okamiInException THEN HALCrash(ON_FIRE,cause,pc,status,vaddr); END;
         okamiInException := 1;
-        IF (status & 04H) # 0 THEN
-            IF cause = 4 THEN
+        IF cause = 5 THEN
+            IF vaddr >|= 80000000H THEN
+                HALCrash(INVALID_TLB_ENTRY,vaddr,pc,0,0);
+            END;
+        ELSIF (status & 04H) # 0 THEN
+            IF cause = 12 THEN
                 HALCrash(UNKNOWN_OPCODE,pc,GETLONG(pc),0,0);
             ELSIF (cause = 6) OR (cause = 7) OR (cause = 8) OR (cause = 9) THEN
                 HALCrash(BUS_FAULT,pc,vaddr,0,0);
             ELSIF cause = 10 THEN
                 HALCrash(DIVIDE_BY_ZERO,pc,0,0,0);
+            ELSIF cause = 4 THEN
+                HALCrash(WRITE_ON_NONDIRTY_PAGE,vaddr,pc,0,0);
+            ELSE
+                HALCrash(UNKNOWN_EXCEPTION,pc,0,0);
             END;
-            HALCrash(UNKNOWN_EXCEPTION,pc,0,0);
         END;
         okamiInException := 0;
     END;

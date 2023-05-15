@@ -17,7 +17,7 @@ bool afterInc = false;
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
 
-uint32_t extRegisters[0x17];
+uint32_t extRegisters[0x16];
 
 typedef struct {
     uint64_t isValid : 1;
@@ -88,16 +88,17 @@ void triggerTrap(uint32_t type, uint32_t addr) {
         }
         default: {
             if(type == 3) {
-                extRegisters[0x15] = (extRegisters[0x15] & 0xffe00000) | ((extRegisters[3] >> 10) & 0x1FFFFC);
+                extRegisters[0x15] = (extRegisters[0x15] & 0xffe00000) | ((addr >> 10) & 0x1FFFFC);
+                fprintf(stderr,"0x%08x\n",extRegisters[0x15]);
                 extRegisters[0x12] = (addr & 0xFFFFF000) | extRegisters[0x14];
-            }
-            if(type == 3 && extRegisters[1] != 3) { // Non-nested TLB Miss
-                extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
-                extRegisters[1] = type;
-                extRegisters[2] = afterInc ? PC-4 : PC;
-                extRegisters[3] = addr;
-                PC = extRegisters[6];
-                break;
+                if((addr & 0x80000000) == 0) { // UTLB Miss
+                    extRegisters[0] = (((extRegisters[0] & 3) << 2) | 1) | (extRegisters[0] & 0xFFFFFFF0);
+                    extRegisters[1] = type;
+                    extRegisters[2] = afterInc ? PC-4 : PC;
+                    extRegisters[3] = addr;
+                    PC = extRegisters[6];
+                    return;
+                }
             }
             if(extRegisters[5] == 0) {
                 fprintf(stderr, "UNCAUGHT TRAP 0x%x TRIGGERED: 0x%08x - ACCESSED: 0x%08x\n", type, afterInc ? PC-4 : PC, addr);
@@ -121,7 +122,7 @@ int TLBLookup(uint32_t addr) {
     int i;
     uint32_t vaddr = addr & 0xFFFFF000;
     for(i=0; i < 64; i++) {
-        if(TLB[i].isValid && (TLB[i].vaddr == (vaddr >> 12)) && ((TLB[i].addrSpaceID == extRegisters[0x14]) || TLB[i].isGlobal)) {
+        if((TLB[i].vaddr == (vaddr >> 12)) && ((TLB[i].addrSpaceID == extRegisters[0x14]) || TLB[i].isGlobal)) {
             return i;
         }
     }
@@ -205,18 +206,25 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
         if(tlbEntry == -1) {
             triggerTrap(3,addr); // TLB Miss
             return false;
-        } else if(!TLB[tlbEntry].isDirty && write) {
+        } else if(!TLB[tlbEntry].isValid) {
+            triggerTrap(5,addr); // TLB Invalid
+            return false;
+        } else if((!TLB[tlbEntry].isDirty) && write) {
             triggerTrap(4,addr); // TLB Modify
             return false;
         }
         if(write) {
-            return writeDCacheLine((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF),buf,len);
+            return writeDCacheLine(((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF))+0x80000000,buf,len);
         } else if(fetch) {
-            uint32_t val = readICacheLine(addr-0x80000000);
+            if(extRegisters[0] & 0x40) {
+                triggerTrap(8,((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF))+0x80000000); // Fetch Exception
+                return false;
+            }
+            uint32_t val = readICacheLine(((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF))+0x80000000);
             memcpy(buf,(uint8_t*)&val,len);
             return true;
         } else {
-            return readDCacheLine((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF),buf,len);
+            return readDCacheLine(((TLB[tlbEntry].paddr << 12) | (addr & 0xFFF))+0x80000000,buf,len);
         }
     } else if(addr >= 0x80000000 && addr <= 0x9fffffff) { // kernel1 segment
         if(fetch) {
@@ -224,7 +232,7 @@ bool memAccess(uint32_t addr, uint8_t* buf, uint32_t len, bool write, bool fetch
                 triggerTrap(8,addr); // Fetch Exception
                 return false;
             }
-            uint32_t val = readICacheLine(addr-0x80000000);
+            uint32_t val = readICacheLine(addr);
             memcpy(buf,(uint8_t*)&val,len);
             return true;
         } else {
@@ -292,7 +300,7 @@ void reset() {
         ((uint64_t*)&iCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         ((uint64_t*)&dCacheTags)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
         if(i < 64) {
-            ((uint64_t*)&TLB)[i] = ((uint64_t)random()) | ((uint64_t)random() << 32);
+            ((uint64_t*)&TLB)[i] = 0;
         }
     }
 }
@@ -391,7 +399,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(5,0);
+                    triggerTrap(12,0);
                     break;
                 }
             }
@@ -444,7 +452,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(5,0);
+                    triggerTrap(12,0);
                     break;
                 }
             }
@@ -509,7 +517,7 @@ void next() {
                     break;
                 }
                 default: {
-                    triggerTrap(5,0);
+                    triggerTrap(12,0);
                     break;
                 }
             }

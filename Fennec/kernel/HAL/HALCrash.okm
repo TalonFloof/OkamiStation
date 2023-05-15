@@ -5,21 +5,23 @@ MODULE HALCrash;
           UNKNOWN_EXCEPTION = 1;
           HAL_INITIALIZATION_FAILURE = 2;
           ON_FIRE = 3;
-          TLB_MISS_ON_UNPAGED_SECTION = 4;
-          BUS_FAULT = 5;
-          UNKNOWN_OPCODE = 6;
-          DIVIDE_BY_ZERO = 7;
-          PROTECTION_FAULT = 8;
+          BUS_FAULT = 4;
+          UNKNOWN_OPCODE = 5;
+          DIVIDE_BY_ZERO = 6;
+          PROTECTION_FAULT = 7;
+          INVALID_TLB_ENTRY = 8;
+          WRITE_ON_NONDIRTY_PAGE = 9;
           StopTable = {
             "UNKNOWN_HALCRASH",
             "UNKNOWN_EXCEPTION",
             "HAL_INITIALIZATION_FAILURE",
             "OKAMISTATION_ON_FIRE", (* Double Fault *)
-            "TLB_MISS_ON_UNPAGED_SECTION", (* Page Fault *)
             "BUS_FAULT", (* Data/Fetch Exception *)
             "UNKNOWN_OPCODE",
             "DIVIDE_BY_ZERO",
             "PROTECTION_FAULT",
+            "INVALID_TLB_ENTRY", (* Page Fault *)
+            "WRITE_ON_NONDIRTY_PAGE", (* Page Fault *)
           };
 
     PROCEDURE HALCrash(stopCode,a,b,c,d: LONG;);

@@ -78,9 +78,10 @@ halt:
 
 .global ClearTLB:
     mv zero, t0
-    li t1, 64
+    li t1, 4095
     mtex zero, 0x11 /* OKAMI_TLB_VALUE_LOW */
-    mtex zero, 0x12 /* OKAMI_TLB_VALUE_HIGH */
+    mtex t1, 0x12 /* OKAMI_TLB_VALUE_HIGH */
+    li t1, 64
 .loop:
     mtex t0, 0x10 /* OKAMI_TLB_INDEX */
     tlbwi

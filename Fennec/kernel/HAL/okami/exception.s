@@ -1,5 +1,5 @@
 .global __exceptionHandler:
-    mtex k1, 0x4 /* k1 -> OKAMI_TRAP_KERNEL_SCRATCH */
+    mtex k0, 0x4 /* k0 -> OKAMI_TRAP_KERNEL_SCRATCH */
     mfex k0, 0x1 /* OKAMI_TRAP_CAUSE -> k0 */
     li k1, 3
     bne k0, k1, 1
