@@ -455,6 +455,9 @@ r31 - ra: Return Address
     0-1: 0
     2-20: (OKAMI_TRAP_BAD_VADDR >> 12) << 2
     21-31: PTEBase
+0x16: OKAMI_TLB_PAGE_DIRECTORY
+    Intended for storing the root page directory
+    Useful for nested tlb misses.
 ```
 
 # Cache Line Layout

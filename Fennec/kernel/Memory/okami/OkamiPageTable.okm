@@ -1,3 +1,4 @@
 MODULE ArchPTE;
     ASM "OkamiTLBHandler.s";
+    EXTERN PROCEDURE ArchSetPageDirectory: LONG;
 END.

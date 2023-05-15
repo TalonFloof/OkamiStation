@@ -1,5 +1,5 @@
 MODULE HALMain;
-    IMPORT HALArch, HALConsole, HALCrash, String;
+    IMPORT HALArch, HALConsole, HALCrash, String, ArchPTE;
 
     PROCEDURE HALMain();
     VAR buf: ARRAY 16 OF CHAR;

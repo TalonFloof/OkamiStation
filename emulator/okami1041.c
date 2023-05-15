@@ -17,7 +17,7 @@ bool afterInc = false;
 uint32_t registers[32];
 uint32_t PC = 0xbff00000;
 
-uint32_t extRegisters[0x16];
+uint32_t extRegisters[0x17];
 
 typedef struct {
     uint64_t isValid : 1;
